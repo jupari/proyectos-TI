@@ -1,0 +1,15 @@
+<main class="flex min-h-screen items-center justify-center bg-neutro-50 font-sans">
+  <div class="rounded-panel bg-white p-8 shadow-tarjeta">
+    <h1 class="mb-4 text-xl font-semibold text-neutro-900">Seguimiento de Proyectos de TI</h1>
+
+    @if (salud()) {
+      <p class="text-exito">Estado: {{ salud()!.estado }} · Base de datos: {{ salud()!.base_datos }}</p>
+      <p class="text-sm text-neutro-500">Versión {{ salud()!.version }} · {{ salud()!.hora }}</p>
+    } @else if (error()) {
+      <p class="text-peligro">{{ error() }}</p>
+    } @else {
+      <p class="text-neutro-500">Consultando /salud/...</p>
+    }
+  </div>
+</main>
+<router-outlet />
