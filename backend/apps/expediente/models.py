@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 
 from apps.core.choices import CategoriaDocumento, TipoEvento
@@ -76,8 +77,8 @@ class EntradaBitacora(ModeloBase):
     entidad = models.CharField(max_length=60)
     entidad_id = models.UUIDField()
     descripcion = models.CharField(max_length=500)
-    datos_antes = models.JSONField(null=True, blank=True)
-    datos_despues = models.JSONField(null=True, blank=True)
+    datos_antes = models.JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
+    datos_despues = models.JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,

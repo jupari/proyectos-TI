@@ -126,12 +126,12 @@ documentación OpenAPI. Si esta fase queda bien, las fases 05 a 10 son casi mec�
 
 ## Criterios de aceptación
 
-- [ ] Un error de validación en cualquier endpoint devuelve el sobre `{"error": {...}}` completo.
-- [ ] Un error de constraint de Postgres se muestra traducido al español, sin texto crudo del motor.
-- [ ] Crear y modificar un registro deja entradas en `EntradaBitacora` con usuario y diff.
-- [ ] `normalizar_periodo` pasa las pruebas de borde (cruce de mes, febrero, fin de año).
-- [ ] `python manage.py spectacular --validate --fail-on-warn` termina sin advertencias.
-- [ ] `pytest` verde y `ruff check backend/` sin hallazgos.
+- [x] Un error de validación en cualquier endpoint devuelve el sobre `{"error": {...}}` completo.
+- [x] Un error de constraint de Postgres se muestra traducido al español, sin texto crudo del motor.
+- [x] Crear y modificar un registro deja entradas en `EntradaBitacora` con usuario y diff.
+- [x] `normalizar_periodo` pasa las pruebas de borde (cruce de mes, febrero, fin de año).
+- [x] `python manage.py spectacular --validate --fail-on-warn` termina sin advertencias.
+- [x] `pytest` verde y `ruff check backend/` sin hallazgos.
 
 ## Comandos de verificación
 
@@ -148,4 +148,41 @@ Lógica de roles (fase 03), endpoints de negocio (fases 05 a 10), frontend.
 
 ## Evidencia
 
-<!-- Pega aquí la salida real de los comandos de verificación. -->
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest -q
+.........................................................                [100%]
+57 passed in 26.59s
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py spectacular --validate --fail-on-warn
+(sin advertencias ni errores; termina imprimiendo el YAML del esquema completo)
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ curl -s -X POST http://localhost:8000/api/v1/salud/ -d '{}' -H "Content-Type: application/json"
+{"error":{"codigo":"NO_ENCONTRADO","mensaje":"Método \"POST\" no permitido.","detalles":null,"traza_id":"e29b871439cc"}}
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py check
+System check identified no issues (0 silenced).
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py makemigrations --check --dry-run
+No changes detected
+```
+
+Nota sobre el `codigo` del ejemplo anterior: la tabla de `docs/api-contrato.md` §9 no
+define un código para 405 (método no permitido); se usa `NO_ENCONTRADO` como el más
+cercano semánticamente de los documentados, vía el mapa `STATUS_A_CODIGO` de
+`apps/core/exceptions.py`. Las pruebas de `test_errores.py` cubren los ocho códigos que sí
+están documentados (400/401/403/404/409/413/422/500).
+
+**Bug real encontrado y corregido durante la fase:** el primer diseño de
+`auditar_post_delete` intentaba resolver y usar el `proyecto` de la entidad borrada para la
+entrada de bitácora. Al borrar un `Proyecto` en cascada (p. ej. `seed_demo --limpiar`), esto
+rompía con `IntegrityError` en el `COMMIT` final: Postgres difiere la validación de FK hasta
+el commit de todo el `Collector.delete()` de Django (usa `SET CONSTRAINTS ALL DEFERRED`), así
+que ninguna comprobación de existencia *en el momento* del `post_delete` es confiable cuando
+el propio proyecto se borra en la misma transacción. Se corrigió dejando `proyecto=None`
+siempre en las entradas de borrado físico (campo nullable; la entidad y su id siguen
+identificando qué se borró), con una prueba de regresión en
+`apps/core/tests/test_auditoria.py::test_borrado_fisico_en_cascada_no_rompe_por_fk_de_bitacora`.
+Se verificó además `seed_demo --limpiar` dos veces seguidas sin error ni duplicados.
