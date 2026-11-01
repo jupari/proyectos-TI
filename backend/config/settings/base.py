@@ -89,8 +89,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# TODO fase-01: habilitar cuando exista apps.accounts.models.Usuario
-# AUTH_USER_MODEL = "accounts.Usuario"
+AUTH_USER_MODEL = "accounts.Usuario"
 
 LANGUAGE_CODE = "es-co"
 TIME_ZONE = env("TIME_ZONE", default="America/Bogota")

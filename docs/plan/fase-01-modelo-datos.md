@@ -128,13 +128,22 @@ Para cada modelo, sin excepción:
 
 ## Criterios de aceptación
 
-- [ ] `python manage.py migrate` aplica desde cero sobre una base vacía, sin errores.
-- [ ] `python manage.py makemigrations --check --dry-run` no detecta cambios pendientes.
-- [ ] Las 22 entidades de `docs/modelo-datos.md` existen y se ven en `/admin/`.
-- [ ] `python manage.py seed_demo` corre dos veces seguidas sin duplicar datos.
-- [ ] Tras `seed_demo` hay 4 proyectos, uno de ellos con semáforo rojo por sobrecosto.
-- [ ] `pytest` verde, con al menos las cinco pruebas de restricciones.
-- [ ] `ruff check backend/` sin hallazgos.
+- [x] `python manage.py migrate` aplica desde cero sobre una base vacía, sin errores.
+- [x] `python manage.py makemigrations --check --dry-run` no detecta cambios pendientes.
+- [x] Las entidades de `docs/modelo-datos.md` existen y se ven en `/admin/` — son **20**
+      modelos con tabla propia (`tablero` no tiene tablas, por diseño). El documento y el
+      README hablan de "22"; se deja constancia aquí en vez de inventar 2 entidades que no
+      están especificadas, siguiendo la regla 1 de `PLAN.md` §4 ("No inventes entidades ni
+      campos que no estén en `docs/modelo-datos.md`"). Si el conteo de 22 era intencional,
+      hay que decirlo para actualizar primero `docs/modelo-datos.md`.
+- [x] `python manage.py seed_demo` corre dos veces seguidas sin duplicar datos (verificado
+      contando filas en BD, no solo el resumen impreso).
+- [x] Tras `seed_demo` hay 4 proyectos, uno de ellos con semáforo rojo por sobrecosto
+      (`PRY-2026-001`).
+- [x] `pytest` verde, con las cinco pruebas de restricciones pedidas (fin < inicio, registro
+      duplicado, horas ≤ 0, autodependencia, `__str__` parametrizado sobre las 19 factories +
+      `RolMeta`).
+- [x] `ruff check backend/` sin hallazgos.
 
 ## Comandos de verificación
 
@@ -156,4 +165,71 @@ van las restricciones que viven en la base de datos.
 
 ## Evidencia
 
-<!-- Pega aquí la salida real de los comandos de verificación. -->
+```
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py migrate
+Operations to perform:
+  Apply all migrations: accounts, admin, auth, catalogos, contenttypes, ejecucion, expediente,
+  proyectos, recursos, seguimiento, sessions, tareas, token_blacklist
+Running migrations:
+  No migrations to apply.
+(corrida previa, desde base vacía: las 8 migraciones iniciales de apps propias + las de
+Django se aplicaron todas con "... OK", sin errores)
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py makemigrations --check --dry-run
+No changes detected
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py seed_demo --limpiar
+Limpiando datos de demostración previos...
+Datos de demostración listos:
+  usuarios: 5
+  areas: 3
+  portafolios: 2
+  perfiles: 6
+  recursos: 8
+  proyectos: 4
+  tareas: 40
+  registros_ejecucion: 120
+  gastos_ejecutados: 4
+  seguimientos: 6
+  documentos_expediente: 10
+
+Credenciales de demostración (todas con la misma contraseña):
+  [ADMIN] admin@seguimiento.local / Seguimiento2026!
+  [PMO] pmo@seguimiento.local / Seguimiento2026!
+  [LIDER] lider@seguimiento.local / Seguimiento2026!
+  [RECURSO] recurso@seguimiento.local / Seguimiento2026!
+  [CONSULTA] consulta@seguimiento.local / Seguimiento2026!
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py seed_demo
+(segunda corrida, mismos conteos — confirmado también contando filas en BD directamente,
+no solo el resumen impreso: Proyecto=4, Tarea=40, RegistroEjecucion=120, Seguimiento=6,
+CompromisoSeguimiento=6, DocumentoExpediente=10, Recurso=8, TarifaRecurso=8,
+AsignacionRecurso=8, Area=3, Portafolio=2, PerfilRecurso=6, Usuario=5 — ninguno se duplicó)
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py shell -c "..."
+Proyectos: 4
+  PRY-2026-001 EJECUCION ROJO
+  PRY-2026-002 EJECUCION VERDE
+  PRY-2026-003 CERRADO VERDE
+  PRY-2026-004 BORRADOR VERDE
+
+$ docker compose -f infra/docker-compose.yml exec backend pytest -q
+........................                                               [100%]
+24 passed in 10.76s
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py check
+System check identified no issues (0 silenced).
+```
+
+Modelos registrados en `/admin/` (20, ver nota en los criterios de aceptación sobre el
+conteo de "22"):
+
+```
+Area, AsignacionRecurso, CompromisoSeguimiento, DependenciaTarea, DocumentoExpediente,
+EntradaBitacora, FaseProyecto, GastoEjecutado, Hito, PerfilRecurso, Portafolio, Proyecto,
+Recurso, RegistroEjecucion, RolMeta, RubroPresupuesto, Seguimiento, Tarea, TarifaRecurso,
+Usuario
+```
