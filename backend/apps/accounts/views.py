@@ -1,0 +1,263 @@
+from django.contrib.auth.models import Group
+from django.utils import timezone
+from drf_spectacular.utils import extend_schema
+from rest_framework import generics, status
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from apps.core.choices import TipoEvento
+from apps.core.exceptions import ErrorConflicto
+from apps.core.permissions import EsAdmin, EsAdminOSoloLectura
+from apps.core.services import registrar_evento
+from apps.core.views import ViewSetBase
+
+from .models import RolMeta, Usuario
+from .oauth import (
+    canjear_codigo,
+    construir_url_autorizacion,
+    obtener_o_crear_usuario,
+    validar_state,
+    verificar_id_token,
+)
+from .serializers import (
+    CambiarClaveSerializer,
+    LoginSerializer,
+    RolMetaSerializer,
+    UsuarioActualizarSerializer,
+    UsuarioActualSerializer,
+    UsuarioAdminEscrituraSerializer,
+    UsuarioSerializer,
+)
+from .throttling import LoginRateThrottle
+
+
+def _tokens_de(usuario):
+    """Emite el par de tokens propios con los claims de rol, para que login
+    local y login con Google devuelvan exactamente la misma forma."""
+    refresh = RefreshToken.for_user(usuario)
+    refresh["roles"] = list(
+        usuario.groups.filter(rol_meta__isnull=False).values_list("rol_meta__codigo", flat=True)
+    )
+    refresh["nombre_completo"] = usuario.nombre_completo
+
+    usuario.ultimo_acceso_en = timezone.now()
+    usuario.save(update_fields=["ultimo_acceso_en"])
+
+    return {
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+        "usuario": UsuarioSerializer(usuario).data,
+    }
+
+
+class LoginView(TokenObtainPairView):
+    serializer_class = LoginSerializer
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
+    throttle_scope = "login"
+
+    def post(self, request, *args, **kwargs):
+        respuesta = super().post(request, *args, **kwargs)
+        if respuesta.status_code == 200:
+            usuario = Usuario.objects.filter(email=request.data.get("email")).first()
+            if usuario is not None:
+                usuario.ultimo_acceso_en = timezone.now()
+                usuario.save(update_fields=["ultimo_acceso_en"])
+                respuesta.data["usuario"] = UsuarioSerializer(usuario).data
+                registrar_evento(
+                    tipo_evento=TipoEvento.LOGIN,
+                    entidad="Usuario",
+                    entidad_id=usuario.id,
+                    descripcion=f"Inicio de sesión de {usuario.email}.",
+                    usuario=usuario,
+                )
+        return respuesta
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Cierra la sesión",
+        description="Pone el refresh token en la blacklist. Responde 204 incluso si el "
+        "token ya estaba vencido o es inválido: el cliente nunca debe quedar bloqueado.",
+        request=None,
+        responses={204: None},
+    )
+    def post(self, request):
+        refresh = request.data.get("refresh")
+        if refresh:
+            try:
+                RefreshToken(refresh).blacklist()
+            except TokenError:
+                pass
+
+        registrar_evento(
+            tipo_evento=TipoEvento.LOGIN,
+            entidad="Usuario",
+            entidad_id=request.user.id,
+            descripcion=f"Cierre de sesión de {request.user.email}.",
+            usuario=request.user,
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class YoView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def get_serializer_class(self):
+        if self.request.method == "PATCH":
+            return UsuarioActualizarSerializer
+        return UsuarioActualSerializer
+
+    def update(self, request, *args, **kwargs):
+        super().update(request, *args, **kwargs)
+        return Response(UsuarioActualSerializer(request.user).data)
+
+
+class CambiarClaveView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Cambia la clave del usuario autenticado",
+        request=CambiarClaveSerializer,
+        responses={204: None},
+    )
+    def post(self, request):
+        serializer = CambiarClaveSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GoogleAutorizarView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Construye la URL de autorización de Google (PKCE)",
+        description="El frontend genera `code_verifier`, calcula `code_challenge` "
+        "(S256) y lo envía aquí; el backend construye la URL de Google y devuelve "
+        "también `state`. Responde 503 con `OAUTH_NO_CONFIGURADO` si el entorno no "
+        "tiene configuradas las credenciales de Google.",
+        parameters=[],
+        responses={200: {"type": "object", "properties": {
+            "url_autorizacion": {"type": "string"},
+            "state": {"type": "string"},
+        }}},
+    )
+    def get(self, request):
+        code_challenge = request.query_params.get("code_challenge")
+        if not code_challenge:
+            raise ValidationError({"code_challenge": ["Este parámetro es obligatorio."]})
+        url, state = construir_url_autorizacion(code_challenge)
+        return Response({"url_autorizacion": url, "state": state})
+
+
+class GoogleCallbackView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
+    throttle_scope = "login"
+
+    @extend_schema(
+        summary="Canjea el código de Google por tokens propios",
+        description="Recibe `{code, state, code_verifier}`, valida el `state`, canjea "
+        "el código con Google, verifica el id_token y resuelve (o crea) el usuario. "
+        "Devuelve tokens propios con la misma forma que `/auth/login/`.",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string"},
+                    "state": {"type": "string"},
+                    "code_verifier": {"type": "string"},
+                },
+                "required": ["code", "state", "code_verifier"],
+            }
+        },
+        responses={200: {
+            "type": "object",
+            "properties": {
+                "access": {"type": "string"},
+                "refresh": {"type": "string"},
+                "usuario": {"$ref": "#/components/schemas/Usuario"},
+            },
+        }},
+    )
+    def post(self, request):
+        campos = ("code", "state", "code_verifier")
+        faltantes = [campo for campo in campos if not request.data.get(campo)]
+        if faltantes:
+            raise ValidationError({campo: ["Este campo es obligatorio."] for campo in faltantes})
+
+        validar_state(request.data["state"])
+        id_token_str = canjear_codigo(request.data["code"], request.data["code_verifier"])
+        info = verificar_id_token(id_token_str)
+        usuario = obtener_o_crear_usuario(info)
+
+        datos = _tokens_de(usuario)
+        registrar_evento(
+            tipo_evento=TipoEvento.LOGIN,
+            entidad="Usuario",
+            entidad_id=usuario.id,
+            descripcion=f"Inicio de sesión con Google de {usuario.email}.",
+            usuario=usuario,
+        )
+        return Response(datos)
+
+
+class UsuarioViewSet(ViewSetBase):
+    queryset = Usuario.objects.all()
+    serializer_lectura_class = UsuarioSerializer
+    serializer_escritura_class = UsuarioAdminEscrituraSerializer
+    permission_classes = [EsAdmin]
+    search_fields = ["email", "nombres", "apellidos"]
+    ordering_fields = ["email", "nombres", "apellidos", "creado_en"]
+    filterset_fields = ["is_active", "proveedor_auth"]
+
+    @extend_schema(summary="Activa un usuario", request=None, responses=UsuarioSerializer)
+    @action(detail=True, methods=["post"])
+    def activar(self, request, pk=None):
+        usuario = self.get_object()
+        usuario.is_active = True
+        usuario.save(update_fields=["is_active"])
+        return Response(UsuarioSerializer(usuario).data)
+
+    @extend_schema(summary="Desactiva un usuario", request=None, responses=UsuarioSerializer)
+    @action(detail=True, methods=["post"])
+    def desactivar(self, request, pk=None):
+        usuario = self.get_object()
+        usuario.is_active = False
+        usuario.save(update_fields=["is_active"])
+        return Response(UsuarioSerializer(usuario).data)
+
+    @extend_schema(summary="Reemplaza los roles del usuario", responses=UsuarioSerializer)
+    @action(detail=True, methods=["post"], url_path="asignar-roles")
+    def asignar_roles(self, request, pk=None):
+        usuario = self.get_object()
+        codigos = request.data.get("roles", [])
+        grupos = Group.objects.filter(rol_meta__codigo__in=codigos)
+        usuario.groups.set(grupos)
+        return Response(UsuarioSerializer(usuario).data)
+
+
+class RolViewSet(ViewSetBase):
+    queryset = RolMeta.objects.all()
+    serializer_lectura_class = RolMetaSerializer
+    serializer_escritura_class = RolMetaSerializer
+    permission_classes = [EsAdminOSoloLectura]
+    search_fields = ["codigo", "descripcion"]
+    ordering_fields = ["orden", "codigo"]
+
+    def perform_destroy(self, instance):
+        if instance.es_sistema:
+            raise ErrorConflicto("No se puede borrar un rol del sistema.")
+        super().perform_destroy(instance)

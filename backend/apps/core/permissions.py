@@ -1,47 +1,77 @@
-"""Permisos reutilizables de docs/api-contrato.md §8.
+"""Permisos reutilizables de docs/api-contrato.md §8."""
 
-En esta fase quedan vacíos de lógica de rol (solo exigen autenticación);
-la fase 03 los completa con la matriz de permisos real.
-"""
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-from rest_framework.permissions import BasePermission
+from apps.core.roles import codigos_roles_de, resolver_proyecto_de_instancia
 
 
 class EsAdmin(BasePermission):
     def has_permission(self, request, view):
-        # TODO fase-03: exigir que el usuario tenga el rol ADMIN.
-        return bool(request.user and request.user.is_authenticated)
+        return "ADMIN" in codigos_roles_de(request.user)
 
 
 class EsPmoOAdmin(BasePermission):
     def has_permission(self, request, view):
-        # TODO fase-03: exigir rol PMO o ADMIN.
-        return bool(request.user and request.user.is_authenticated)
+        return bool(codigos_roles_de(request.user) & {"ADMIN", "PMO"})
 
 
 class EsLiderDelProyecto(BasePermission):
+    """Autoriza al gerente o líder técnico del proyecto del objeto, o a
+    ADMIN/PMO. Debe combinarse con `MixinAlcancePorRol` en el `ViewSet` para
+    que el listado no filtre menos que el detalle."""
+
     def has_object_permission(self, request, view, obj):
-        # TODO fase-03: exigir que request.user sea el líder técnico (o gerente)
-        # del proyecto al que pertenece `obj`.
-        return bool(request.user and request.user.is_authenticated)
+        codigos = codigos_roles_de(request.user)
+        if codigos & {"ADMIN", "PMO"}:
+            return True
+        if "LIDER" not in codigos:
+            return False
+        proyecto = resolver_proyecto_de_instancia(obj)
+        if proyecto is None:
+            return False
+        usuario = request.user
+        return proyecto.gerente_id == usuario.id or proyecto.lider_tecnico_id == usuario.id
 
 
 class EsDuenoDelRegistro(BasePermission):
+    """Autoriza a quien registró el objeto (`registrado_por`), a quien es el
+    `recurso.usuario` del objeto, o a quien es el `usuario` de su
+    `responsable` (p. ej. una `Tarea`); ADMIN y PMO siempre pasan.
+
+    Prueba las tres señales de pertenencia posibles en vez de quedarse con
+    la primera que exista como atributo: un `registrado_por` nulo (p. ej.
+    un registro que no lo usa) no debe bloquear la comprobación por
+    `recurso`."""
+
     def has_object_permission(self, request, view, obj):
-        # TODO fase-03: exigir que `obj` pertenezca al usuario (p. ej. su propio
-        # registro de ejecución o su propia tarea asignada).
-        return bool(request.user and request.user.is_authenticated)
+        codigos = codigos_roles_de(request.user)
+        if codigos & {"ADMIN", "PMO"}:
+            return True
+
+        usuario = request.user
+
+        registrado_por_id = getattr(obj, "registrado_por_id", None)
+        if registrado_por_id is not None and registrado_por_id == usuario.id:
+            return True
+
+        recurso = getattr(obj, "recurso", None)
+        if recurso is not None and recurso.usuario_id == usuario.id:
+            return True
+
+        responsable = getattr(obj, "responsable", None)
+        if responsable is not None and getattr(responsable, "usuario_id", None) == usuario.id:
+            return True
+
+        return False
 
 
 class SoloLectura(BasePermission):
     def has_permission(self, request, view):
-        # TODO fase-03: cuando se complete, seguirá siendo solo lectura para
-        # el rol CONSULTA; aquí solo exige autenticación.
-        return bool(request.user and request.user.is_authenticated)
+        return request.method in SAFE_METHODS
 
 
 class EsAdminOSoloLectura(BasePermission):
     def has_permission(self, request, view):
-        # TODO fase-03: permitir escritura solo a ADMIN; lectura a cualquier
-        # usuario autenticado.
-        return bool(request.user and request.user.is_authenticated)
+        if request.method in SAFE_METHODS:
+            return bool(request.user and request.user.is_authenticated)
+        return "ADMIN" in codigos_roles_de(request.user)

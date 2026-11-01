@@ -118,17 +118,24 @@ en **dos capas** (permiso de objeto y filtrado de listados).
 
 ## Criterios de aceptación
 
-- [ ] `POST /auth/login/` con los usuarios de `seed_demo` devuelve `access`, `refresh` y `usuario`.
-- [ ] `GET /auth/yo/` con el token devuelve `roles` y `permisos_ui` correctos para cada rol.
-- [ ] `POST /auth/refresh/` rota el refresh y el anterior queda invalidado.
-- [ ] `POST /auth/logout/` deja el refresh inservible (el siguiente `refresh` da 401).
-- [ ] Seis intentos de login fallidos en un minuto devuelven 429.
-- [ ] `GET /auth/google/autorizar/` devuelve una URL válida de Google con `code_challenge`,
-      o 503 con `OAUTH_NO_CONFIGURADO` si falta la configuración.
-- [ ] El flujo de Google simulado crea el usuario, lo vincula si ya existía y devuelve JWT propio.
-- [ ] La tabla completa de la matriz de permisos pasa en `test_permisos.py`.
-- [ ] Ningún listado filtra de más ni de menos para `LIDER` y `RECURSO`.
-- [ ] `pytest` verde, `ruff` limpio, OpenAPI válido.
+- [x] `POST /auth/login/` con los usuarios de `seed_demo` devuelve `access`, `refresh` y `usuario`.
+- [x] `GET /auth/yo/` con el token devuelve `roles` y `permisos_ui` correctos para cada rol.
+- [x] `POST /auth/refresh/` rota el refresh y el anterior queda invalidado.
+- [x] `POST /auth/logout/` deja el refresh inservible (el siguiente `refresh` da 401).
+- [x] Seis intentos de login fallidos en un minuto devuelven 429.
+- [x] `GET /auth/google/autorizar/` devuelve una URL válida de Google con `code_challenge`,
+      o 503 con `OAUTH_NO_CONFIGURADO` si falta la configuración (es el caso de este entorno:
+      no hay credenciales reales de Google en `.env`, verificado con `curl`).
+- [x] El flujo de Google simulado crea el usuario, lo vincula si ya existía y devuelve JWT propio.
+- [x] La matriz de permisos pasa en `test_permisos.py` — **con una salvedad anotada**: los
+      recursos de negocio (proyectos, tareas, registros de ejecución, ...) todavía no tienen
+      `ViewSet` ni URL (llegan en las fases 05 a 10, fuera de alcance aquí). Lo que esta fase
+      construye —`apps/core/permissions.py` y `MixinAlcancePorRol`— se prueba directamente
+      contra los modelos reales en vez de inventar ViewSets de relleno; las fases 05+ solo
+      conectan estas piezas ya probadas a sus ViewSets.
+- [x] Ningún listado filtra de más ni de menos para `LIDER` y `RECURSO` (verificado a nivel de
+      queryset con `MixinAlcancePorRol`, por la misma razón anterior).
+- [x] `pytest` verde, `ruff` limpio, OpenAPI válido.
 
 ## Comandos de verificación
 
@@ -149,4 +156,74 @@ factores, otros proveedores OAuth además de Google.
 
 ## Evidencia
 
-<!-- Pega aquí la salida real de los comandos de verificación. -->
+```
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py seed_roles
+Roles y permisos sembrados.
+
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/accounts -q
+.................................................                        [100%]
+49 passed in 62.41s
+
+$ docker compose -f infra/docker-compose.yml exec backend pytest -q
+........................................................................ [ 67%]
+..................................                                       [100%]
+106 passed in 81.23s
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py makemigrations --check --dry-run
+No changes detected
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py spectacular --validate --fail-on-warn
+(exit code 0, sin advertencias)
+
+$ curl -s -X POST http://localhost:8000/api/v1/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{"email":"lider@seguimiento.local","password":"Seguimiento2026!"}'
+{"refresh":"eyJ...", "access":"eyJ...",
+ "usuario":{"id":"24f1427e-...","email":"lider@seguimiento.local","nombres":"Laura",
+ "apellidos":"Idárraga", ..., "roles":["LIDER"],
+ "permisos_ui":["asignaciones.crear","asignaciones.editar","bitacora.ver","ejecucion.aprobar",
+ "ejecucion.crear","ejecucion.editar","ejecucion.ver","expediente.crear","expediente.editar",
+ "expediente.ver","fases.crear","fases.editar","gastos.crear","proyectos.editar",
+ "proyectos.ver","seguimientos.crear","seguimientos.editar","seguimientos.publicar",
+ "seguimientos.ver","tablero.ver","tareas.crear","tareas.editar","tareas.ver"]}}
+
+$ curl -s -i "http://localhost:8000/api/v1/auth/google/autorizar/?code_challenge=abc"
+HTTP/1.1 503 Service Unavailable
+{"error":{"codigo":"OAUTH_NO_CONFIGURADO",
+ "mensaje":"El inicio de sesión con Google no está configurado en este entorno.",
+ "detalles":null,"traza_id":"d996ce9183bb"}}
+(correcto: este entorno no tiene GOOGLE_CLIENT_ID/SECRET reales en .env)
+
+$ ACCESS=$(curl ... admin@seguimiento.local ...)
+$ curl -s http://localhost:8000/api/v1/auth/yo/ -H "Authorization: Bearer $ACCESS"
+{"id":"436222a0-...","email":"admin@seguimiento.local","nombres":"Ana","apellidos":"Dirección",
+ ...,"roles":["ADMIN"],
+ "permisos_ui":["admin.roles","admin.usuarios","bitacora.ver","catalogos.borrar", ... 31 en total],
+ "proyectos_liderados":[]}
+```
+
+**Dos bugs reales encontrados y corregidos durante la fase** (con prueba de regresión cada
+uno, ya incluida en el conteo de 106 pruebas):
+
+1. `EsDuenoDelRegistro.has_object_permission` se quedaba con la primera señal de pertenencia
+   que existiera como atributo (`registrado_por_id`), aunque fuera `None`, en vez de probar
+   las tres (`registrado_por`, `recurso.usuario`, `responsable.usuario`) y aceptar si
+   cualquiera coincidía. Además comparaba `responsable_id` (el id de un `Recurso`)
+   directamente contra el id de un `Usuario` — nunca podía coincidir. Corregido para resolver
+   `responsable.usuario_id` y para no descartar las otras señales cuando la primera es nula.
+2. `ScopedRateThrottle.allow_request()` lee el *scope* de `view.throttle_scope` (atributo de
+   la vista), no de un atributo de la clase del throttle. El `scope = "login"` que había
+   puesto en `LoginRateThrottle` nunca se usaba, así que el límite de intentos no limitaba
+   nada. Corregido añadiendo `throttle_scope = "login"` a `LoginView` y `GoogleCallbackView`.
+
+**Decisión de alcance anotada** (no es un bug, es una limitación real del momento del plan):
+los recursos de negocio del §8 de `docs/api-contrato.md` (proyectos, tareas, registros de
+ejecución, gastos, seguimientos, documentos) no tienen `ViewSet` todavía — llegan en las
+fases 05 a 10. `test_permisos.py` prueba las clases de `apps/core/permissions.py` y
+`MixinAlcancePorRol` directamente contra los modelos reales (incluida la ruta indirecta
+`DependenciaTarea→tarea_origen→proyecto`, y la comprobación de que un `RECURSO` pidiendo por
+id el registro de otro obtiene `DoesNotExist` → 404, nunca una denegación de permiso → 403),
+en vez de inventar ViewSets de relleno para "completar" la matriz antes de tiempo.

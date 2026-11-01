@@ -1,6 +1,6 @@
 """URLs raíz del proyecto."""
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -12,6 +12,7 @@ from apps.core.views import SaludView
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/salud/", SaludView.as_view(), name="salud"),
+    path("api/v1/", include("apps.accounts.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/schema/swagger/",

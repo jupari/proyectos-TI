@@ -13,6 +13,7 @@ from django.db.models import FileField
 from apps.core.choices import TipoEvento
 from apps.core.middleware import obtener_usuario_actual
 from apps.core.models import ModeloBase
+from apps.core.roles import resolver_proyecto_de_instancia
 
 logger = logging.getLogger("apps.core.signals")
 
@@ -24,13 +25,6 @@ CAMPOS_EXCLUIDOS_DIFF = {"actualizado_en", "actualizado_por_id"}
 # recursión infinita) y los de token_blacklist, que además ni heredan de
 # ModeloBase (quedan excluidos solo por completitud/documentación).
 NOMBRES_EXCLUIDOS_BITACORA = {"EntradaBitacora", "OutstandingToken", "BlacklistedToken"}
-
-# Resuelve el proyecto de la entrada de bitácora cuando el modelo no tiene
-# un campo `proyecto` directo.
-RUTA_A_PROYECTO = {
-    "CompromisoSeguimiento": "seguimiento.proyecto",
-    "DependenciaTarea": "tarea_origen.proyecto",
-}
 
 
 def _campos_auditables(modelo):
@@ -47,28 +41,7 @@ def _estado_campos(instancia):
     }
 
 
-def _resolver_proyecto(instancia):
-    """Resuelve el proyecto de la entrada de bitácora.
-
-    En un borrado físico en cascada, el objeto al que apunta la FK (p. ej.
-    `tarea_origen` de una `DependenciaTarea`, o el propio `proyecto`) puede
-    ya haber sido borrado en la misma operación: cualquier fallo al resolver
-    la ruta se trata como "sin proyecto" en vez de romper el borrado.
-    """
-    try:
-        if hasattr(instancia, "proyecto_id"):
-            return instancia.proyecto
-        ruta = RUTA_A_PROYECTO.get(type(instancia).__name__)
-        if not ruta:
-            return None
-        objeto = instancia
-        for paso in ruta.split("."):
-            objeto = getattr(objeto, paso, None)
-            if objeto is None:
-                return None
-        return objeto
-    except Exception:
-        return None
+_resolver_proyecto = resolver_proyecto_de_instancia
 
 
 def _aplica(sender, instance):

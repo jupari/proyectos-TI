@@ -1,13 +1,57 @@
-class MixinAlcancePorRol:
-    """Interfaz que cada ViewSet de negocio usa desde `get_queryset()` para
-    acotar el listado al alcance del rol del usuario autenticado.
+from django.db.models import Q
 
-    La implementación real (ADMIN/PMO ven todo, LIDER solo sus proyectos,
-    RECURSO solo donde está asignado, CONSULTA solo lectura) llega en la
-    fase 03; aquí solo se define la interfaz para que las fases 05+ ya
-    llamen a `filtrar_por_rol()` desde ahora.
+from apps.core.roles import ROLES_ALCANCE_TOTAL, codigos_roles_de, prefijo_proyecto
+
+
+class MixinAlcancePorRol:
+    """Acota el queryset de un `ViewSet` al alcance del rol del usuario
+    (PLAN.md §5): ADMIN/PMO/CONSULTA ven todo; LIDER solo lo de sus
+    proyectos (como gerente o líder técnico); RECURSO solo lo de los
+    proyectos donde tiene una asignación activa, y además solo sus propias
+    tareas y registros de ejecución. Un usuario sin rol no ve nada.
     """
 
     def filtrar_por_rol(self, queryset):
-        # TODO fase-03: aplicar el filtrado real según el rol de self.request.user.
-        return queryset
+        usuario = self.request.user
+        if not usuario or not usuario.is_authenticated:
+            return queryset.none()
+
+        codigos = codigos_roles_de(usuario)
+        if codigos & ROLES_ALCANCE_TOTAL:
+            return queryset
+        if "LIDER" in codigos:
+            return self._alcance_lider(queryset, usuario)
+        if "RECURSO" in codigos:
+            return self._alcance_recurso(queryset, usuario)
+        return queryset.none()
+
+    def _alcance_lider(self, queryset, usuario):
+        prefijo = prefijo_proyecto(queryset.model)
+        if prefijo is None:
+            return queryset.none()
+        return queryset.filter(
+            Q(**{f"{prefijo}gerente": usuario}) | Q(**{f"{prefijo}lider_tecnico": usuario})
+        ).distinct()
+
+    def _alcance_recurso(self, queryset, usuario):
+        recurso = getattr(usuario, "recurso", None)
+        if recurso is None:
+            return queryset.none()
+
+        prefijo = prefijo_proyecto(queryset.model)
+        if prefijo is None:
+            return queryset.none()
+
+        base = queryset.filter(
+            **{
+                f"{prefijo}asignaciones__recurso": recurso,
+                f"{prefijo}asignaciones__activo": True,
+            }
+        ).distinct()
+
+        nombre_modelo = queryset.model.__name__
+        if nombre_modelo == "Tarea":
+            return base.filter(responsable=recurso)
+        if nombre_modelo == "RegistroEjecucion":
+            return base.filter(recurso=recurso)
+        return base

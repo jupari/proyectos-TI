@@ -123,8 +123,10 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    # TODO fase-02: implementar apps.core.exceptions.manejador_excepciones
     "EXCEPTION_HANDLER": "apps.core.exceptions.manejador_excepciones",
+    "DEFAULT_THROTTLE_RATES": {
+        "login": "5/min",
+    },
 }
 
 SIMPLE_JWT = {
@@ -133,6 +135,8 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
+    "USER_ID_FIELD": "id",
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 SPECTACULAR_SETTINGS = {

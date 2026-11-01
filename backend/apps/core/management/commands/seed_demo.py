@@ -2,11 +2,12 @@ import datetime
 import random
 from decimal import Decimal
 
+from django.contrib.auth.models import Group
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from apps.accounts.models import Usuario
-from apps.accounts.tests.factories import sembrar_roles
 from apps.catalogos.models import Area, PerfilRecurso, Portafolio
 from apps.catalogos.tests.factories import AreaFactory, PerfilRecursoFactory, PortafolioFactory
 from apps.core.choices import (
@@ -101,7 +102,7 @@ class Command(BaseCommand):
     def _crear_datos(self):
         resumen = {}
 
-        roles = sembrar_roles()
+        call_command("seed_roles")
         usuarios = {}
         for email, codigo_rol, nombres, apellidos in USUARIOS_DEMO:
             usuario, _ = Usuario.objects.get_or_create(
@@ -115,7 +116,8 @@ class Command(BaseCommand):
             )
             usuario.set_password(CONTRASENA_DEMO)
             usuario.save()
-            usuario.groups.add(roles[codigo_rol].grupo)
+            grupo = Group.objects.get(rol_meta__codigo=codigo_rol)
+            usuario.groups.add(grupo)
             usuarios[codigo_rol] = usuario
         resumen["usuarios"] = len(usuarios)
 
