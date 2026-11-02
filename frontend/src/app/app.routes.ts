@@ -50,12 +50,7 @@ export const routes: Routes = [
       { path: 'seguimientos', component: EnConstruccion },
       {
         path: 'recursos',
-        component: EnConstruccion,
-        canActivate: [permisoGuard('recursos.ver')],
-      },
-      {
-        path: 'recursos/asignaciones',
-        component: EnConstruccion,
+        loadChildren: () => import('./features/recursos/recursos.routes').then((m) => m.recursosRoutes),
         canActivate: [permisoGuard('recursos.ver')],
       },
       {

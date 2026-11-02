@@ -52,6 +52,6 @@ class MixinAlcancePorRol:
         nombre_modelo = queryset.model.__name__
         if nombre_modelo == "Tarea":
             return base.filter(responsable=recurso)
-        if nombre_modelo == "RegistroEjecucion":
+        if nombre_modelo in ("RegistroEjecucion", "AsignacionRecurso"):
             return base.filter(recurso=recurso)
         return base

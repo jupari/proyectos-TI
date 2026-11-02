@@ -1,0 +1,74 @@
+<div class="flex flex-col gap-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-lg font-semibold text-neutro-800">Recursos</h1>
+    @if (puedeCrear()) {
+      <app-boton routerLink="/recursos/nuevo">+ Nuevo recurso</app-boton>
+    }
+  </div>
+
+  <div class="grid grid-cols-1 gap-3 rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta sm:grid-cols-2 lg:grid-cols-4">
+    <app-input
+      etiqueta="Buscar"
+      placeholder="Nombre o email…"
+      [ngModel]="busqueda()"
+      (ngModelChange)="busqueda.set($event)"
+      (keydown.enter)="aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Tipo"
+      [opciones]="opcionesTipo"
+      [limpiable]="true"
+      [ngModel]="tipo()"
+      (ngModelChange)="tipo.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Perfil"
+      [opciones]="opcionesPerfiles()"
+      [limpiable]="true"
+      [ngModel]="perfil()"
+      (ngModelChange)="perfil.set($event); aplicarFiltros()"
+    />
+    <div class="flex items-end gap-2">
+      <app-switch
+        etiqueta="Sin asignación activa"
+        [ngModel]="sinAsignacion()"
+        (ngModelChange)="sinAsignacion.set($event); aplicarFiltros()"
+      />
+    </div>
+  </div>
+
+  <ng-template #colTipo let-fila>
+    <app-badge [valor]="fila.tipo" [etiqueta]="fila.tipo | etiquetaEnum: ETIQUETAS_TIPO_RECURSO" />
+  </ng-template>
+  <ng-template #colTarifa let-fila>
+    {{ fila.tarifa_vigente | moneda }}
+  </ng-template>
+  <ng-template #colCapacidad let-fila>
+    {{ fila.capacidad_horas_mes | horas }}
+  </ng-template>
+  <ng-template #colEstado let-fila>
+    <app-badge [valor]="fila.activo ? 'ACTIVO' : 'INACTIVO'" [etiqueta]="fila.activo ? 'Activo' : 'Inactivo'" />
+  </ng-template>
+  <ng-template #colAcciones let-fila>
+    <a [routerLink]="['/recursos', fila.id]" class="text-sm font-medium text-marca-600 hover:underline">Ver</a>
+  </ng-template>
+
+  <app-tabla
+    [columnas]="[
+      columnas[0],
+      { clave: 'tipo', titulo: 'Tipo', plantilla: colTipo },
+      columnas[2],
+      { clave: 'tarifa_vigente', titulo: 'Tarifa vigente', alinear: 'derecha', plantilla: colTarifa },
+      { clave: 'capacidad_horas_mes', titulo: 'Capacidad', alinear: 'derecha', plantilla: colCapacidad },
+      columnas[5],
+      { clave: 'activo', titulo: 'Estado', plantilla: colEstado },
+      { clave: 'acciones', titulo: '', alinear: 'derecha', plantilla: colAcciones }
+    ]"
+    [filas]="respuesta()?.results ?? []"
+    [cargando]="cargando()"
+    [respuesta]="respuesta()"
+    [paginaActual]="paginaActual()"
+    mensajeVacio="No hay recursos que coincidan con los filtros."
+    (cambioPagina)="alCambiarPagina($event)"
+  />
+</div>

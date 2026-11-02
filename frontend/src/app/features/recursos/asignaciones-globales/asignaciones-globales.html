@@ -1,0 +1,42 @@
+<div class="flex flex-col gap-4">
+  <h1 class="text-lg font-semibold text-neutro-800">Asignaciones</h1>
+
+  <div class="grid grid-cols-1 gap-3 rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta sm:grid-cols-2">
+    <app-select
+      etiqueta="Recurso"
+      [opciones]="opcionesRecursos()"
+      [limpiable]="true"
+      [ngModel]="recurso()"
+      (ngModelChange)="recurso.set($event); cargar()"
+    />
+    <app-select
+      etiqueta="Proyecto"
+      [opciones]="opcionesProyectos()"
+      [limpiable]="true"
+      [ngModel]="proyecto()"
+      (ngModelChange)="proyecto.set($event); cargar()"
+    />
+  </div>
+
+  <ng-template #colProyecto let-fila>{{ nombreProyecto(fila.proyecto) }}</ng-template>
+  <ng-template #colRecurso let-fila>{{ nombreRecurso(fila.recurso) }}</ng-template>
+  <ng-template #colDesde let-fila>{{ fila.fecha_desde | fechaCorta }}</ng-template>
+  <ng-template #colHasta let-fila>{{ fila.fecha_hasta | fechaCorta }}</ng-template>
+  <ng-template #colDedicacion let-fila>{{ fila.porcentaje_dedicacion | porcentaje }}</ng-template>
+  <ng-template #colCosto let-fila>{{ fila.costo_planeado | moneda }}</ng-template>
+
+  <app-tabla
+    [columnas]="[
+      { clave: 'proyecto', titulo: 'Proyecto', plantilla: colProyecto },
+      { clave: 'recurso', titulo: 'Recurso', plantilla: colRecurso },
+      { clave: 'rol_en_proyecto', titulo: 'Rol' },
+      { clave: 'fecha_desde', titulo: 'Desde', plantilla: colDesde },
+      { clave: 'fecha_hasta', titulo: 'Hasta', plantilla: colHasta },
+      { clave: 'porcentaje_dedicacion', titulo: '% dedicación', alinear: 'derecha', plantilla: colDedicacion },
+      { clave: 'costo_planeado', titulo: 'Costo planeado', alinear: 'derecha', plantilla: colCosto }
+    ]"
+    [filas]="respuesta()?.results ?? []"
+    [cargando]="cargando()"
+    mensajeVacio="No hay asignaciones que coincidan con los filtros."
+  />
+</div>

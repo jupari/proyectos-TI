@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import {
+  AsignacionRecurso,
   ETIQUETAS_ESTADO_PROYECTO,
   ErrorApi,
   TRANSICIONES_PROYECTO,
@@ -14,13 +15,19 @@ import { EtiquetaEnumPipe, FechaCortaPipe, HorasPipe, MonedaPipe, PorcentajePipe
 import { Badge } from '../../../shared/ui/badge/badge';
 import { Boton } from '../../../shared/ui/boton/boton';
 import { Card } from '../../../shared/ui/card/card';
+import { Datepicker } from '../../../shared/ui/datepicker/datepicker';
+import { Drawer } from '../../../shared/ui/drawer/drawer';
+import { Input } from '../../../shared/ui/input/input';
 import { Modal } from '../../../shared/ui/modal/modal';
+import { Numero } from '../../../shared/ui/numero/numero';
 import { Progreso } from '../../../shared/ui/progreso/progreso';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { Semaforo, ValorSemaforo } from '../../../shared/ui/semaforo/semaforo';
 import { PestanaTab, Tabs } from '../../../shared/ui/tabs/tabs';
 import { Textarea } from '../../../shared/ui/textarea/textarea';
 import { EnConstruccion } from '../../comun/en-construccion';
+import { AsignacionEscritura, AsignacionesService } from '../../recursos/data/asignaciones.service';
+import { RecursosService } from '../../recursos/data/recursos.service';
 import { ProyectoDetalle } from '../data/proyectos.model';
 import { ProyectosService } from '../data/proyectos.service';
 
@@ -29,6 +36,7 @@ const PESTANAS: PestanaTab[] = [
   { id: 'fases', etiqueta: 'Fases' },
   { id: 'hitos', etiqueta: 'Hitos' },
   { id: 'presupuesto', etiqueta: 'Presupuesto' },
+  { id: 'recursos', etiqueta: 'Recursos' },
   { id: 'tareas', etiqueta: 'Tareas' },
   { id: 'ejecucion', etiqueta: 'Ejecución' },
   { id: 'seguimientos', etiqueta: 'Seguimientos' },
@@ -51,6 +59,10 @@ const PESTANAS: PestanaTab[] = [
     Select,
     Textarea,
     Modal,
+    Drawer,
+    Datepicker,
+    Numero,
+    Input,
     EnConstruccion,
     EtiquetaEnumPipe,
     FechaCortaPipe,
@@ -61,6 +73,8 @@ const PESTANAS: PestanaTab[] = [
 })
 export class DetalleProyecto {
   private readonly proyectosService = inject(ProyectosService);
+  private readonly recursosService = inject(RecursosService);
+  private readonly asignacionesService = inject(AsignacionesService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly ruta = inject(ActivatedRoute);
@@ -110,8 +124,144 @@ export class DetalleProyecto {
     return proyecto.rubros.reduce((total, rubro) => total + Number(rubro.monto_ejecutado), 0);
   });
 
+  // --- pestaña Recursos (fase 06) ---------------------------------------
+
+  protected readonly asignaciones = signal<AsignacionRecurso[]>([]);
+  protected readonly opcionesRecursos = signal<OpcionSelect[]>([]);
+
+  protected readonly totalHorasAsignadas = computed(() =>
+    this.asignaciones().reduce((total, a) => total + Number(a.horas_planeadas), 0),
+  );
+  protected readonly totalCostoAsignado = computed(() =>
+    this.asignaciones().reduce((total, a) => total + Number(a.costo_planeado), 0),
+  );
+
+  protected readonly drawerAsignacionAbierto = signal(false);
+  protected readonly idAsignacionEnEdicion = signal<string | null>(null);
+  protected readonly asigRecurso = signal<string | null>(null);
+  protected readonly asigRolEnProyecto = signal('');
+  protected readonly asigFechaDesde = signal<string | null>(null);
+  protected readonly asigFechaHasta = signal<string | null>(null);
+  protected readonly asigPorcentajeDedicacion = signal<number | null>(100);
+  protected readonly asigHorasPlaneadas = signal<number | null>(null);
+  protected readonly asigValorHoraPlan = signal<number | null>(null);
+  protected readonly asigTarifaManual = signal(false);
+  protected readonly guardandoAsignacion = signal(false);
+
+  protected readonly asigCostoPlaneadoVivo = computed(
+    () => (this.asigHorasPlaneadas() ?? 0) * (this.asigValorHoraPlan() ?? 0),
+  );
+
+  protected nombreRecurso(id: string): string {
+    return this.opcionesRecursos().find((o) => o.valor === id)?.etiqueta ?? id;
+  }
+
+  private cargarAsignaciones(): void {
+    this.proyectosService
+      .recursosPlaneados(this.id)
+      .subscribe((asignaciones) => this.asignaciones.set(asignaciones));
+    if (this.opcionesRecursos().length === 0) {
+      this.recursosService
+        .listarRecursos({ page_size: 200 })
+        .subscribe((r) =>
+          this.opcionesRecursos.set(r.results.map((x) => ({ valor: x.id, etiqueta: x.nombre }))),
+        );
+    }
+  }
+
+  protected abrirNuevaAsignacion(): void {
+    this.idAsignacionEnEdicion.set(null);
+    this.asigRecurso.set(null);
+    this.asigRolEnProyecto.set('');
+    this.asigFechaDesde.set(null);
+    this.asigFechaHasta.set(null);
+    this.asigPorcentajeDedicacion.set(100);
+    this.asigHorasPlaneadas.set(null);
+    this.asigValorHoraPlan.set(null);
+    this.asigTarifaManual.set(false);
+    this.drawerAsignacionAbierto.set(true);
+  }
+
+  protected cerrarDrawerAsignacion(): void {
+    this.drawerAsignacionAbierto.set(false);
+  }
+
+  /** Al elegir recurso, precarga `valor_hora_plan` con su tarifa vigente
+   * *hoy* a modo de referencia visual; el servidor, al guardar, resuelve la
+   * tarifa vigente a la fecha desde real si este campo no se marca manual. */
+  protected alElegirRecurso(recursoId: string | null): void {
+    this.asigRecurso.set(recursoId);
+    this.asigTarifaManual.set(false);
+    if (!recursoId) {
+      this.asigValorHoraPlan.set(null);
+      return;
+    }
+    this.recursosService.obtenerDetalle(recursoId).subscribe((recurso) => {
+      this.asigValorHoraPlan.set(recurso.tarifa_vigente ? Number(recurso.tarifa_vigente) : null);
+    });
+  }
+
+  protected alEditarValorHora(valor: number | null): void {
+    this.asigValorHoraPlan.set(valor);
+    this.asigTarifaManual.set(true);
+  }
+
+  protected guardarAsignacion(): void {
+    if (
+      !this.asigRecurso() ||
+      !this.asigFechaDesde() ||
+      !this.asigFechaHasta() ||
+      !this.asigHorasPlaneadas()
+    ) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Complete los campos obligatorios.' });
+      return;
+    }
+
+    const cuerpo: AsignacionEscritura = {
+      proyecto: this.id,
+      recurso: this.asigRecurso()!,
+      fase: null,
+      rol_en_proyecto: this.asigRolEnProyecto(),
+      fecha_desde: this.asigFechaDesde()!,
+      fecha_hasta: this.asigFechaHasta()!,
+      porcentaje_dedicacion: this.asigPorcentajeDedicacion() ?? 100,
+      horas_planeadas: this.asigHorasPlaneadas()!,
+    };
+    if (this.asigTarifaManual() && this.asigValorHoraPlan() !== null) {
+      cuerpo.valor_hora_plan = this.asigValorHoraPlan()!;
+    }
+
+    this.guardandoAsignacion.set(true);
+    const id = this.idAsignacionEnEdicion();
+    const peticion = id
+      ? this.asignacionesService.actualizar(id, cuerpo)
+      : this.asignacionesService.crear(cuerpo);
+
+    peticion.subscribe({
+      next: (respuesta) => {
+        this.guardandoAsignacion.set(false);
+        this.drawerAsignacionAbierto.set(false);
+        this.cargarAsignaciones();
+        for (const advertencia of respuesta.advertencias) {
+          this.toast.mostrar({ tipo: 'alerta', mensaje: advertencia });
+        }
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Asignación guardada.' });
+      },
+      error: (error: unknown) => {
+        this.guardandoAsignacion.set(false);
+        let mensaje = 'No se pudo guardar la asignación.';
+        if (error instanceof HttpErrorResponse) {
+          const cuerpoError = error.error as Partial<ErrorApi> | null;
+          mensaje = cuerpoError?.error?.mensaje ?? mensaje;
+        }
+        this.toast.mostrar({ tipo: 'error', mensaje });
+      },
+    });
+  }
+
   constructor() {
     this.cargar();
+    this.cargarAsignaciones();
   }
 
   private cargar(): void {

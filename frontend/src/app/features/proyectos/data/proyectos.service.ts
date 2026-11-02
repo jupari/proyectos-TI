@@ -2,7 +2,14 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { ApiService } from '../../../core/api/api.service';
-import { FaseProyecto, Hito, Proyecto, RespuestaPaginada, RubroPresupuesto } from '../../../core/models';
+import {
+  AsignacionRecurso,
+  FaseProyecto,
+  Hito,
+  Proyecto,
+  RespuestaPaginada,
+  RubroPresupuesto,
+} from '../../../core/models';
 import { FiltrosProyecto, ProyectoDetalle, ProyectoEscritura, ProyectoLista } from './proyectos.model';
 
 @Injectable({ providedIn: 'root' })
@@ -39,6 +46,10 @@ export class ProyectosService extends ApiService<Proyecto> {
 
   rubros(id: string): Observable<RubroPresupuesto[]> {
     return this.accionGet<RubroPresupuesto[]>(id, 'rubros');
+  }
+
+  recursosPlaneados(id: string): Observable<AsignacionRecurso[]> {
+    return this.accionGet<AsignacionRecurso[]>(id, 'recursos-planeados');
   }
 }
 

@@ -1,0 +1,127 @@
+@if (cargando()) {
+  <p class="text-sm text-neutro-500">Cargando…</p>
+} @else if (recurso()) {
+  <div class="flex flex-col gap-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-semibold text-neutro-900">{{ recurso()!.nombre }}</h1>
+        <div class="mt-2 flex items-center gap-2">
+          <app-badge
+            [valor]="recurso()!.tipo"
+            [etiqueta]="recurso()!.tipo | etiquetaEnum: ETIQUETAS_TIPO_RECURSO"
+          />
+          <app-badge
+            [valor]="recurso()!.activo ? 'ACTIVO' : 'INACTIVO'"
+            [etiqueta]="recurso()!.activo ? 'Activo' : 'Inactivo'"
+          />
+        </div>
+      </div>
+      @if (puedeEditar()) {
+        <app-boton variante="secundario" [routerLink]="['/recursos', recurso()!.id, 'editar']">
+          Editar
+        </app-boton>
+      }
+    </div>
+
+    <app-tabs [pestanas]="pestanas" [activa]="pestanaActiva()" (cambio)="cambiarPestana($event)" />
+
+    @if (pestanaActiva() === 'datos') {
+      <app-card titulo="Datos generales">
+        <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <div><dt class="text-neutro-400">Perfil</dt><dd class="text-neutro-800">{{ recurso()!.perfil_nombre ?? '—' }}</dd></div>
+          <div><dt class="text-neutro-400">Correo</dt><dd class="text-neutro-800">{{ recurso()!.email ?? '—' }}</dd></div>
+          <div><dt class="text-neutro-400">Capacidad mensual</dt><dd class="text-neutro-800">{{ recurso()!.capacidad_horas_mes | horas }}</dd></div>
+          <div><dt class="text-neutro-400">Tarifa vigente hoy</dt><dd class="text-neutro-800">{{ recurso()!.tarifa_vigente | moneda }}</dd></div>
+          <div><dt class="text-neutro-400">Fecha de ingreso</dt><dd class="text-neutro-800">{{ recurso()!.fecha_ingreso | fechaCorta }}</dd></div>
+          <div><dt class="text-neutro-400">Fecha de retiro</dt><dd class="text-neutro-800">{{ recurso()!.fecha_retiro | fechaCorta }}</dd></div>
+          <div><dt class="text-neutro-400">Proyectos activos</dt><dd class="text-neutro-800">{{ recurso()!.proyectos_activos }}</dd></div>
+        </dl>
+      </app-card>
+    }
+
+    @if (pestanaActiva() === 'tarifas') {
+      <app-card titulo="Historial de tarifas">
+        <div class="mb-3 flex justify-end">
+          @if (puedeEditar()) {
+            <app-boton tamano="sm" (clic)="abrirDialogoTarifa()">+ Nueva tarifa</app-boton>
+          }
+        </div>
+        <table class="w-full text-left text-sm">
+          <thead class="text-neutro-500">
+            <tr><th class="py-1">Valor/hora</th><th class="py-1">Vigente desde</th><th class="py-1">Vigente hasta</th></tr>
+          </thead>
+          <tbody class="divide-y divide-neutro-100">
+            @for (tarifa of tarifas(); track tarifa.id) {
+              <tr [class.font-semibold]="!tarifa.vigente_hasta" [class.text-exito]="!tarifa.vigente_hasta">
+                <td class="py-2">{{ tarifa.valor_hora | moneda }}</td>
+                <td class="py-2">{{ tarifa.vigente_desde | fechaCorta }}</td>
+                <td class="py-2">{{ tarifa.vigente_hasta ? (tarifa.vigente_hasta | fechaCorta) : 'Vigente' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="3" class="py-4 text-neutro-400">Sin tarifas registradas.</td></tr>
+            }
+          </tbody>
+        </table>
+      </app-card>
+    }
+
+    @if (pestanaActiva() === 'carga') {
+      <app-card titulo="Carga por mes">
+        @if (cargandoCarga()) {
+          <p class="text-sm text-neutro-500">Cargando…</p>
+        } @else {
+          <table class="w-full text-left text-sm">
+            <thead class="text-neutro-500">
+              <tr><th class="py-1">Mes</th><th class="py-1">Horas planeadas</th><th class="py-1">Capacidad</th><th class="py-1">Ocupación</th></tr>
+            </thead>
+            <tbody class="divide-y divide-neutro-100">
+              @for (mes of carga(); track mes.mes) {
+                <tr>
+                  <td class="py-2 capitalize">{{ nombreMes(mes) }}</td>
+                  <td class="py-2">{{ mes.horas_planeadas | horas }}</td>
+                  <td class="py-2">{{ mes.capacidad | horas }}</td>
+                  <td class="py-2">
+                    <div class="flex items-center gap-2">
+                      <app-progreso [valor]="mes.pct_ocupacion ?? 0" class="block w-28" />
+                      @if ((mes.pct_ocupacion ?? 0) > 100) {
+                        <span class="text-xs font-medium text-peligro">Sobreasignado</span>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </app-card>
+    }
+  </div>
+
+  <app-modal [abierto]="dialogoTarifaAbierto()" titulo="Nueva tarifa" (cerrar)="cerrarDialogoTarifa()">
+    <div class="flex flex-col gap-4">
+      @if (hayTarifaAbierta()) {
+        <p class="rounded-panel bg-alerta/10 px-3 py-2 text-sm text-alerta">
+          Esta tarifa cerrará automáticamente la tarifa vigente actual el día previo a la fecha
+          que indique.
+        </p>
+      }
+      <app-numero
+        etiqueta="Valor por hora *"
+        modo="moneda"
+        [ngModel]="nuevoValorHora()"
+        (ngModelChange)="nuevoValorHora.set($event)"
+        name="nuevoValorHora"
+      />
+      <app-datepicker
+        etiqueta="Vigente desde *"
+        [ngModel]="nuevaVigenteDesde()"
+        (ngModelChange)="nuevaVigenteDesde.set($event)"
+        name="nuevaVigenteDesde"
+      />
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarDialogoTarifa()">Cancelar</app-boton>
+      <app-boton [cargando]="guardandoTarifa()" (clic)="confirmarNuevaTarifa()">Guardar</app-boton>
+    </div>
+  </app-modal>
+}

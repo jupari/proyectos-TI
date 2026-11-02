@@ -1,0 +1,83 @@
+<div class="mx-auto flex max-w-2xl flex-col gap-6">
+  <h1 class="text-lg font-semibold text-neutro-800">
+    {{ esEdicion() ? 'Editar recurso' : 'Nuevo recurso' }}
+  </h1>
+
+  @if (mensajeError()) {
+    <div class="rounded-panel border border-peligro/30 bg-peligro/5 px-4 py-3 text-sm text-peligro">
+      {{ mensajeError() }}
+    </div>
+  }
+
+  @if (cargandoDetalle()) {
+    <p class="text-sm text-neutro-500">Cargando…</p>
+  } @else {
+    <form class="flex flex-col gap-5 rounded-panel border border-neutro-200 bg-white p-5 shadow-tarjeta" (ngSubmit)="guardar()">
+      <app-select
+        etiqueta="Tipo *"
+        [opciones]="opcionesTipo"
+        [ngModel]="tipo()"
+        (ngModelChange)="tipo.set($event)"
+        name="tipo"
+      />
+      <app-input
+        etiqueta="Nombre *"
+        [ngModel]="nombre()"
+        (ngModelChange)="nombre.set($event)"
+        [error]="erroresPorCampo()['nombre']?.[0] ?? ''"
+        name="nombre"
+      />
+      <app-input
+        etiqueta="Correo"
+        tipo="email"
+        [ngModel]="email()"
+        (ngModelChange)="email.set($event)"
+        name="email"
+      />
+      <app-select
+        etiqueta="Usuario vinculado"
+        [opciones]="opcionesUsuarios()"
+        [limpiable]="true"
+        [ngModel]="usuario()"
+        (ngModelChange)="usuario.set($event)"
+        name="usuario"
+      />
+      <app-select
+        etiqueta="Perfil"
+        [opciones]="opcionesPerfiles()"
+        [limpiable]="true"
+        [ngModel]="perfil()"
+        (ngModelChange)="perfil.set($event)"
+        name="perfil"
+      />
+      <app-numero
+        etiqueta="Capacidad mensual *"
+        modo="horas"
+        [ngModel]="capacidadHorasMes()"
+        (ngModelChange)="capacidadHorasMes.set($event)"
+        name="capacidadHorasMes"
+      />
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <app-datepicker
+          etiqueta="Fecha de ingreso"
+          [ngModel]="fechaIngreso()"
+          (ngModelChange)="fechaIngreso.set($event)"
+          name="fechaIngreso"
+        />
+        <app-datepicker
+          etiqueta="Fecha de retiro"
+          [ngModel]="fechaRetiro()"
+          (ngModelChange)="fechaRetiro.set($event)"
+          name="fechaRetiro"
+        />
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <app-boton variante="secundario" (clic)="cancelar()">Cancelar</app-boton>
+        <app-boton tipo="submit" [cargando]="guardando()">
+          {{ esEdicion() ? 'Guardar cambios' : 'Crear recurso' }}
+        </app-boton>
+      </div>
+    </form>
+  }
+</div>

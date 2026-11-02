@@ -107,15 +107,15 @@ comparar.
 
 ## Criterios de aceptación
 
-- [ ] Crear una tarifa con fecha que solapa la anterior la cierra sola y no deja huecos.
-- [ ] Un recurso sin tarifa ni perfil produce un error con mensaje accionable al asignarlo.
-- [ ] `GET /recursos/{id}/carga/` reparte bien las horas de una asignación que cruza meses.
-- [ ] Asignar un recurso al 60% en dos proyectos del mismo mes devuelve advertencia y guarda.
-- [ ] Asignar con fechas fuera del rango del proyecto se rechaza.
-- [ ] El `costo_planeado` del proyecto en la pestaña *Resumen* coincide con la suma de las
+- [x] Crear una tarifa con fecha que solapa la anterior la cierra sola y no deja huecos.
+- [x] Un recurso sin tarifa ni perfil produce un error con mensaje accionable al asignarlo.
+- [x] `GET /recursos/{id}/carga/` reparte bien las horas de una asignación que cruza meses.
+- [x] Asignar un recurso al 60% en dos proyectos del mismo mes devuelve advertencia y guarda.
+- [x] Asignar con fechas fuera del rango del proyecto se rechaza.
+- [x] El `costo_planeado` del proyecto en la pestaña *Resumen* coincide con la suma de las
       asignaciones más los rubros.
-- [ ] Un `LIDER` asigna recursos en su proyecto y recibe 403 en uno ajeno.
-- [ ] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios.
+- [x] Un `LIDER` asigna recursos en su proyecto y recibe 403 en uno ajeno.
+- [x] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios.
 
 ## Comandos de verificación
 
@@ -132,4 +132,106 @@ indirectos, vacaciones y festivos.
 
 ## Evidencia
 
-<!-- Pega aquí la salida real de los comandos de verificación. -->
+### `pytest apps/recursos -q`
+
+```
+.............................                                            [100%]
+29 passed in 34.36s
+```
+
+### `pytest` (suite completa del backend)
+
+```
+........................................................................ [ 38%]
+........................................................................ [ 77%]
+...........................................                              [100%]
+187 passed in 166.54s
+```
+
+### `ruff check .`
+
+```
+All checks passed!
+```
+
+### `python manage.py spectacular --validate --fail-on-warn`
+
+Sin advertencias ni errores.
+
+### `npm run lint`
+
+```
+Linting "frontend"...
+All files pass linting.
+```
+
+### `npm run build`
+
+```
+Application bundle generation complete.
+Lazy chunks: lista, formulario, detalle (recursos), asignaciones-globales,
+recursos-routes, además de los ya existentes de fase 05.
+```
+
+### `npm test`
+
+```
+Test Files  7 passed (7)
+     Tests  31 passed (31)
+```
+
+### Verificación manual contra el backend real (`seed_demo`)
+
+```
+GET /recursos/{id}/  → tarifa_vigente, perfil_nombre, proyectos_activos resueltos
+GET /recursos/{id}/tarifas/ → historial
+GET /recursos/{id}/carga/?desde=&hasta= → horas_planeadas/capacidad/pct_ocupacion por mes
+GET /proyectos/{id}/resumen/ → costo_planeado y horas_planeadas ya con fuente real en
+    AsignacionRecurso (antes de esta fase daban 0 siempre)
+GET /proyectos/{id}/recursos-planeados/ → asignaciones del proyecto con costo_planeado
+```
+
+### Bugs reales encontrados y corregidos durante esta fase
+
+1. **Regresión introducida por mí mismo y detectada por la suite existente antes de
+   commitear**: al generalizar `EsLiderDelProyecto.has_permission` para que los `ViewSet` de
+   sub-recursos (fases, hitos, rubros, y ahora asignaciones) pudieran usarla directamente sin
+   envolverla, añadí un bypass de `SAFE_METHODS` dentro de `has_object_permission` de la
+   propia clase base. Esto rompió el comportamiento ya establecido y probado en fase 03
+   (`test_es_lider_del_proyecto_autoriza_al_gerente_y_al_lider_tecnico`): un `LIDER` pasaba a
+   poder **leer** el detalle de una `Tarea` ajena. La causa es que `EsLiderDelProyecto` se usa
+   en dos contextos distintos — "solo el dueño puede tocar esto, ni para leer" (el caso
+   general, p. ej. `Tarea`) y "cualquiera lee, solo el dueño escribe" (el caso de los
+   sub-recursos de un proyecto, donde `MixinAlcancePorRol` ya acota el listado). Se separó en
+   dos clases: `EsLiderDelProyecto` (sin cambios de comportamiento respecto a fase 03) y la
+   nueva `EsLiderDelProyectoOLectura` (con el bypass de lectura), y se corrigieron los
+   `ViewSet` de proyectos y recursos para usar la que corresponde. La suite completa (187
+   pruebas) quedó verde después de separar las clases.
+2. **`MixinAlcancePorRol._alcance_recurso` no tenía un caso especial para
+   `AsignacionRecurso`** (solo para `Tarea` y `RegistroEjecucion`): un `RECURSO` consultando
+   `/asignaciones/` vería las asignaciones de **todo el proyecto** donde tiene una asignación,
+   no solo las suyas. Se agregó el caso especial, igual que para `RegistroEjecucion`.
+
+### Discrepancia documentada (no es un bug)
+
+`docs/plan/fase-06-recursos-asignacion.md` §6.1 pide que el formulario de asignación consulte
+"la tarifa vigente" al elegir recurso y fecha. La API no expone un endpoint para resolver
+`valor_hora_vigente(recurso, fecha)` a una fecha arbitraria desde el frontend (solo el
+servidor la usa internamente al crear la asignación). El formulario de la pestaña *Recursos*
+del proyecto precarga el campo con la tarifa vigente **hoy** del recurso (vía
+`GET /recursos/{id}/` → `tarifa_vigente`) a modo de referencia visual y lo aclara en texto; si
+el usuario no la modifica, el campo se omite al guardar y el servidor resuelve la tarifa
+vigente real a la fecha "desde" (que es la que efectivamente queda guardada). Si se necesita
+la vista previa exacta a una fecha pasada o futura, una fase posterior podría agregar un
+endpoint dedicado.
+
+### Limitación conocida detectada (fuera de alcance de esta fase)
+
+Al re-ejecutar `python manage.py seed_demo` en un día calendario distinto dentro de esta misma
+sesión, se crearon asignaciones adicionales en vez de no hacer nada (su `fecha_desde`
+depende de la fecha de ejecución, así que el `UniqueConstraint(proyecto, recurso, fase,
+fecha_desde)` no detecta la repetición). El comando no es realmente idempotente entre días
+distintos. Es un bug de `apps/core/management/commands/seed_demo.py` (fase 01), fuera del
+alcance de esta fase; se deja anotado para que una fase posterior lo corrija anclando las
+fechas sembradas a la fecha del *primer* `seed_demo` en vez de a "hoy", o usando
+`get_or_create`.

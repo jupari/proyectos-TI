@@ -1,14 +1,12 @@
-from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 
 from apps.core.choices import EstadoAprobacion
 from apps.core.exceptions import ErrorConflicto
 from apps.core.mixins import MixinAlcancePorRol
-from apps.core.permissions import EsLiderDelProyecto
+from apps.core.permissions import EsLiderDelProyectoOLectura
 from apps.core.roles import codigos_roles_de
 from apps.core.views import ViewSetBase
 from apps.tablero.services import resumen_ejecucion as calcular_resumen_ejecucion
@@ -26,7 +24,7 @@ from .serializers import (
 from .services import cambiar_estado
 
 
-class PermisoProyecto(EsLiderDelProyecto):
+class PermisoProyecto(EsLiderDelProyectoOLectura):
     """Crear exige ADMIN o PMO; borrar exige ADMIN; editar exige ser
     gerente/líder técnico del proyecto (o ADMIN/PMO); leer no se restringe
     a nivel de objeto (el alcance de listado ya lo acota `MixinAlcancePorRol`)."""
@@ -38,37 +36,6 @@ class PermisoProyecto(EsLiderDelProyecto):
         if view.action == "destroy":
             return "ADMIN" in codigos
         return bool(request.user and request.user.is_authenticated)
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS:
-            return True
-        return super().has_object_permission(request, view, obj)
-
-
-class PermisoSubRecursoProyecto(EsLiderDelProyecto):
-    """Igual que `EsLiderDelProyecto` para editar/borrar, más la comprobación
-    en creación (sin objeto todavía) de que el `proyecto` enviado es uno de
-    los que lidera, cuando el usuario es LIDER."""
-
-    def has_permission(self, request, view):
-        codigos = codigos_roles_de(request.user)
-        if codigos & {"ADMIN", "PMO"}:
-            return True
-        if "LIDER" not in codigos:
-            return request.method in SAFE_METHODS
-        if view.action == "create":
-            proyecto_id = request.data.get("proyecto")
-            if not proyecto_id:
-                return True
-            return Proyecto.objects.filter(
-                Q(pk=proyecto_id) & (Q(gerente=request.user) | Q(lider_tecnico=request.user))
-            ).exists()
-        return True
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS:
-            return True
-        return super().has_object_permission(request, view, obj)
 
 
 class ProyectoViewSet(MixinAlcancePorRol, ViewSetBase):
@@ -175,12 +142,29 @@ class ProyectoViewSet(MixinAlcancePorRol, ViewSetBase):
         serializer = RubroPresupuestoSerializer(proyecto.rubros.filter(activo=True), many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Recursos planeados del proyecto",
+        description="Asignaciones activas del proyecto: horas, costo, periodo y fase por "
+        "recurso (docs/plan/fase-06-recursos-asignacion.md §6.2).",
+        responses={200: {"type": "array", "items": {"type": "object"}}},
+    )
+    @action(detail=True, methods=["get"], url_path="recursos-planeados")
+    def recursos_planeados(self, request, pk=None):
+        from apps.recursos.serializers import AsignacionRecursoSerializer
+
+        proyecto = self.get_object()
+        serializer = AsignacionRecursoSerializer(
+            proyecto.asignaciones.filter(activo=True).select_related("recurso", "fase"),
+            many=True,
+        )
+        return Response(serializer.data)
+
 
 class FaseProyectoViewSet(ViewSetBase):
     queryset = FaseProyecto.objects.select_related("proyecto")
     serializer_lectura_class = FaseProyectoSerializer
     serializer_escritura_class = FaseProyectoSerializer
-    permission_classes = [PermisoSubRecursoProyecto]
+    permission_classes = [EsLiderDelProyectoOLectura]
     filterset_fields = ["proyecto", "estado"]
     ordering_fields = ["orden", "fecha_inicio_plan"]
 
@@ -189,7 +173,7 @@ class HitoViewSet(ViewSetBase):
     queryset = Hito.objects.select_related("proyecto")
     serializer_lectura_class = HitoSerializer
     serializer_escritura_class = HitoSerializer
-    permission_classes = [PermisoSubRecursoProyecto]
+    permission_classes = [EsLiderDelProyectoOLectura]
     filterset_fields = ["proyecto", "estado", "es_entregable"]
     ordering_fields = ["fecha_plan"]
 
@@ -198,6 +182,6 @@ class RubroPresupuestoViewSet(ViewSetBase):
     queryset = RubroPresupuesto.objects.select_related("proyecto")
     serializer_lectura_class = RubroPresupuestoSerializer
     serializer_escritura_class = RubroPresupuestoSerializer
-    permission_classes = [PermisoSubRecursoProyecto]
+    permission_classes = [EsLiderDelProyectoOLectura]
     filterset_fields = ["proyecto", "categoria"]
     ordering_fields = ["categoria"]

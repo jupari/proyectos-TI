@@ -184,6 +184,50 @@
       </app-card>
     }
 
+    @if (pestanaActiva() === 'recursos') {
+      <app-card titulo="Recursos planeados">
+        <div class="mb-3 flex justify-end">
+          @if (puedeEditar()) {
+            <app-boton tamano="sm" (clic)="abrirNuevaAsignacion()">+ Nueva asignación</app-boton>
+          }
+        </div>
+        <table class="w-full text-left text-sm">
+          <thead class="text-neutro-500">
+            <tr>
+              <th class="py-1">Recurso</th><th class="py-1">Rol</th>
+              <th class="py-1">Desde</th><th class="py-1">Hasta</th>
+              <th class="py-1">Dedicación</th><th class="py-1">Horas</th>
+              <th class="py-1">Valor/hora</th><th class="py-1">Costo planeado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutro-100">
+            @for (asignacion of asignaciones(); track asignacion.id) {
+              <tr>
+                <td class="py-2">{{ nombreRecurso(asignacion.recurso) }}</td>
+                <td class="py-2">{{ asignacion.rol_en_proyecto }}</td>
+                <td class="py-2">{{ asignacion.fecha_desde | fechaCorta }}</td>
+                <td class="py-2">{{ asignacion.fecha_hasta | fechaCorta }}</td>
+                <td class="py-2">{{ asignacion.porcentaje_dedicacion | porcentaje }}</td>
+                <td class="py-2">{{ asignacion.horas_planeadas | horas }}</td>
+                <td class="py-2">{{ asignacion.valor_hora_plan | moneda }}</td>
+                <td class="py-2">{{ asignacion.costo_planeado | moneda }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="py-4 text-neutro-400">Sin recursos asignados.</td></tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr class="border-t border-neutro-200 font-medium">
+              <td class="py-2" colspan="5">Total</td>
+              <td class="py-2">{{ totalHorasAsignadas() | horas }}</td>
+              <td></td>
+              <td class="py-2">{{ totalCostoAsignado() | moneda }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </app-card>
+    }
+
     @if (pestanaActiva() === 'tareas' || pestanaActiva() === 'ejecucion' || pestanaActiva() === 'seguimientos' || pestanaActiva() === 'expediente') {
       <app-en-construccion />
     }
@@ -210,4 +254,79 @@
       <app-boton [cargando]="cambiandoEstado()" (clic)="confirmarCambioEstado()">Confirmar</app-boton>
     </div>
   </app-modal>
+
+  <app-drawer
+    [abierto]="drawerAsignacionAbierto()"
+    titulo="Nueva asignación"
+    (cerrar)="cerrarDrawerAsignacion()"
+  >
+    <div class="flex flex-col gap-4">
+      <app-select
+        etiqueta="Recurso *"
+        [opciones]="opcionesRecursos()"
+        [ngModel]="asigRecurso()"
+        (ngModelChange)="alElegirRecurso($event)"
+        name="asigRecurso"
+      />
+      <app-input
+        etiqueta="Rol en el proyecto"
+        [ngModel]="asigRolEnProyecto()"
+        (ngModelChange)="asigRolEnProyecto.set($event)"
+        name="asigRolEnProyecto"
+      />
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <app-datepicker
+          etiqueta="Desde *"
+          [minimo]="proyecto()?.fecha_inicio_plan ?? null"
+          [maximo]="proyecto()?.fecha_fin_plan ?? null"
+          [ngModel]="asigFechaDesde()"
+          (ngModelChange)="asigFechaDesde.set($event)"
+          name="asigFechaDesde"
+        />
+        <app-datepicker
+          etiqueta="Hasta *"
+          [minimo]="proyecto()?.fecha_inicio_plan ?? null"
+          [maximo]="proyecto()?.fecha_fin_plan ?? null"
+          [ngModel]="asigFechaHasta()"
+          (ngModelChange)="asigFechaHasta.set($event)"
+          name="asigFechaHasta"
+        />
+      </div>
+      <app-numero
+        etiqueta="% dedicación"
+        [ngModel]="asigPorcentajeDedicacion()"
+        (ngModelChange)="asigPorcentajeDedicacion.set($event)"
+        name="asigPorcentajeDedicacion"
+      />
+      <app-numero
+        etiqueta="Horas planeadas *"
+        modo="horas"
+        [ngModel]="asigHorasPlaneadas()"
+        (ngModelChange)="asigHorasPlaneadas.set($event)"
+        name="asigHorasPlaneadas"
+      />
+      <app-numero
+        etiqueta="Valor por hora"
+        modo="moneda"
+        [ngModel]="asigValorHoraPlan()"
+        (ngModelChange)="alEditarValorHora($event)"
+        name="asigValorHoraPlan"
+      />
+      <p class="text-xs text-neutro-500">
+        @if (asigTarifaManual()) {
+          Tarifa manual.
+        } @else {
+          Tarifa vigente hoy del recurso (referencial); al guardar se aplica la vigente a la
+          fecha "desde".
+        }
+      </p>
+      <p class="text-sm font-medium text-neutro-700">
+        Costo planeado (vista previa): {{ asigCostoPlaneadoVivo() | moneda }}
+      </p>
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarDrawerAsignacion()">Cancelar</app-boton>
+      <app-boton [cargando]="guardandoAsignacion()" (clic)="guardarAsignacion()">Guardar</app-boton>
+    </div>
+  </app-drawer>
 }

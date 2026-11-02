@@ -59,4 +59,5 @@ export interface FiltrosProyecto {
   fecha_fin_plan__lte?: string;
   ordering?: string;
   page?: number;
+  page_size?: number;
 }

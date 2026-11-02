@@ -20,7 +20,7 @@ export abstract class ApiService<T> {
     return `${environment.apiBaseUrl}/${this.recurso}/`;
   }
 
-  private construirParametros(parametros?: ParametrosConsulta): HttpParams {
+  protected construirParametros(parametros?: ParametrosConsulta): HttpParams {
     let params = new HttpParams();
     for (const [clave, valor] of Object.entries(parametros ?? {})) {
       if (valor !== undefined && valor !== null) {
@@ -59,7 +59,9 @@ export abstract class ApiService<T> {
   }
 
   /** Sub-recurso de solo lectura bajo el detalle (p. ej. `/proyectos/{id}/fases/`). */
-  accionGet<R = T>(id: string, nombre: string): Observable<R> {
-    return this.http.get<R>(`${this.base}${id}/${nombre}/`);
+  accionGet<R = T>(id: string, nombre: string, parametros?: ParametrosConsulta): Observable<R> {
+    return this.http.get<R>(`${this.base}${id}/${nombre}/`, {
+      params: this.construirParametros(parametros),
+    });
   }
 }
