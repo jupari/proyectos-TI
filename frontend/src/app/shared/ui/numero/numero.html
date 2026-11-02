@@ -1,0 +1,33 @@
+<div class="flex flex-col gap-1">
+  @if (etiqueta()) {
+    <label [for]="id" class="text-sm font-medium text-neutro-700">{{ etiqueta() }}</label>
+  }
+  <div class="flex items-stretch overflow-hidden rounded-panel border border-neutro-300 bg-white
+    focus-within:ring-2 focus-within:ring-marca-500 focus-within:border-marca-500"
+    [class.border-peligro]="!!error()"
+  >
+    @if (prefijo()) {
+      <span class="flex items-center px-3 text-sm text-neutro-500 bg-neutro-50">{{ prefijo() }}</span>
+    }
+    <input
+      [id]="id"
+      type="text"
+      inputmode="decimal"
+      [disabled]="deshabilitado()"
+      [value]="enEdicion() ? textoEdicion() : textoMostrado()"
+      class="w-full min-w-0 border-0 bg-transparent px-3 py-2 text-right text-sm text-neutro-900
+        placeholder:text-neutro-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      (focus)="alEnfocar()"
+      (input)="alEscribir($event)"
+      (blur)="alDesenfocar()"
+    />
+    @if (sufijo()) {
+      <span class="flex items-center px-3 text-sm text-neutro-500 bg-neutro-50">{{ sufijo() }}</span>
+    }
+  </div>
+  @if (error()) {
+    <p class="text-sm text-peligro">{{ error() }}</p>
+  } @else if (ayuda()) {
+    <p class="text-sm text-neutro-500">{{ ayuda() }}</p>
+  }
+</div>

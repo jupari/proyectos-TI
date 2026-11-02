@@ -1,0 +1,38 @@
+<div class="flex min-h-screen items-center justify-center bg-neutro-50 px-4">
+  <div class="w-full max-w-sm rounded-panel border border-neutro-200 bg-white p-6 shadow-tarjeta">
+    <h1 class="mb-1 text-xl font-semibold text-neutro-900">Cambiar contraseña</h1>
+    <p class="mb-6 text-sm text-neutro-500">
+      Por seguridad, debe establecer una contraseña propia antes de continuar.
+    </p>
+
+    @if (mensajeError()) {
+      <p class="mb-4 rounded-panel bg-peligro/10 px-3 py-2 text-sm text-peligro" role="alert">
+        {{ mensajeError() }}
+      </p>
+    }
+
+    <form class="flex flex-col gap-4" (ngSubmit)="enviar()">
+      <app-input
+        etiqueta="Contraseña actual"
+        tipo="password"
+        autocomplete="current-password"
+        [ngModel]="claveActual()"
+        (ngModelChange)="claveActual.set($event)"
+        name="claveActual"
+        [error]="erroresPorCampo()['clave_actual']?.[0] ?? ''"
+      />
+      <app-input
+        etiqueta="Contraseña nueva"
+        tipo="password"
+        autocomplete="new-password"
+        [ngModel]="claveNueva()"
+        (ngModelChange)="claveNueva.set($event)"
+        name="claveNueva"
+        [error]="erroresPorCampo()['clave_nueva']?.[0] ?? ''"
+      />
+      <app-boton tipo="submit" [cargando]="enviando()" [completo]="true">
+        Guardar
+      </app-boton>
+    </form>
+  </div>
+</div>

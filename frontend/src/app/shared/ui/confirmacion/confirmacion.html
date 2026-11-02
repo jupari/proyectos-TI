@@ -1,0 +1,21 @@
+@if (servicio.solicitud()) {
+  <app-modal
+    [abierto]="true"
+    [titulo]="servicio.solicitud()!.titulo"
+    tamano="sm"
+    (cerrar)="responder(false)"
+  >
+    <p class="text-sm text-neutro-700">{{ servicio.solicitud()!.mensaje }}</p>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="responder(false)">
+        {{ servicio.solicitud()!.textoCancelar ?? 'Cancelar' }}
+      </app-boton>
+      <app-boton
+        [variante]="servicio.solicitud()!.variante === 'peligro' ? 'peligro' : 'primario'"
+        (clic)="responder(true)"
+      >
+        {{ servicio.solicitud()!.textoConfirmar ?? 'Confirmar' }}
+      </app-boton>
+    </div>
+  </app-modal>
+}

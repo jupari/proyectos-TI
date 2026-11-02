@@ -1,0 +1,23 @@
+<div class="mx-auto max-w-lg">
+  <app-card titulo="Mi perfil">
+    @if (mensajeError()) {
+      <p class="mb-4 rounded-panel bg-peligro/10 px-3 py-2 text-sm text-peligro" role="alert">
+        {{ mensajeError() }}
+      </p>
+    }
+    @if (guardadoConExito()) {
+      <p class="mb-4 rounded-panel bg-exito/10 px-3 py-2 text-sm text-exito" role="status">
+        Datos guardados correctamente.
+      </p>
+    }
+
+    <form class="flex flex-col gap-4" (ngSubmit)="guardar()">
+      <app-input etiqueta="Correo electrónico" [ngModel]="auth.usuario()?.email" name="email" [disabled]="true" />
+      <app-input etiqueta="Nombres" [ngModel]="nombres()" (ngModelChange)="nombres.set($event)" name="nombres" />
+      <app-input etiqueta="Apellidos" [ngModel]="apellidos()" (ngModelChange)="apellidos.set($event)" name="apellidos" />
+      <app-input etiqueta="Cargo" [ngModel]="cargo()" (ngModelChange)="cargo.set($event)" name="cargo" />
+      <app-input etiqueta="Teléfono" [ngModel]="telefono()" (ngModelChange)="telefono.set($event)" name="telefono" />
+      <app-boton tipo="submit" [cargando]="guardando()">Guardar cambios</app-boton>
+    </form>
+  </app-card>
+</div>

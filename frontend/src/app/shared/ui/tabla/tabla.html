@@ -1,0 +1,111 @@
+<div class="overflow-hidden rounded-panel border border-neutro-200 bg-white shadow-tarjeta">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-neutro-50 text-neutro-600">
+        <tr>
+          @if (seleccionable()) {
+            <th class="w-10 px-3 py-2">
+              <input
+                type="checkbox"
+                aria-label="Seleccionar todas las filas"
+                [checked]="todasSeleccionadas()"
+                (change)="alternarTodas()"
+              />
+            </th>
+          }
+          @for (columna of columnas(); track columna.clave) {
+            <th class="px-3 py-2 font-medium" [style.width]="columna.ancho">
+              @if (columna.ordenable) {
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 hover:text-neutro-900 focus-visible:outline-none
+                    focus-visible:ring-2 focus-visible:ring-marca-500 rounded"
+                  (click)="alOrdenar(columna)"
+                >
+                  {{ columna.titulo }}
+                  @if (ordenActual()?.clave === columna.clave) {
+                    <span aria-hidden="true">{{ ordenActual()?.direccion === 'asc' ? '↑' : '↓' }}</span>
+                  }
+                </button>
+              } @else {
+                {{ columna.titulo }}
+              }
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-neutro-100">
+        @if (cargando()) {
+          @for (indice of filasEsqueleto; track indice) {
+            <tr>
+              @if (seleccionable()) {
+                <td class="px-3 py-3"><div class="h-4 w-4 rounded bg-neutro-100 animate-pulse"></div></td>
+              }
+              @for (columna of columnas(); track columna.clave) {
+                <td class="px-3 py-3"><div class="h-4 w-3/4 rounded bg-neutro-100 animate-pulse"></div></td>
+              }
+            </tr>
+          }
+        } @else if (filas().length === 0) {
+          <tr>
+            <td [attr.colspan]="columnas().length + (seleccionable() ? 1 : 0)" class="px-3 py-8">
+              <app-estado-vacio [mensaje]="mensajeVacio()" />
+            </td>
+          </tr>
+        } @else {
+          @for (fila of filas(); track fila.id) {
+            <tr class="hover:bg-neutro-50">
+              @if (seleccionable()) {
+                <td class="px-3 py-3">
+                  <input
+                    type="checkbox"
+                    [attr.aria-label]="'Seleccionar fila ' + fila.id"
+                    [checked]="seleccion().includes(fila.id)"
+                    (change)="alternarFila(fila.id)"
+                  />
+                </td>
+              }
+              @for (columna of columnas(); track columna.clave) {
+                <td
+                  class="px-3 py-3 text-neutro-800"
+                  [class.text-right]="columna.alinear === 'derecha'"
+                  [class.text-center]="columna.alinear === 'centro'"
+                >
+                  @if (columna.plantilla) {
+                    <ng-container *ngTemplateOutlet="columna.plantilla; context: { $implicit: fila }" />
+                  } @else {
+                    {{ valorCelda(fila, columna.clave) }}
+                  }
+                </td>
+              }
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (respuesta() && !cargando() && filas().length > 0) {
+    <div class="flex items-center justify-between border-t border-neutro-200 px-3 py-2 text-sm text-neutro-600">
+      <span>{{ respuesta()!.count }} registro(s) · página {{ paginaActual() }} de {{ totalPaginas() }}</span>
+      <div class="flex gap-2">
+        <app-boton
+          variante="secundario"
+          tamano="sm"
+          [disabled]="paginaActual() <= 1"
+          (clic)="irAPagina(paginaActual() - 1)"
+        >
+          Anterior
+        </app-boton>
+        <app-boton
+          variante="secundario"
+          tamano="sm"
+          [disabled]="paginaActual() >= totalPaginas()"
+          (clic)="irAPagina(paginaActual() + 1)"
+        >
+          Siguiente
+        </app-boton>
+      </div>
+    </div>
+  }
+</div>

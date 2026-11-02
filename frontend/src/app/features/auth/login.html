@@ -1,0 +1,60 @@
+<div class="flex min-h-screen items-center justify-center bg-neutro-50 px-4">
+  <div class="w-full max-w-sm rounded-panel border border-neutro-200 bg-white p-6 shadow-tarjeta">
+    <h1 class="mb-1 text-xl font-semibold text-neutro-900">Seguimiento de Proyectos de TI</h1>
+    <p class="mb-6 text-sm text-neutro-500">Inicie sesión para continuar.</p>
+
+    @if (mensajeError()) {
+      <p class="mb-4 rounded-panel bg-peligro/10 px-3 py-2 text-sm text-peligro" role="alert">
+        {{ mensajeError() }}
+      </p>
+    }
+
+    <form class="flex flex-col gap-4" (ngSubmit)="enviar()">
+      <app-input
+        etiqueta="Correo electrónico"
+        tipo="email"
+        autocomplete="username"
+        [ngModel]="email()"
+        (ngModelChange)="email.set($event)"
+        name="email"
+        [error]="erroresPorCampo()['email']?.[0] ?? ''"
+      />
+      <app-input
+        etiqueta="Contraseña"
+        tipo="password"
+        autocomplete="current-password"
+        [ngModel]="clave()"
+        (ngModelChange)="clave.set($event)"
+        name="password"
+        [error]="erroresPorCampo()['password']?.[0] ?? ''"
+      />
+
+      <app-boton tipo="submit" [cargando]="enviando()" [completo]="true">
+        Iniciar sesión
+      </app-boton>
+
+      <span
+        class="cursor-not-allowed text-center text-sm text-neutro-400"
+        title="Solicítelo al administrador"
+      >
+        ¿Olvidó su contraseña?
+      </span>
+
+      @if (googleDisponible()) {
+        <div class="flex items-center gap-2 text-xs text-neutro-400">
+          <span class="h-px flex-1 bg-neutro-200"></span>
+          o
+          <span class="h-px flex-1 bg-neutro-200"></span>
+        </div>
+        <app-boton
+          tipo="button"
+          variante="secundario"
+          [completo]="true"
+          (clic)="continuarConGoogle()"
+        >
+          Continuar con Google
+        </app-boton>
+      }
+    </form>
+  </div>
+</div>

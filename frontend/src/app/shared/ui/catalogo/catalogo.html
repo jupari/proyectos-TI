@@ -1,0 +1,170 @@
+<div class="mx-auto flex max-w-5xl flex-col gap-8 p-6">
+  <h1 class="text-2xl font-semibold text-neutro-900">Catálogo de componentes</h1>
+
+  <app-card titulo="1. Botón">
+    <div class="flex flex-wrap items-center gap-3">
+      <app-boton variante="primario">Primario</app-boton>
+      <app-boton variante="secundario">Secundario</app-boton>
+      <app-boton variante="peligro">Peligro</app-boton>
+      <app-boton variante="fantasma">Fantasma</app-boton>
+      <app-boton tamano="sm">Pequeño</app-boton>
+      <app-boton [cargando]="true">Cargando</app-boton>
+      <app-boton [disabled]="true">Deshabilitado</app-boton>
+    </div>
+  </app-card>
+
+  <app-card titulo="2. Input de texto">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <app-input
+        etiqueta="Nombre del proyecto"
+        ayuda="Nombre visible en los listados"
+        placeholder="Escriba aquí"
+        [ngModel]="textoInput()"
+        (ngModelChange)="textoInput.set($event)"
+      />
+      <app-input etiqueta="Código" prefijo="PRY-" sufijo="2026" [ngModel]="textoConError()" error="Ya existe un proyecto con ese código." />
+    </div>
+  </app-card>
+
+  <app-card titulo="3. Área de texto">
+    <app-textarea
+      etiqueta="Descripción"
+      [maximoCaracteres]="200"
+      [ngModel]="textoArea()"
+      (ngModelChange)="textoArea.set($event)"
+    />
+  </app-card>
+
+  <app-card titulo="4. Select">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <app-select
+        etiqueta="Prioridad (pocas opciones)"
+        [opciones]="opcionesPocas"
+        [limpiable]="true"
+        [ngModel]="seleccionPocas()"
+        (ngModelChange)="seleccionPocas.set($event)"
+      />
+      <app-select
+        etiqueta="Con búsqueda (más de 10 opciones)"
+        [opciones]="opcionesMuchas"
+        [ngModel]="seleccionMuchas()"
+        (ngModelChange)="seleccionMuchas.set($event)"
+      />
+    </div>
+  </app-card>
+
+  <app-card titulo="5. Selector de fecha">
+    <app-datepicker etiqueta="Fecha de inicio" [ngModel]="fecha()" (ngModelChange)="fecha.set($event)" />
+  </app-card>
+
+  <app-card titulo="6. Input numérico">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <app-numero etiqueta="Presupuesto" modo="moneda" [ngModel]="montoMoneda()" (ngModelChange)="montoMoneda.set($event)" />
+      <app-numero etiqueta="Horas estimadas" modo="horas" [ngModel]="horas()" (ngModelChange)="horas.set($event)" />
+    </div>
+  </app-card>
+
+  <app-card titulo="7. Casilla / interruptor">
+    <app-switch etiqueta="Notificarme por correo" [ngModel]="interruptor()" (ngModelChange)="interruptor.set($event)" />
+  </app-card>
+
+  <app-card titulo="8. Tabla">
+    <div class="mb-3 flex gap-2">
+      <app-boton tamano="sm" variante="secundario" (clic)="alternarCargandoTabla()">
+        Alternar carga
+      </app-boton>
+      <app-boton tamano="sm" variante="secundario" (clic)="alternarFilasVacias()">
+        Alternar vacío
+      </app-boton>
+    </div>
+    <app-tabla
+      [columnas]="columnas"
+      [filas]="filasTabla()"
+      [cargando]="cargandoTabla()"
+      [seleccionable]="true"
+      [seleccion]="seleccionTabla()"
+      [ordenActual]="ordenTabla()"
+      (cambioOrden)="ordenTabla.set($event)"
+      (cambioSeleccion)="seleccionTabla.set($event)"
+    />
+  </app-card>
+
+  <app-card titulo="9 y 10. Modal y panel lateral">
+    <div class="flex gap-2">
+      <app-boton (clic)="modalAbierto.set(true)">Abrir modal</app-boton>
+      <app-boton variante="secundario" (clic)="drawerAbierto.set(true)">Abrir panel lateral</app-boton>
+    </div>
+    <app-modal [abierto]="modalAbierto()" titulo="Ejemplo de modal" (cerrar)="modalAbierto.set(false)">
+      <p class="text-sm text-neutro-700">Contenido del modal. Probar Esc y Tab.</p>
+      <div pie>
+        <app-boton variante="secundario" (clic)="modalAbierto.set(false)">Cerrar</app-boton>
+      </div>
+    </app-modal>
+    <app-drawer [abierto]="drawerAbierto()" titulo="Ejemplo de panel lateral" (cerrar)="drawerAbierto.set(false)">
+      <p class="text-sm text-neutro-700">Contenido del panel. Útil para formularios largos.</p>
+      <div pie>
+        <app-boton variante="secundario" (clic)="drawerAbierto.set(false)">Cerrar</app-boton>
+      </div>
+    </app-drawer>
+  </app-card>
+
+  <app-card titulo="11. Pestañas">
+    <app-tabs [pestanas]="pestanas" [activa]="pestanaActiva()" (cambio)="pestanaActiva.set($event)" />
+    <div class="pt-3 text-sm text-neutro-600">
+      @if (pestanaActiva() === 'uno') {
+        Contenido de la pestaña uno.
+      } @else if (pestanaActiva() === 'dos') {
+        Contenido de la pestaña dos.
+      } @else {
+        Contenido de la pestaña tres.
+      }
+    </div>
+  </app-card>
+
+  <app-card titulo="12. Etiqueta de estado (badge)">
+    <div class="flex flex-wrap gap-2">
+      <app-badge valor="EJECUCION" etiqueta="Ejecución" />
+      <app-badge valor="PENDIENTE" etiqueta="Pendiente" />
+      <app-badge valor="CANCELADO" etiqueta="Cancelado" />
+      <app-badge valor="COMPLETADA" etiqueta="Completada" />
+      <app-badge valor="BORRADOR" etiqueta="Borrador" />
+    </div>
+  </app-card>
+
+  <app-card titulo="13. Tarjeta">
+    <p class="text-sm text-neutro-600">Esta misma tarjeta es el componente #13.</p>
+  </app-card>
+
+  <app-card titulo="14. Toast">
+    <div class="flex flex-wrap gap-2">
+      <app-boton tamano="sm" (clic)="mostrarToast('exito')">Éxito</app-boton>
+      <app-boton tamano="sm" (clic)="mostrarToast('alerta')">Alerta</app-boton>
+      <app-boton tamano="sm" variante="peligro" (clic)="mostrarToast('error')">Error</app-boton>
+      <app-boton tamano="sm" variante="secundario" (clic)="mostrarToast('info')">Info</app-boton>
+    </div>
+  </app-card>
+
+  <app-card titulo="15. Diálogo de confirmación">
+    <app-boton variante="peligro" (clic)="pedirConfirmacion()">Borrar proyecto…</app-boton>
+  </app-card>
+
+  <app-card titulo="16. Estado vacío">
+    <app-estado-vacio mensaje="No hay proyectos para mostrar." textoAccion="Crear proyecto" />
+  </app-card>
+
+  <app-card titulo="17. Barra de progreso">
+    <div class="flex flex-col gap-4">
+      <app-progreso [valor]="20" etiqueta="Bajo (rojo)" />
+      <app-progreso [valor]="65" etiqueta="Medio (ámbar)" />
+      <app-progreso [valor]="92" etiqueta="Alto (verde)" />
+    </div>
+  </app-card>
+
+  <app-card titulo="18. Semáforo">
+    <div class="flex flex-wrap gap-4">
+      <app-semaforo valor="VERDE" />
+      <app-semaforo valor="AMARILLO" />
+      <app-semaforo valor="ROJO" />
+    </div>
+  </app-card>
+</div>

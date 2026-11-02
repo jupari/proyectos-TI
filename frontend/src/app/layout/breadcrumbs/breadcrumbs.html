@@ -1,0 +1,14 @@
+<nav aria-label="Migas de pan" class="px-4 py-2 text-sm text-neutro-500">
+  <ol class="flex items-center gap-1">
+    @for (miga of migas(); track miga.ruta; let ultimo = $last) {
+      <li class="flex items-center gap-1">
+        @if (!ultimo) {
+          <a [routerLink]="miga.ruta" class="hover:text-marca-700 hover:underline">{{ miga.etiqueta }}</a>
+          <span aria-hidden="true">/</span>
+        } @else {
+          <span class="font-medium text-neutro-700">{{ miga.etiqueta }}</span>
+        }
+      </li>
+    }
+  </ol>
+</nav>

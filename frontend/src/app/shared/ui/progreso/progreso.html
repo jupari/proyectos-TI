@@ -1,0 +1,15 @@
+<div class="flex flex-col gap-1">
+  @if (etiqueta()) {
+    <span class="text-sm text-neutro-600">{{ etiqueta() }}</span>
+  }
+  <div
+    class="h-2 w-full overflow-hidden rounded-full bg-neutro-100"
+    role="progressbar"
+    [attr.aria-valuenow]="porcentaje()"
+    aria-valuemin="0"
+    aria-valuemax="100"
+  >
+    <div class="h-full rounded-full transition-all" [class]="clase()" [style.width.%]="porcentaje()"></div>
+  </div>
+  <span class="text-xs text-neutro-500">{{ porcentaje() }}%</span>
+</div>

@@ -1,0 +1,22 @@
+<div class="flex h-screen flex-col">
+  @if (cargando.activo()) {
+    <div class="h-0.5 w-full overflow-hidden bg-marca-100">
+      <div class="h-full w-1/3 animate-pulse bg-marca-600"></div>
+    </div>
+  }
+
+  <app-topbar />
+
+  <div class="flex flex-1 overflow-hidden">
+    <app-sidebar />
+    <div class="flex flex-1 flex-col overflow-y-auto">
+      <app-breadcrumbs />
+      <main class="flex-1 p-4">
+        <router-outlet />
+      </main>
+    </div>
+  </div>
+</div>
+
+<app-toast />
+<app-confirmacion />

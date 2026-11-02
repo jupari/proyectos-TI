@@ -1,0 +1,93 @@
+<div class="flex flex-col gap-1 relative" [attr.data-select-id]="id">
+  @if (etiqueta()) {
+    <span [id]="id + '-label'" class="text-sm font-medium text-neutro-700">{{ etiqueta() }}</span>
+  }
+  <button
+    type="button"
+    role="combobox"
+    [attr.aria-expanded]="abierto()"
+    [attr.aria-labelledby]="id + '-label'"
+    [attr.aria-controls]="id + '-listbox'"
+    aria-haspopup="listbox"
+    [disabled]="deshabilitado()"
+    class="flex items-center justify-between gap-2 rounded-panel border border-neutro-300 bg-white
+      px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-marca-500
+      focus:border-marca-500 disabled:cursor-not-allowed disabled:opacity-50"
+    [class.border-peligro]="!!error()"
+    (click)="alternar()"
+    (keydown)="alTeclaBoton($event)"
+  >
+    <span [class.text-neutro-400]="!etiquetaSeleccionada()" class="truncate">
+      {{ etiquetaSeleccionada() ?? placeholder() }}
+    </span>
+    <span class="flex items-center gap-1 shrink-0">
+      @if (limpiable() && etiquetaSeleccionada()) {
+        <span
+          role="button"
+          tabindex="0"
+          aria-label="Limpiar selección"
+          class="text-neutro-400 hover:text-neutro-600"
+          (click)="limpiar($event)"
+          (keydown.enter)="limpiar($event)"
+        >
+          ✕
+        </span>
+      }
+      <svg class="h-4 w-4 text-neutro-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path
+          fill-rule="evenodd"
+          d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+          clip-rule="evenodd"
+        />
+      </svg>
+    </span>
+  </button>
+
+  @if (abierto()) {
+    <div
+      class="absolute z-10 top-full mt-1 w-full rounded-panel border border-neutro-200 bg-white shadow-tarjeta"
+    >
+      @if (conBusqueda()) {
+        <input
+          type="text"
+          placeholder="Buscar…"
+          class="w-full border-b border-neutro-200 px-3 py-2 text-sm focus:outline-none"
+          [value]="termino()"
+          (input)="alBuscar($event)"
+          (keydown)="alTeclaLista($event)"
+        />
+      }
+      <ul
+        role="listbox"
+        [id]="id + '-listbox'"
+        [attr.aria-labelledby]="id + '-label'"
+        class="max-h-60 overflow-auto py-1"
+        tabindex="0"
+        (keydown)="alTeclaLista($event)"
+      >
+        @for (opcion of opcionesFiltradas(); track opcion.valor; let i = $index) {
+          <li
+            role="option"
+            tabindex="-1"
+            [attr.aria-selected]="opcion.valor === valor()"
+            class="cursor-pointer px-3 py-2 text-sm hover:bg-neutro-50"
+            [class.bg-marca-50]="i === indiceActivo()"
+            [class.text-marca-700]="opcion.valor === valor()"
+            (click)="seleccionar(opcion)"
+            (keydown.enter)="seleccionar(opcion)"
+          >
+            {{ opcion.etiqueta }}
+          </li>
+        } @empty {
+          <li class="px-3 py-2 text-sm text-neutro-400">Sin resultados</li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (error()) {
+    <p class="text-sm text-peligro">{{ error() }}</p>
+  } @else if (ayuda()) {
+    <p class="text-sm text-neutro-500">{{ ayuda() }}</p>
+  }
+</div>

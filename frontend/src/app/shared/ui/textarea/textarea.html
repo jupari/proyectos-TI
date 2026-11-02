@@ -1,0 +1,33 @@
+<div class="flex flex-col gap-1">
+  @if (etiqueta()) {
+    <label [for]="id" class="text-sm font-medium text-neutro-700">{{ etiqueta() }}</label>
+  }
+  <textarea
+    [id]="id"
+    [rows]="filas()"
+    [placeholder]="placeholder()"
+    [disabled]="deshabilitado()"
+    [value]="valor()"
+    [attr.maxlength]="maximoCaracteres()"
+    [attr.aria-invalid]="error() ? 'true' : null"
+    [attr.aria-describedby]="ayuda() || error() ? id + '-ayuda' : null"
+    class="w-full rounded-panel border border-neutro-300 bg-white px-3 py-2 text-sm text-neutro-900
+      placeholder:text-neutro-400 focus:outline-none focus:ring-2 focus:ring-marca-500
+      focus:border-marca-500 disabled:cursor-not-allowed disabled:opacity-50"
+    [class.border-peligro]="!!error()"
+    (input)="alEscribir($event)"
+    (blur)="alTocar()"
+  ></textarea>
+  <div class="flex items-start justify-between gap-2">
+    @if (error()) {
+      <p [id]="id + '-ayuda'" class="text-sm text-peligro">{{ error() }}</p>
+    } @else if (ayuda()) {
+      <p [id]="id + '-ayuda'" class="text-sm text-neutro-500">{{ ayuda() }}</p>
+    } @else {
+      <span></span>
+    }
+    @if (contador()) {
+      <span class="text-xs text-neutro-400 shrink-0">{{ contador() }}</span>
+    }
+  </div>
+</div>

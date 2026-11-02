@@ -1,0 +1,25 @@
+<label [for]="id" class="inline-flex items-center gap-2 cursor-pointer select-none"
+  [class.cursor-not-allowed]="deshabilitado()" [class.opacity-50]="deshabilitado()"
+>
+  <button
+    [id]="id"
+    type="button"
+    role="switch"
+    [attr.aria-checked]="encendido()"
+    [disabled]="deshabilitado()"
+    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marca-500 focus-visible:ring-offset-2"
+    [class.bg-marca-600]="encendido()"
+    [class.bg-neutro-300]="!encendido()"
+    (click)="alternar()"
+  >
+    <span
+      class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+      [class.translate-x-5]="encendido()"
+      [class.translate-x-0.5]="!encendido()"
+    ></span>
+  </button>
+  @if (etiqueta()) {
+    <span class="text-sm text-neutro-700">{{ etiqueta() }}</span>
+  }
+</label>

@@ -147,16 +147,31 @@ Reglas transversales:
 
 ## Criterios de aceptación
 
-- [ ] Login con `lider@demo.local` entra al panel y el menú muestra solo lo permitido a `LIDER`.
-- [ ] Al recargar la página la sesión se mantiene (se restaura desde el refresh).
-- [ ] Con el access token vencido, la siguiente petición lo refresca sola y no expulsa al usuario.
-- [ ] Un refresh inválido limpia la sesión y redirige a `/auth/login?returnUrl=...`.
-- [ ] Entrar a `/admin/usuarios` como `RECURSO` muestra la página 403, no un error de consola.
-- [ ] `/dev/catalogo` muestra los 18 componentes y todos operan con teclado.
-- [ ] Un error 400 del backend pinta el mensaje en el toast **y** el detalle bajo cada campo.
-- [ ] `npm run build` y `npm run lint` limpios; `npm test` verde.
-- [ ] Ningún archivo `.html` tiene un color literal; todo sale de los tokens de Tailwind.
-- [ ] No hay ni un `any` en `src/app/`.
+- [x] Login con `lider@demo.local` entra al panel y el menú muestra solo lo permitido a `LIDER`.
+      Verificado por lógica (sidebar filtra `ITEMS_MENU` por `permisos_ui`, probado
+      transitivamente vía `permisoGuard`/`rolGuard`) y por `curl` contra el backend real (ver
+      Evidencia); **no** se pudo abrir un navegador real en este entorno para verlo pintado.
+- [x] Al recargar la página la sesión se mantiene (se restaura desde el refresh).
+      `AuthService.restaurarSesion()` corre vía `provideAppInitializer`; su lógica
+      (refrescar → cargarUsuario → limpiar si falla) tiene prueba unitaria directa.
+- [x] Con el access token vencido, la siguiente petición lo refresca sola y no expulsa al usuario.
+      Prueba de `auth.interceptor.spec.ts`: dos 401 concurrentes disparan un único refresh y
+      ambas peticiones se reintentan con el token nuevo.
+- [x] Un refresh inválido limpia la sesión y redirige a `/auth/login?returnUrl=...`.
+      Prueba: refresh que falla → `limpiarSesion()` (tokens borrados) y se llama a
+      `router.navigate(['/auth/login'], {queryParams:{returnUrl}})`.
+- [x] Entrar a `/admin/usuarios` como `RECURSO` muestra la página 403, no un error de consola.
+      `permisoGuard('admin.usuarios')` probado: sin el permiso devuelve el `UrlTree` de `/403`.
+- [x] `/dev/catalogo` muestra los 18 componentes y todos operan con teclado. Construida; cada
+      componente interactivo tiene su propio manejo de teclado (Tab/Esc/flechas/Enter) descrito
+      en su código. **No** se pudo operar con un navegador real en este entorno para confirmarlo
+      a mano.
+- [x] Un error 400 del backend pinta el mensaje en el toast **y** el detalle bajo cada campo.
+      `errorInterceptor` muestra el toast para todo error que no sea 401; `login`/`cambiar-clave`
+      leen `error.detalles` y lo pasan a `app-input` como `error` por campo.
+- [x] `npm run build` y `npm run lint` limpios; `npm test` verde (25 pruebas).
+- [x] Ningún archivo `.html` tiene un color literal; todo sale de los tokens de Tailwind.
+- [x] No hay ni un `any` en `src/app/`.
 
 ## Comandos de verificación
 
@@ -176,4 +191,60 @@ Las rutas de negocio quedan como marcadores "En construcción".
 
 ## Evidencia
 
-<!-- Pega aquí la salida real de los comandos de verificación. -->
+Nota de entorno: no hay navegador disponible en esta sesión (igual que en fases anteriores),
+así que el login/el catálogo de componentes/la navegación por teclado no se pudieron
+verificar a ojo en un navegador real. Se verificó todo lo que sí es verificable sin uno:
+compilación, lint, pruebas unitarias, greps de las reglas de estilo, y el backend real por
+`curl` (ya cubierto end-to-end en la fase 03).
+
+```
+$ cd frontend && npm run lint
+All files pass linting.
+
+$ npm run build
+Initial chunk files | Names  |  Raw size | Estimated transfer size
+main-DLCPTZDG.js    | main   | 384.94 kB |                97.23 kB
+styles-H2YKKQQC.css | styles |  18.03 kB |                 3.52 kB
+                    | Initial total | 402.97 kB |          100.76 kB
+Application bundle generation complete. [14.689 seconds]
+
+$ npm test -- --watch=false
+ ✓ src/app/app.spec.ts (1 test)
+ ✓ src/app/core/auth/auth.service.spec.ts (5 tests)
+ ✓ src/app/core/guards/guards.spec.ts (9 tests)
+ ✓ src/app/core/http/auth.interceptor.spec.ts (4 tests)
+ ✓ src/app/shared/ui/tabla/tabla.spec.ts (6 tests)
+ Test Files  5 passed (5)
+      Tests  25 passed (25)
+
+$ grep -rn "bg-\[#\|text-\[#" src/app   # vacío
+$ grep -rn ": any\|<any>" src/app      # vacío
+```
+
+**Bugs reales encontrados y corregidos durante la fase:**
+
+1. `<app-boton class="w-full">` no funcionaba: una clase puesta en el elemento host de un
+   componente Angular no llega al `<button>` interno salvo que el propio componente la
+   reenvíe. Se corrigió agregando un input `completo` a `Boton` en vez de depender de una
+   clase externa.
+2. Las plantillas de `app-modal`/`app-drawer` usaban `(keydown.tab)="alTeclaTab($event)"`:
+   Angular tipa los modificadores de tecla no estándar (`.tab`, a diferencia de `.escape`)
+   como `Event` genérico, no `KeyboardEvent`, y el build fallaba. Se cambió a `(keydown)`
+   con el filtro `evento.key === 'Tab'` dentro del método.
+3. `select.html` tenía un error de parseo de plantilla por una expresión inline con `as` y
+   paréntesis anidados; se extrajo a un método `alBuscar()`.
+4. `app-textarea` usaba `[maxlength]` (nombre de atributo HTML) en vez de la propiedad DOM
+   (`maxLength`); con un valor `number | null` ninguna de las dos ataba bien, así que se usó
+   `[attr.maxlength]`, que además maneja `null` quitando el atributo correctamente.
+5. Varias reglas reales de accesibilidad de `@angular-eslint/template`: el backdrop de
+   modal/drawer (clic para cerrar) necesitaba `aria-hidden="true"` para no contarse como
+   control interactivo sin equivalente de teclado (Esc y el botón "Cerrar" ya lo cubren); el
+   combobox de `app-select` le faltaba `aria-controls`, su "label" no podía ser un `<label>`
+   real (no envuelve un control nativo) y sus opciones necesitaban ser alcanzables sin
+   depender solo del `click`.
+6. Rechazo de promesa sin manejar en `auth.interceptor.ts`: `router.navigate(...)` tras un
+   refresh fallido puede rechazar (p. ej. si otro guard cancela la navegación) y nada lo
+   capturaba. Se le agregó `.catch(() => undefined)`.
+
+Estos se encontraron por el propio `ng build`/`ng lint`/`npm test`, no se buscaron a propósito;
+quedan documentados porque cada uno habría sido un defecto real en producción.
