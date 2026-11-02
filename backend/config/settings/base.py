@@ -154,6 +154,9 @@ SPECTACULAR_SETTINGS = {
         "EstadoProyectoEnum": "apps.core.choices.EstadoProyecto",
         "EstadoFaseEnum": "apps.core.choices.EstadoFase",
         "EstadoHitoEnum": "apps.core.choices.EstadoHito",
+        "EstadoTareaEnum": "apps.core.choices.EstadoTarea",
+        "TipoTareaEnum": "apps.core.choices.TipoTarea",
+        "TipoDependenciaEnum": "apps.core.choices.TipoDependencia",
     },
 }
 

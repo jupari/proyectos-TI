@@ -159,6 +159,78 @@ class ProyectoViewSet(MixinAlcancePorRol, ViewSetBase):
         )
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Cronograma del proyecto",
+        description="Filas listas para el diagrama de Gantt de solo lectura del frontend: "
+        "una por tarea, ordenadas por fase y fecha de inicio plan, con sus dependencias "
+        "entrantes (docs/plan/fase-07-tareas-programacion.md §7.2.6). Dos consultas en total, "
+        "sin N+1 por tarea.",
+        responses={200: {"type": "array", "items": {"type": "object"}}},
+    )
+    @action(detail=True, methods=["get"])
+    def cronograma(self, request, pk=None):
+        from apps.tareas.models import DependenciaTarea, Tarea
+
+        proyecto = self.get_object()
+        tareas = list(
+            Tarea.objects.filter(proyecto=proyecto, activo=True).select_related(
+                "fase", "responsable"
+            )
+        )
+
+        dependencias_por_tarea: dict = {}
+        ids_tareas = [tarea.id for tarea in tareas]
+        dependencias = DependenciaTarea.objects.filter(
+            activo=True, tarea_destino_id__in=ids_tareas
+        ).values("tarea_destino_id", "tarea_origen_id", "tipo", "dias_desfase")
+        for dependencia in dependencias:
+            dependencias_por_tarea.setdefault(dependencia["tarea_destino_id"], []).append(
+                {
+                    "tarea_id": str(dependencia["tarea_origen_id"]),
+                    "tipo": dependencia["tipo"],
+                    "dias_desfase": dependencia["dias_desfase"],
+                }
+            )
+
+        mapa_tareas = {tarea.id: tarea for tarea in tareas}
+        niveles: dict = {}
+
+        def nivel_de(tarea):
+            if tarea.id in niveles:
+                return niveles[tarea.id]
+            if tarea.tarea_padre_id is None or tarea.tarea_padre_id not in mapa_tareas:
+                niveles[tarea.id] = 1
+            else:
+                niveles[tarea.id] = 1 + nivel_de(mapa_tareas[tarea.tarea_padre_id])
+            return niveles[tarea.id]
+
+        filas_ordenadas = sorted(
+            tareas, key=lambda t: (t.fase.orden if t.fase_id else 10_000, t.fecha_inicio_plan)
+        )
+
+        return Response(
+            [
+                {
+                    "tarea_id": str(tarea.id),
+                    "codigo": tarea.codigo,
+                    "nombre": tarea.nombre,
+                    "nivel": nivel_de(tarea),
+                    "fase": tarea.fase.nombre if tarea.fase_id else None,
+                    "inicio_plan": tarea.fecha_inicio_plan.isoformat(),
+                    "fin_plan": tarea.fecha_fin_plan.isoformat(),
+                    "inicio_real": (
+                        tarea.fecha_inicio_real.isoformat() if tarea.fecha_inicio_real else None
+                    ),
+                    "fin_real": tarea.fecha_fin_real.isoformat() if tarea.fecha_fin_real else None,
+                    "avance": str(tarea.avance),
+                    "estado": tarea.estado,
+                    "responsable": tarea.responsable.nombre if tarea.responsable_id else None,
+                    "dependencias": dependencias_por_tarea.get(tarea.id, []),
+                }
+                for tarea in filas_ordenadas
+            ]
+        )
+
 
 class FaseProyectoViewSet(ViewSetBase):
     queryset = FaseProyecto.objects.select_related("proyecto")

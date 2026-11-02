@@ -100,7 +100,9 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
   `tarea_padre`, `vencidas=true`, `creada_durante_ejecucion=true`
 - `POST /tareas/` · `PATCH /tareas/{id}/` · `POST /tareas/{id}/cambiar-estado/`
 - `GET /tareas/arbol/?proyecto={id}` → jerarquía anidada lista para pintar
-- `/dependencias-tarea/` — CRUD; rechaza ciclos con 400
+- `/dependencias-tarea/` — CRUD; rechaza ciclos con 409 (`CONFLICTO`) y la ruta completa del
+  ciclo en `detalles.ciclo` (p. ej. `["T001", "T004", "T009", "T001"]`), que es lo que hace
+  útil el error; también rechaza con 400 si las dos tareas no son del mismo proyecto
 - `GET /proyectos/{id}/cronograma/` → filas con `{tarea, inicio, fin, avance, dependencias}`
   ordenadas por fase y fecha, para el diagrama de la fase 07
 

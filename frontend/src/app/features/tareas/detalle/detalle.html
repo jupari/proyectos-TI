@@ -1,0 +1,220 @@
+@if (cargando()) {
+  <p class="text-sm text-neutro-500">Cargando…</p>
+} @else if (tarea()) {
+  <div class="flex flex-col gap-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p class="text-xs font-medium uppercase tracking-wide text-neutro-400">
+          <a [routerLink]="['/proyectos', tarea()!.proyecto]" class="hover:underline">
+            {{ tarea()!.proyecto_codigo }}
+          </a>
+          · {{ tarea()!.codigo }}
+        </p>
+        <h1 class="text-xl font-semibold text-neutro-900">{{ tarea()!.nombre }}</h1>
+        <div class="mt-2 flex items-center gap-2">
+          <app-badge
+            [valor]="tarea()!.estado"
+            [etiqueta]="tarea()!.estado | etiquetaEnum: ETIQUETAS_ESTADO_TAREA"
+          />
+          <app-badge [valor]="tarea()!.prioridad" />
+          @if (tarea()!.creada_durante_ejecucion) {
+            <span class="rounded-full bg-alerta/10 px-2 py-0.5 text-xs font-medium text-alerta">
+              Alcance adicional
+            </span>
+          }
+        </div>
+      </div>
+      <app-boton (clic)="abrirDialogoEstado()">Cambiar estado</app-boton>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <app-card titulo="Avance">
+        <app-progreso [valor]="numero(tarea()!.avance)" class="block" />
+        @if (tarea()!.tiene_subtareas) {
+          <p class="mt-1 text-xs text-neutro-400">Calculado a partir de las subtareas.</p>
+        }
+      </app-card>
+      <app-card titulo="Horas (ejecutadas / estimadas)">
+        <p class="text-lg font-semibold text-neutro-800">
+          {{ tarea()!.horas_ejecutadas | horas }} / {{ tarea()!.horas_estimadas | horas }}
+        </p>
+      </app-card>
+      <app-card titulo="Responsable">
+        <p class="text-sm text-neutro-700">{{ tarea()!.responsable_nombre ?? '—' }}</p>
+      </app-card>
+      <app-card titulo="Fase">
+        <p class="text-sm text-neutro-700">{{ tarea()!.fase_nombre ?? '—' }}</p>
+      </app-card>
+      <app-card titulo="Fechas plan" class="sm:col-span-2">
+        <p class="text-sm text-neutro-700">
+          {{ tarea()!.fecha_inicio_plan | fechaCorta }} — {{ tarea()!.fecha_fin_plan | fechaCorta }}
+        </p>
+      </app-card>
+      <app-card titulo="Fechas reales" class="sm:col-span-2">
+        <p class="text-sm text-neutro-700">
+          {{ tarea()!.fecha_inicio_real | fechaCorta }} — {{ tarea()!.fecha_fin_real | fechaCorta }}
+          @if (tarea()!.dias_atraso !== null) {
+            <span class="ml-2 font-medium text-peligro">{{ tarea()!.dias_atraso }} días de atraso</span>
+          }
+        </p>
+      </app-card>
+      <app-card titulo="Descripción" class="sm:col-span-2 lg:col-span-4">
+        <p class="whitespace-pre-line text-sm text-neutro-700">
+          {{ tarea()!.descripcion || 'Sin descripción.' }}
+        </p>
+        @if (tarea()!.creada_durante_ejecucion) {
+          <p class="mt-2 text-xs text-neutro-500">
+            Motivo de creación durante la ejecución: {{ tarea()!.motivo_creacion }}
+          </p>
+        }
+      </app-card>
+    </div>
+
+    <app-card titulo="Subtareas">
+      @if (tarea()!.subtareas.length > 0) {
+        <table class="w-full text-left text-sm">
+          <thead class="text-neutro-500">
+            <tr>
+              <th class="py-1">Código</th><th class="py-1">Nombre</th><th class="py-1">Responsable</th>
+              <th class="py-1">Estado</th><th class="py-1">Avance</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutro-100">
+            @for (subtarea of tarea()!.subtareas; track subtarea.id) {
+              <tr>
+                <td class="py-2">
+                  <a [routerLink]="['/tareas', subtarea.id]" class="text-marca-600 hover:underline">
+                    {{ subtarea.codigo }}
+                  </a>
+                </td>
+                <td class="py-2">{{ subtarea.nombre }}</td>
+                <td class="py-2">{{ subtarea.responsable_nombre ?? '—' }}</td>
+                <td class="py-2"><app-badge [valor]="subtarea.estado" /></td>
+                <td class="py-2">{{ subtarea.avance }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <app-estado-vacio mensaje="Esta tarea no tiene subtareas." />
+      }
+    </app-card>
+
+    <app-card titulo="Dependencias">
+      <div class="mb-3 flex justify-between gap-2">
+        <app-boton variante="secundario" [cargando]="sugiriendoFechas()" (clic)="sugerirFechas()">
+          Sugerir fechas
+        </app-boton>
+        <app-boton tamano="sm" (clic)="abrirDialogoDependencia()">+ Nueva dependencia</app-boton>
+      </div>
+
+      @if (fechaInicioSugerida()) {
+        <p class="mb-3 rounded-panel bg-marca-50 px-3 py-2 text-sm text-marca-700">
+          Sugerencia: inicio {{ fechaInicioSugerida() | fechaCorta }} — fin
+          {{ fechaFinSugerida() | fechaCorta }}.
+        </p>
+      }
+
+      <h3 class="mb-1 text-sm font-medium text-neutro-600">Depende de (entrantes)</h3>
+      @if (tarea()!.dependencias_entrantes.length > 0) {
+        <ul class="mb-4 divide-y divide-neutro-100 text-sm">
+          @for (dep of tarea()!.dependencias_entrantes; track dep.id) {
+            <li class="flex items-center justify-between py-2">
+              <span>
+                {{ dep.tarea_origen_codigo }} ({{ dep.tipo }}, desfase {{ dep.dias_desfase }} d)
+              </span>
+              <button type="button" class="text-xs text-peligro hover:underline" (click)="eliminarDependencia(dep.id)">
+                Eliminar
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="mb-4 text-sm text-neutro-400">Sin dependencias entrantes.</p>
+      }
+
+      <h3 class="mb-1 text-sm font-medium text-neutro-600">Predecesora de (salientes)</h3>
+      @if (tarea()!.dependencias_salientes.length > 0) {
+        <ul class="divide-y divide-neutro-100 text-sm">
+          @for (dep of tarea()!.dependencias_salientes; track dep.id) {
+            <li class="flex items-center justify-between py-2">
+              <span>
+                {{ dep.tarea_destino_codigo }} ({{ dep.tipo }}, desfase {{ dep.dias_desfase }} d)
+              </span>
+              <button type="button" class="text-xs text-peligro hover:underline" (click)="eliminarDependencia(dep.id)">
+                Eliminar
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="text-sm text-neutro-400">Sin dependencias salientes.</p>
+      }
+    </app-card>
+
+    <app-card titulo="Horas registradas">
+      <app-en-construccion />
+    </app-card>
+
+    <app-card titulo="Bitácora">
+      <app-en-construccion />
+    </app-card>
+  </div>
+
+  <app-modal [abierto]="dialogoEstadoAbierto()" titulo="Cambiar estado" (cerrar)="cerrarDialogoEstado()">
+    <div class="flex flex-col gap-4">
+      <app-select
+        etiqueta="Nuevo estado *"
+        [opciones]="opcionesEstado"
+        [ngModel]="estadoSeleccionado()"
+        (ngModelChange)="estadoSeleccionado.set($event)"
+        name="estadoSeleccionado"
+      />
+      @if (necesitaNota()) {
+        <app-textarea
+          etiqueta="Motivo del bloqueo *"
+          [ngModel]="notaEstado()"
+          (ngModelChange)="notaEstado.set($event)"
+          name="notaEstado"
+        />
+      }
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarDialogoEstado()">Cancelar</app-boton>
+      <app-boton [cargando]="cambiandoEstado()" (clic)="confirmarCambioEstado()">Confirmar</app-boton>
+    </div>
+  </app-modal>
+
+  <app-modal
+    [abierto]="dialogoDependenciaAbierto()"
+    titulo="Nueva dependencia"
+    (cerrar)="cerrarDialogoDependencia()"
+  >
+    <div class="flex flex-col gap-4">
+      <app-select
+        etiqueta="Esta tarea es predecesora de *"
+        [opciones]="opcionesTareasProyecto()"
+        [ngModel]="depTareaDestinoId()"
+        (ngModelChange)="depTareaDestinoId.set($event)"
+        name="depTareaDestinoId"
+      />
+      <app-select
+        etiqueta="Tipo *"
+        [opciones]="opcionesTipoDependencia"
+        [ngModel]="depTipo()"
+        (ngModelChange)="depTipo.set($event)"
+        name="depTipo"
+      />
+      <app-numero
+        etiqueta="Días de desfase"
+        [ngModel]="depDiasDesfase()"
+        (ngModelChange)="depDiasDesfase.set($event)"
+        name="depDiasDesfase"
+      />
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarDialogoDependencia()">Cancelar</app-boton>
+      <app-boton [cargando]="guardandoDependencia()" (clic)="guardarDependencia()">Guardar</app-boton>
+    </div>
+  </app-modal>
+}

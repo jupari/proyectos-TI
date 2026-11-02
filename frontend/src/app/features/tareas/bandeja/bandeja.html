@@ -1,0 +1,134 @@
+<div class="flex flex-col gap-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-lg font-semibold text-neutro-800">Tareas</h1>
+  </div>
+
+  <div class="grid grid-cols-1 gap-3 rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta sm:grid-cols-2 lg:grid-cols-4">
+    <app-select
+      etiqueta="Proyecto"
+      [opciones]="opcionesProyectos()"
+      [limpiable]="true"
+      [ngModel]="proyecto()"
+      (ngModelChange)="proyecto.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Estado"
+      [opciones]="opcionesEstado"
+      [limpiable]="true"
+      [ngModel]="estado()"
+      (ngModelChange)="estado.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Tipo"
+      [opciones]="opcionesTipo"
+      [limpiable]="true"
+      [ngModel]="tipo()"
+      (ngModelChange)="tipo.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Prioridad"
+      [opciones]="opcionesPrioridad"
+      [limpiable]="true"
+      [ngModel]="prioridad()"
+      (ngModelChange)="prioridad.set($event); aplicarFiltros()"
+    />
+    <app-switch
+      etiqueta="Solo mis tareas"
+      [ngModel]="soloMisTareas()"
+      (ngModelChange)="soloMisTareas.set($event); aplicarFiltros()"
+    />
+    <app-switch
+      etiqueta="Solo vencidas"
+      [ngModel]="soloVencidas()"
+      (ngModelChange)="soloVencidas.set($event); aplicarFiltros()"
+    />
+    <app-switch
+      etiqueta="Creadas durante la ejecución"
+      [ngModel]="soloCreadasDuranteEjecucion()"
+      (ngModelChange)="soloCreadasDuranteEjecucion.set($event); aplicarFiltros()"
+    />
+    <div class="flex items-end justify-end">
+      <app-boton variante="secundario" (clic)="limpiarFiltros()">Limpiar filtros</app-boton>
+    </div>
+  </div>
+
+  <ng-template #colProyecto let-fila>
+    <a [routerLink]="['/proyectos', fila.proyecto]" class="text-marca-600 hover:underline">
+      {{ fila.proyecto_codigo }}
+    </a>
+  </ng-template>
+  <ng-template #colTarea let-fila>
+    <a [routerLink]="['/tareas', fila.id]" class="font-medium text-neutro-800 hover:underline">
+      {{ fila.nombre }}
+    </a>
+  </ng-template>
+  <ng-template #colEstado let-fila>
+    <app-select
+      [opciones]="opcionesEstado"
+      [ngModel]="fila.estado"
+      (ngModelChange)="alCambiarEstadoRapido(fila, $event)"
+    />
+  </ng-template>
+  <ng-template #colPrioridad let-fila>
+    <app-badge [valor]="fila.prioridad" />
+  </ng-template>
+  <ng-template #colResponsable let-fila>
+    {{ fila.responsable_nombre ?? '—' }}
+  </ng-template>
+  <ng-template #colInicio let-fila>
+    {{ fila.fecha_inicio_plan | fechaCorta }}
+  </ng-template>
+  <ng-template #colFin let-fila>
+    {{ fila.fecha_fin_plan | fechaCorta }}
+  </ng-template>
+  <ng-template #colHoras let-fila>
+    {{ fila.horas_ejecutadas | horas }} / {{ fila.horas_estimadas | horas }}
+  </ng-template>
+  <ng-template #colAvance let-fila>
+    <app-progreso [valor]="+fila.avance" class="block w-28" />
+  </ng-template>
+  <ng-template #colAtraso let-fila>
+    @if (fila.dias_atraso !== null) {
+      <span class="font-medium text-peligro">{{ fila.dias_atraso }} d</span>
+    } @else {
+      —
+    }
+  </ng-template>
+
+  <app-tabla
+    [columnas]="[
+      { clave: 'proyecto_codigo', titulo: 'Proyecto', plantilla: colProyecto },
+      columnaCodigo,
+      { clave: 'nombre', titulo: 'Tarea', ordenable: true, plantilla: colTarea },
+      { clave: 'estado', titulo: 'Estado', plantilla: colEstado, ancho: '160px' },
+      { clave: 'prioridad', titulo: 'Prioridad', plantilla: colPrioridad },
+      { clave: 'responsable_nombre', titulo: 'Responsable', plantilla: colResponsable },
+      { clave: 'fecha_inicio_plan', titulo: 'Inicio', ordenable: true, plantilla: colInicio },
+      { clave: 'fecha_fin_plan', titulo: 'Fin', ordenable: true, plantilla: colFin },
+      { clave: 'horas', titulo: 'Horas (ejec./est.)', plantilla: colHoras },
+      { clave: 'avance', titulo: 'Avance', plantilla: colAvance },
+      { clave: 'dias_atraso', titulo: 'Atraso', plantilla: colAtraso }
+    ]"
+    [filas]="respuesta()?.results ?? []"
+    [cargando]="cargando()"
+    [respuesta]="respuesta()"
+    [paginaActual]="paginaActual()"
+    [ordenActual]="ordenActual()"
+    mensajeVacio="No hay tareas que coincidan con los filtros."
+    (cambioOrden)="alCambiarOrden($event)"
+    (cambioPagina)="alCambiarPagina($event)"
+  />
+</div>
+
+<app-modal [abierto]="dialogoBloqueoAbierto()" titulo="Bloquear tarea" (cerrar)="cerrarDialogoBloqueo()">
+  <app-textarea
+    etiqueta="Motivo del bloqueo *"
+    [ngModel]="notaBloqueo()"
+    (ngModelChange)="notaBloqueo.set($event)"
+    name="notaBloqueo"
+  />
+  <div pie class="flex gap-2">
+    <app-boton variante="secundario" (clic)="cerrarDialogoBloqueo()">Cancelar</app-boton>
+    <app-boton (clic)="confirmarBloqueo()">Confirmar</app-boton>
+  </div>
+</app-modal>

@@ -36,7 +36,10 @@ export const routes: Routes = [
         path: 'proyectos',
         loadChildren: () => import('./features/proyectos/proyectos.routes').then((m) => m.proyectosRoutes),
       },
-      { path: 'tareas', component: EnConstruccion },
+      {
+        path: 'tareas',
+        loadChildren: () => import('./features/tareas/tareas.routes').then((m) => m.tareasRoutes),
+      },
       {
         path: 'ejecucion/registros',
         component: EnConstruccion,

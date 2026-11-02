@@ -228,7 +228,141 @@
       </app-card>
     }
 
-    @if (pestanaActiva() === 'tareas' || pestanaActiva() === 'ejecucion' || pestanaActiva() === 'seguimientos' || pestanaActiva() === 'expediente') {
+    @if (pestanaActiva() === 'tareas') {
+      <app-card titulo="Tareas">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <div class="flex flex-wrap gap-3 text-xs text-neutro-500">
+            @for (total of totalesPorFase(); track total.fase) {
+              <span class="rounded-full bg-neutro-100 px-2 py-1">
+                {{ total.fase }}: {{ total.ejecutadas }}h / {{ total.estimadas }}h
+              </span>
+            }
+          </div>
+          <app-boton tamano="sm" (clic)="abrirNuevaTareaRaiz()">+ Nueva tarea</app-boton>
+        </div>
+
+        @if (cargandoTareas()) {
+          <p class="text-sm text-neutro-500">Cargando…</p>
+        } @else if (arbolTareas().length > 0) {
+          <div class="flex flex-col">
+            @for (raiz of arbolTareas(); track raiz.id) {
+              <app-nodo-arbol-tarea
+                [nodo]="raiz"
+                [estaExpandido]="estaExpandidoFn"
+                [alAlternar]="alAlternarNodo"
+                [alCrearSubtarea]="alCrearSubtareaFn"
+                [alEditar]="alEditarTareaFn"
+              />
+            }
+          </div>
+        } @else {
+          <p class="py-4 text-sm text-neutro-400">Este proyecto todavía no tiene tareas.</p>
+        }
+      </app-card>
+    }
+
+    @if (pestanaActiva() === 'cronograma') {
+      <app-card titulo="Cronograma">
+        <div class="mb-3 flex items-center justify-between">
+          <p class="text-xs text-neutro-500">
+            Barra clara: plan. Barra oscura superpuesta: avance. Línea bajo la barra: fechas
+            reales. Rombo: hito.
+          </p>
+          <div class="flex gap-1">
+            <app-boton
+              tamano="sm"
+              [variante]="escalaCronograma() === 'semana' ? 'primario' : 'secundario'"
+              (clic)="cambiarEscalaCronograma('semana')"
+            >
+              Semanas
+            </app-boton>
+            <app-boton
+              tamano="sm"
+              [variante]="escalaCronograma() === 'mes' ? 'primario' : 'secundario'"
+              (clic)="cambiarEscalaCronograma('mes')"
+            >
+              Meses
+            </app-boton>
+          </div>
+        </div>
+
+        @if (cargandoCronograma()) {
+          <p class="text-sm text-neutro-500">Cargando…</p>
+        } @else if (filasCronograma().length > 0) {
+          <div class="overflow-x-auto">
+            <div
+              class="grid gap-y-1"
+              [style.grid-template-columns]="'180px repeat(' + periodosCronograma().length + ', minmax(48px, 1fr))'"
+            >
+              <div class="sticky left-0 z-10 bg-white" [style.grid-row]="1" [style.grid-column]="1"></div>
+              @for (periodo of periodosCronograma(); track periodo.etiqueta; let i = $index) {
+                <div
+                  class="border-b border-neutro-200 pb-1 text-center text-[11px] text-neutro-400"
+                  [style.grid-row]="1"
+                  [style.grid-column]="i + 2"
+                >
+                  {{ periodo.etiqueta }}
+                </div>
+              }
+
+              @for (hito of proyecto()!.hitos; track hito.id; let i = $index) {
+                <div
+                  class="sticky left-0 z-10 bg-white text-[11px] text-neutro-400"
+                  [style.grid-row]="2 + i"
+                  [style.grid-column]="1"
+                >
+                  Hito
+                </div>
+                <div
+                  class="relative h-5"
+                  [style.grid-row]="2 + i"
+                  [style.grid-column]="columnaHito(hito.fecha_plan) + ' / span 1'"
+                  [title]="hito.nombre + ' — ' + hito.fecha_plan"
+                >
+                  <span class="absolute inset-0 flex items-center justify-center text-alerta">◆</span>
+                </div>
+              }
+
+              @for (fila of filasCronograma(); track fila.tarea_id; let i = $index) {
+                <div
+                  class="sticky left-0 z-10 truncate bg-white pr-2 text-xs text-neutro-700"
+                  [style.grid-row]="2 + proyecto()!.hitos.length + i"
+                  [style.grid-column]="1"
+                  [style.padding-left.px]="12 + (fila.nivel - 1) * 12"
+                  [title]="fila.nombre"
+                >
+                  {{ fila.codigo }} · {{ fila.nombre }}
+                </div>
+                <div
+                  class="relative h-5 rounded bg-marca-100"
+                  [style.grid-row]="2 + proyecto()!.hitos.length + i"
+                  [style.grid-column]="columnaInicioPlan(fila) + ' / ' + columnaFinPlan(fila)"
+                  [title]="tituloDependencias(fila)"
+                >
+                  <span
+                    class="absolute inset-y-0 left-0 rounded bg-marca-500"
+                    [style.width.%]="numero(fila.avance)"
+                  ></span>
+                </div>
+                @if (columnaInicioReal(fila) !== null && columnaFinReal(fila) !== null) {
+                  <div
+                    class="relative h-5 self-end"
+                    [style.grid-row]="2 + proyecto()!.hitos.length + i"
+                    [style.grid-column]="columnaInicioReal(fila) + ' / ' + columnaFinReal(fila)"
+                  >
+                    <span class="absolute inset-x-0 bottom-0 h-0.5 bg-neutro-800"></span>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        } @else {
+          <p class="py-4 text-sm text-neutro-400">Este proyecto todavía no tiene tareas.</p>
+        }
+      </app-card>
+    }
+
+    @if (pestanaActiva() === 'ejecucion' || pestanaActiva() === 'seguimientos' || pestanaActiva() === 'expediente') {
       <app-en-construccion />
     }
   </div>
@@ -327,6 +461,158 @@
     <div pie class="flex gap-2">
       <app-boton variante="secundario" (clic)="cerrarDrawerAsignacion()">Cancelar</app-boton>
       <app-boton [cargando]="guardandoAsignacion()" (clic)="guardarAsignacion()">Guardar</app-boton>
+    </div>
+  </app-drawer>
+
+  <app-drawer
+    [abierto]="drawerTareaAbierto()"
+    [titulo]="idTareaEnEdicion() ? 'Editar tarea' : 'Nueva tarea'"
+    tamano="lg"
+    (cerrar)="cerrarDrawerTarea()"
+  >
+    <div class="flex flex-col gap-4">
+      @if (necesitaMotivoCreacion()) {
+        <app-textarea
+          etiqueta="Motivo de la creación *"
+          ayuda="El proyecto ya está en ejecución: esta tarea queda marcada como alcance adicional."
+          [ngModel]="tarMotivoCreacion()"
+          (ngModelChange)="tarMotivoCreacion.set($event)"
+          name="tarMotivoCreacion"
+        />
+      }
+      <app-input
+        etiqueta="Nombre *"
+        [ngModel]="tarNombre()"
+        (ngModelChange)="tarNombre.set($event)"
+        name="tarNombre"
+      />
+      <app-textarea
+        etiqueta="Descripción"
+        [ngModel]="tarDescripcion()"
+        (ngModelChange)="tarDescripcion.set($event)"
+        name="tarDescripcion"
+      />
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <app-select
+          etiqueta="Fase"
+          [opciones]="opcionesFases()"
+          [limpiable]="true"
+          [ngModel]="tarFase()"
+          (ngModelChange)="tarFase.set($event)"
+          name="tarFase"
+        />
+        <app-select
+          etiqueta="Tipo"
+          [opciones]="opcionesTipoTarea"
+          [ngModel]="tarTipo()"
+          (ngModelChange)="tarTipo.set($event)"
+          name="tarTipo"
+        />
+        <app-select
+          etiqueta="Prioridad"
+          [opciones]="opcionesPrioridadTarea"
+          [ngModel]="tarPrioridad()"
+          (ngModelChange)="tarPrioridad.set($event)"
+          name="tarPrioridad"
+        />
+        <app-select
+          etiqueta="Responsable"
+          [opciones]="opcionesRecursos()"
+          [limpiable]="true"
+          [ngModel]="tarResponsable()"
+          (ngModelChange)="tarResponsable.set($event)"
+          name="tarResponsable"
+        />
+      </div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <app-datepicker
+          etiqueta="Inicio plan *"
+          [ngModel]="tarFechaInicioPlan()"
+          (ngModelChange)="tarFechaInicioPlan.set($event)"
+          name="tarFechaInicioPlan"
+        />
+        <app-datepicker
+          etiqueta="Fin plan *"
+          [ngModel]="tarFechaFinPlan()"
+          (ngModelChange)="tarFechaFinPlan.set($event)"
+          name="tarFechaFinPlan"
+        />
+      </div>
+      <div class="flex items-end gap-2">
+        <app-numero
+          etiqueta="Horas estimadas *"
+          modo="horas"
+          class="flex-1"
+          [ngModel]="tarHorasEstimadas()"
+          (ngModelChange)="tarHorasEstimadas.set($event)"
+          name="tarHorasEstimadas"
+        />
+        <app-boton
+          variante="secundario"
+          tamano="sm"
+          [cargando]="sugiriendoFechas()"
+          (clic)="sugerirFechasEnDrawer()"
+        >
+          Sugerir fechas
+        </app-boton>
+      </div>
+
+      @if (idTareaEnEdicion()) {
+        <div class="border-t border-neutro-200 pt-4">
+          <h3 class="mb-2 text-sm font-medium text-neutro-700">Dependencias</h3>
+          <ul class="mb-3 divide-y divide-neutro-100 text-sm">
+            @for (dep of dependenciasEntrantes(); track dep.id) {
+              <li class="flex items-center justify-between py-1.5">
+                <span>Depende de {{ dep.tarea_origen_codigo }} ({{ dep.tipo }}, {{ dep.dias_desfase }} d)</span>
+                <button type="button" class="text-xs text-peligro hover:underline" (click)="eliminarDependenciaEnDrawer(dep.id)">
+                  Eliminar
+                </button>
+              </li>
+            }
+            @for (dep of dependenciasSalientes(); track dep.id) {
+              <li class="flex items-center justify-between py-1.5">
+                <span>Predecesora de {{ dep.tarea_destino_codigo }} ({{ dep.tipo }}, {{ dep.dias_desfase }} d)</span>
+                <button type="button" class="text-xs text-peligro hover:underline" (click)="eliminarDependenciaEnDrawer(dep.id)">
+                  Eliminar
+                </button>
+              </li>
+            }
+            @empty {
+              <li class="py-1.5 text-neutro-400">Sin dependencias.</li>
+            }
+          </ul>
+          <div class="flex items-end gap-2">
+            <app-select
+              etiqueta="Esta tarea es predecesora de"
+              class="flex-1"
+              [opciones]="opcionesOtrasTareas()"
+              [ngModel]="depTareaDestinoId()"
+              (ngModelChange)="depTareaDestinoId.set($event)"
+              name="depTareaDestinoId"
+            />
+            <app-select
+              etiqueta="Tipo"
+              [opciones]="opcionesTipoDependencia"
+              [ngModel]="depTipo()"
+              (ngModelChange)="depTipo.set($event)"
+              name="depTipo"
+            />
+            <app-numero
+              etiqueta="Desfase (días)"
+              [ngModel]="depDiasDesfase()"
+              (ngModelChange)="depDiasDesfase.set($event)"
+              name="depDiasDesfase"
+            />
+            <app-boton tamano="sm" [cargando]="guardandoDependencia()" (clic)="guardarDependenciaEnDrawer()">
+              Añadir
+            </app-boton>
+          </div>
+        </div>
+      }
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarDrawerTarea()">Cerrar</app-boton>
+      <app-boton [cargando]="guardandoTarea()" (clic)="guardarTarea()">Guardar</app-boton>
     </div>
   </app-drawer>
 }

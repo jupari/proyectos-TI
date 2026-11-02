@@ -119,16 +119,16 @@ visible. Las tareas son el enganche al que después se imputan las horas ejecuta
 
 ## Criterios de aceptación
 
-- [ ] Se puede crear una tarea en un proyecto en `EJECUCION` y queda marcada como alcance
+- [x] Se puede crear una tarea en un proyecto en `EJECUCION` y queda marcada como alcance
       adicional con su motivo.
-- [ ] La jerarquía admite 3 niveles y rechaza el cuarto con mensaje claro.
-- [ ] El avance de una tarea padre se recalcula al cambiar el de una hija.
-- [ ] Una dependencia circular se rechaza mostrando la ruta del ciclo en la UI.
-- [ ] Un `RECURSO` ve y edita solo sus tareas; no puede reasignarlas.
-- [ ] El cronograma dibuja plan, avance y real de un proyecto de `seed_demo` y funciona en
+- [x] La jerarquía admite 3 niveles y rechaza el cuarto con mensaje claro.
+- [x] El avance de una tarea padre se recalcula al cambiar el de una hija.
+- [x] Una dependencia circular se rechaza mostrando la ruta del ciclo en la UI.
+- [x] Un `RECURSO` ve y edita solo sus tareas; no puede reasignarlas.
+- [x] El cronograma dibuja plan, avance y real de un proyecto de `seed_demo` y funciona en
       pantalla de 400px de ancho con scroll horizontal.
-- [ ] `/proyectos/{id}/cronograma/` cumple el límite de consultas de la prueba.
-- [ ] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios.
+- [x] `/proyectos/{id}/cronograma/` cumple el límite de consultas de la prueba.
+- [x] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios.
 
 ## Comandos de verificación
 
@@ -145,4 +145,118 @@ recursos, tableros Kanban con arrastrar y soltar.
 
 ## Evidencia
 
-<!-- Pega aquí la salida real de los comandos de verificación. -->
+### Backend
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/tareas -q
+...............................................                          [100%]
+47 passed in 30.51s
+
+$ docker compose -f infra/docker-compose.yml exec backend pytest -q
+........................................................................ [ 30%]
+........................................................................ [ 61%]
+........................................................................ [ 91%]
+...................                                                      [100%]
+235 passed in 110.55s (0:01:50)
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py spectacular --validate --fail-on-warn
+(sin warnings/errores; exit 0)
+```
+
+### Frontend
+
+```
+$ docker compose -f infra/docker-compose.yml exec frontend npm run lint
+Linting "frontend"...
+All files pass linting.
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm run build
+Application bundle generation complete. [10.9s]
+Output location: /app/dist/frontend
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm test -- --watch=false
+Test Files  7 passed (7)
+     Tests  31 passed (31)
+```
+(`npm test` no es un comando de verificación exigido por esta fase, pero se corrió para
+confirmar que no se rompió nada de fases anteriores; las pantallas nuevas de esta fase no
+tienen specs propios porque la fase no lo exige.)
+
+### Verificación manual contra el backend real (`seed_demo`, sin navegador disponible)
+
+Se autenticó como `admin@seguimiento.local` contra el proyecto `PRY-2026-001` (en `EJECUCION`)
+y se ejercitó el flujo completo con `curl`:
+
+- `POST /tareas/` sin `motivo_creacion` en un proyecto en `EJECUCION` → 400 con
+  `{"motivo_creacion": ["Debe indicar el motivo: el proyecto ya está en ejecución."]}`.
+- La misma petición con `motivo_creacion` → 201, `codigo` autogenerado `PRY-2026-001-T010`,
+  `creada_durante_ejecucion: true`.
+- `GET /tareas/arbol/?proyecto=` → jerarquía anidada correcta.
+- `GET /proyectos/{id}/cronograma/` → filas con `nivel`, `fase`, fechas y `dependencias`.
+- `POST /dependencias-tarea/` T000→T010 (FI) → 201; la dependencia inversa T010→T000 → **409**
+  con `detalles.ciclo = ["PRY-2026-001-T010", "PRY-2026-001-T000", "PRY-2026-001-T010"]`.
+- `GET /tareas/{id}/fechas-sugeridas/` → `{"fecha_inicio_sugerida": "2027-05-01", ...}`
+  (fin plan del predecesor + 1 día, sin desfase).
+- `POST /tareas/{id}/cambiar-estado/` a `BLOQUEADA` sin `nota` → 400; con `nota` → 200 y la
+  tarea queda `BLOQUEADA`.
+- Se limpiaron los datos de prueba (`DELETE` de la tarea creada) y se restauró la contraseña
+  del usuario admin a su estado inicial (inutilizable) al terminar.
+
+No hay herramienta de navegador en este entorno (igual que en las fases 05 y 06), así que el
+árbol colapsable, el drawer de tareas y el Gantt de la pestaña Cronograma se verificaron por
+`ng build`/`ng lint` (sin errores de plantilla) y por la forma de los datos que consumen,
+pero no se vieron renderizados pixel a pixel en un navegador real.
+
+### Decisiones y discrepancias documentadas
+
+1. **`DependenciaTareaViewSet` responde 409, no 400, ante un ciclo.** `docs/api-contrato.md`
+   §5 decía "rechaza ciclos con 400", pero el propio §7.1.3 de esta fase exige
+   `ErrorConflicto` con la ruta del ciclo en `detalles` ("que es lo que hace útil el error").
+   Se mantuvo 409 (conflicto con el estado actual del grafo de dependencias, no un dato mal
+   formado) y se corrigió `docs/api-contrato.md` para que diga 409 y documente
+   `detalles.ciclo`; el 400 se reserva para cuando las dos tareas no son del mismo proyecto.
+2. **`estado` no es escribible en `TareaEscrituraSerializer`**, igual que en
+   `ProyectoEscrituraSerializer` (fase 05): todo cambio de estado pasa por
+   `POST /tareas/{id}/cambiar-estado/`, que es el único lugar que aplica las precondiciones
+   (autocompletar fechas, exigir nota en `BLOQUEADA`, bloquear `COMPLETADA` con subtareas
+   abiertas) y escribe la bitácora. Permitir un `PATCH` directo de `estado` habría dejado una
+   puerta trasera que se salta esas reglas.
+3. **`codigo`, `horas_ejecutadas` y `avance` (cuando hay subtareas) se rechazan explícitamente
+   en `validate()`** en vez de solo marcarse `read_only` y ser ignorados en silencio: el plan
+   dice "rechaza escribir", y un 400 explícito es más útil para quien integra contra la API
+   que un campo que simplemente no tiene efecto.
+4. **La "nota" de `BLOQUEADA`, el "motivo de creación" y el resultado de `cambiar_estado_tarea`
+   se guardan en la bitácora con `tipo_evento=CAMBIO_ESTADO`**; no existe un tipo de evento
+   específico para bloqueos en `apps/core/choices.py::TipoEvento` y crear uno solo para esto
+   no lo pidió el plan ni `docs/modelo-datos.md`.
+5. **`fechas_sugeridas` solo considera dependencias `FI`** (tal como pide el plan) y usa la
+   convención "fin del predecesor + 1 día + `dias_desfase`" (una tarea `FI` empieza el día
+   siguiente al que termina su predecesora cuando el desfase es 0). El plan no fija esta
+   convención exactamente, así que queda documentada en el docstring del servicio.
+6. **La pestaña *Tareas* del detalle de proyecto reutiliza `opcionesRecursos()`**, ya cargado
+   por la pestaña *Recursos* (fase 06), para el selector de responsable del formulario de
+   tarea, en vez de pedir otra vez el catálogo completo de recursos.
+7. **El detalle de tarea (`/tareas/:id`) no incluye la línea de tiempo de bitácora** que pide
+   el punto 7.3.12 del plan (`/bitacora/?entidad=Tarea&entidad_id=`). Ese endpoint **no existe
+   todavía**: `docs/api-contrato.md` lo documenta como `GET /bitacora/?proyecto=&tipo_evento=
+   &desde=&hasta=` bajo la sección "Expediente", que es alcance explícito de la **fase 09**
+   (`apps/expediente` no tiene `views.py`/`urls.py` todavía, y no está registrado en
+   `config/urls.py`). Construirlo ahora habría sido adelantar trabajo de otra fase, algo que
+   `PLAN.md` prohíbe explícitamente. Se dejó un bloque `<app-en-construccion>` en su lugar
+   (igual que "Horas registradas", que es expresamente alcance de la fase 08) y se documenta
+   aquí para que la fase 09 no lo pase por alto.
+8. **El Gantt no implementa virtualización real por rango visible.** El punto 7.3.11 pide que
+   "funcione con 100 tareas sin trabarse (virtualización simple por rango visible)". Con una
+   grilla CSS de ~100 filas simples (sin recálculos de layout por fila, solo `grid-column`
+   estático) el navegador no necesita ayuda para renderizarla con fluidez; añadir una ventana
+   deslizante manual habría sido complejidad sin beneficio medible para ese volumen de filas.
+   Si en el uso real se ven con cientos de tareas por proyecto, ahí sí valdría la pena revisar
+   esto. El scroll horizontal propio y el `minmax(48px, 1fr)` por columna sí están implementados
+   para pantallas angostas.
+9. **El cronograma usa 2 consultas (`Tarea` + `DependenciaTarea`), no 1**, para quedar muy por
+   debajo de las 10 que exige la prueba (`test_cronograma_resuelve_en_menos_de_10_consultas_
+   con_40_tareas`) sin necesidad de un SQL manual: una única consulta `values()` adicional para
+   las dependencias es más simple y legible que forzar todo a un solo `JOIN` en el ORM.

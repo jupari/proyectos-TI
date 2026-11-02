@@ -10,6 +10,7 @@ import {
   RespuestaPaginada,
   RubroPresupuesto,
 } from '../../../core/models';
+import { FilaCronograma } from '../../tareas/data/tareas.model';
 import { FiltrosProyecto, ProyectoDetalle, ProyectoEscritura, ProyectoLista } from './proyectos.model';
 
 @Injectable({ providedIn: 'root' })
@@ -50,6 +51,10 @@ export class ProyectosService extends ApiService<Proyecto> {
 
   recursosPlaneados(id: string): Observable<AsignacionRecurso[]> {
     return this.accionGet<AsignacionRecurso[]>(id, 'recursos-planeados');
+  }
+
+  cronograma(id: string): Observable<FilaCronograma[]> {
+    return this.accionGet<FilaCronograma[]>(id, 'cronograma');
   }
 }
 

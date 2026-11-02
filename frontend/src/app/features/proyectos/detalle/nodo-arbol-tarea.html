@@ -1,0 +1,42 @@
+<div
+  class="flex items-center gap-2 border-b border-neutro-100 py-2"
+  [style.padding-left.px]="nivel() * 20"
+>
+  @if (nodo().subtareas.length > 0) {
+    <button
+      type="button"
+      class="w-4 text-xs text-neutro-400"
+      (click)="alAlternar()(nodo().id)"
+    >
+      {{ estaExpandido()(nodo().id) ? '▾' : '▸' }}
+    </button>
+  } @else {
+    <span class="w-4"></span>
+  }
+
+  <a [routerLink]="['/tareas', nodo().id]" class="w-28 shrink-0 text-marca-600 hover:underline">
+    {{ nodo().codigo }}
+  </a>
+  <button type="button" class="flex-1 truncate text-left hover:underline" (click)="alEditar()(nodo().id)">
+    {{ nodo().nombre }}
+  </button>
+  <app-badge [valor]="nodo().estado" class="shrink-0" />
+  <span class="w-28 shrink-0 text-right text-xs text-neutro-500">
+    {{ nodo().horas_ejecutadas | horas }} / {{ nodo().horas_estimadas | horas }}
+  </span>
+  <app-progreso [valor]="numero(nodo().avance)" class="block w-20 shrink-0" />
+  <app-boton tamano="sm" variante="fantasma" (clic)="alCrearSubtarea()(nodo().id)">+ Subtarea</app-boton>
+</div>
+
+@if (estaExpandido()(nodo().id)) {
+  @for (hija of nodo().subtareas; track hija.id) {
+    <app-nodo-arbol-tarea
+      [nodo]="hija"
+      [nivel]="nivel() + 1"
+      [estaExpandido]="estaExpandido()"
+      [alAlternar]="alAlternar()"
+      [alCrearSubtarea]="alCrearSubtarea()"
+      [alEditar]="alEditar()"
+    />
+  }
+}

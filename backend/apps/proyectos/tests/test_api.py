@@ -310,3 +310,70 @@ def test_detalle_de_proyecto_incluye_resumen_ejecucion_sin_errores(roles, client
     resumen = respuesta.data["resumen_ejecucion"]
     assert resumen["semaforo"] in {"VERDE", "AMARILLO", "ROJO"}
     assert resumen["pct_horas"] is None  # sin asignaciones todavía
+
+
+# --- cronograma (docs/plan/fase-07-tareas-programacion.md §7.2.6) ------------
+
+
+def test_cronograma_ordena_por_fase_y_fecha_e_incluye_dependencias(roles, cliente):
+    from apps.core.choices import TipoDependencia
+    from apps.tareas.tests.factories import DependenciaTareaFactory, TareaFactory
+
+    proyecto = ProyectoFactory()
+    fase_2 = FaseProyectoFactory(proyecto=proyecto, orden=2, peso=50)
+    fase_1 = FaseProyectoFactory(proyecto=proyecto, orden=1, peso=50)
+    tarea_fase_2 = TareaFactory(
+        proyecto=proyecto, fase=fase_2, fecha_inicio_plan=datetime.date(2026, 1, 1)
+    )
+    tarea_fase_1_tardia = TareaFactory(
+        proyecto=proyecto, fase=fase_1, fecha_inicio_plan=datetime.date(2026, 2, 1)
+    )
+    tarea_fase_1_temprana = TareaFactory(
+        proyecto=proyecto, fase=fase_1, fecha_inicio_plan=datetime.date(2026, 1, 15)
+    )
+    DependenciaTareaFactory(
+        tarea_origen=tarea_fase_1_temprana,
+        tarea_destino=tarea_fase_1_tardia,
+        tipo=TipoDependencia.FI,
+        dias_desfase=1,
+    )
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.get(f"/api/v1/proyectos/{proyecto.id}/cronograma/")
+
+    assert respuesta.status_code == 200
+    codigos = [fila["codigo"] for fila in respuesta.data]
+    assert codigos == [
+        tarea_fase_1_temprana.codigo,
+        tarea_fase_1_tardia.codigo,
+        tarea_fase_2.codigo,
+    ]
+
+    fila_tardia = respuesta.data[1]
+    assert fila_tardia["dependencias"] == [
+        {
+            "tarea_id": str(tarea_fase_1_temprana.id),
+            "tipo": "FI",
+            "dias_desfase": 1,
+        }
+    ]
+
+
+def test_cronograma_resuelve_en_menos_de_10_consultas_con_40_tareas(
+    roles, cliente, django_assert_max_num_queries
+):
+    from apps.tareas.tests.factories import TareaFactory
+
+    proyecto = ProyectoFactory()
+    fase = FaseProyectoFactory(proyecto=proyecto, orden=1, peso=100)
+    for n in range(40):
+        TareaFactory(proyecto=proyecto, fase=fase, orden=n)
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    with django_assert_max_num_queries(10):
+        respuesta = cliente.get(f"/api/v1/proyectos/{proyecto.id}/cronograma/")
+
+    assert respuesta.status_code == 200
+    assert len(respuesta.data) == 40
