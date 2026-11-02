@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { ContadorAprobacionesService } from '../../features/ejecucion/data/contador-aprobaciones.service';
 import { ITEMS_MENU } from '../menu.config';
 
 @Component({
@@ -12,6 +13,7 @@ import { ITEMS_MENU } from '../menu.config';
 })
 export class Sidebar {
   private readonly auth = inject(AuthService);
+  protected readonly contadorAprobaciones = inject(ContadorAprobacionesService);
 
   readonly colapsado = signal(false);
 
@@ -22,6 +24,14 @@ export class Sidebar {
       return item.permisos!.some((permiso) => this.auth.tienePermiso(permiso));
     }),
   );
+
+  constructor() {
+    this.contadorAprobaciones.actualizar();
+  }
+
+  protected contadorDe(ruta: string): number {
+    return ruta === '/ejecucion/registros' ? this.contadorAprobaciones.cantidad() : 0;
+  }
 
   protected alternarColapso(): void {
     this.colapsado.update((valor) => !valor);

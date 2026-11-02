@@ -231,6 +231,23 @@ class ProyectoViewSet(MixinAlcancePorRol, ViewSetBase):
             ]
         )
 
+    @extend_schema(
+        summary="Plan vs. ejecutado por recurso y por mes",
+        description="docs/plan/fase-08-ejecucion-ingesta.md §8.2.4.",
+        responses={200: {"type": "object"}},
+    )
+    @action(detail=True, methods=["get"])
+    def ejecucion(self, request, pk=None):
+        from apps.ejecucion.services import comparativo_por_mes, comparativo_por_recurso
+
+        proyecto = self.get_object()
+        return Response(
+            {
+                "por_recurso": comparativo_por_recurso(proyecto),
+                "por_mes": comparativo_por_mes(proyecto),
+            }
+        )
+
 
 class FaseProyectoViewSet(ViewSetBase):
     queryset = FaseProyecto.objects.select_related("proyecto")

@@ -8,7 +8,7 @@ class FiltroRecurso(django_filters.FilterSet):
 
     class Meta:
         model = Recurso
-        fields = ["tipo", "perfil"]
+        fields = ["tipo", "perfil", "usuario"]
 
     def filtrar_sin_asignacion(self, queryset, name, value):
         if not value:

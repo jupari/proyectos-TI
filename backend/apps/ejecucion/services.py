@@ -1,0 +1,512 @@
+"""Reglas de negocio de la ingesta de ejecución (docs/plan/fase-08-ejecucion-ingesta.md
+§8.1 y docs/modelo-datos.md §6): la validación de solapamiento es la pieza
+más importante del proyecto porque es lo único que impide contar las mismas
+horas dos veces entre periodicidades distintas."""
+
+import calendar
+import datetime
+from decimal import Decimal
+
+from django.db import transaction
+from django.db.models import Sum
+from django.utils import timezone
+from rest_framework.exceptions import PermissionDenied, ValidationError
+
+from apps.core.calculos import division_segura
+from apps.core.choices import EstadoAprobacion, EstadoTarea, Periodicidad, TipoEvento
+from apps.core.exceptions import ErrorConflicto, ErrorReglaNegocio
+from apps.core.periodos import normalizar_periodo
+from apps.core.roles import codigos_roles_de
+from apps.core.services import registrar_evento
+from apps.recursos.services import valor_hora_vigente
+from apps.tareas.models import Tarea
+
+from .models import RegistroEjecucion
+
+CERO = Decimal("0")
+
+
+def preparar_registro(registro):
+    """Normaliza `periodo_inicio`/`periodo_fin` según `periodicidad` y, si no
+    vino dado explícitamente, resuelve `valor_hora_aplicado` con la tarifa
+    vigente del recurso a `periodo_inicio` (congelada desde ese momento:
+    cambios posteriores de tarifa no alteran registros ya creados). Muta
+    `registro` (sin guardar; `costo` lo recalcula `RegistroEjecucion.save()`)
+    y lo devuelve."""
+    registro.periodo_inicio, registro.periodo_fin = normalizar_periodo(
+        registro.periodicidad, registro.periodo_inicio
+    )
+    if not registro.valor_hora_aplicado:
+        registro.valor_hora_aplicado = valor_hora_vigente(registro.recurso, registro.periodo_inicio)
+    return registro
+
+
+def validar_solapamiento(registro):
+    """Ningún otro registro activo (de cualquier periodicidad, en estado
+    distinto de `RECHAZADO`) del mismo recurso y proyecto puede intersecar
+    `[periodo_inicio, periodo_fin]`: un mensual y un diario del mismo mes
+    contarían las mismas horas dos veces."""
+    conflictivos = RegistroEjecucion.objects.filter(
+        activo=True,
+        recurso=registro.recurso,
+        proyecto=registro.proyecto,
+        periodo_inicio__lte=registro.periodo_fin,
+        periodo_fin__gte=registro.periodo_inicio,
+    ).exclude(estado_aprobacion=EstadoAprobacion.RECHAZADO)
+    if registro.pk:
+        conflictivos = conflictivos.exclude(pk=registro.pk)
+    conflictivos = list(conflictivos)
+
+    for conflicto in conflictivos:
+        if (
+            conflicto.tarea_id == registro.tarea_id
+            and conflicto.periodicidad == registro.periodicidad
+            and conflicto.periodo_inicio == registro.periodo_inicio
+        ):
+            # Coincide exactamente en las columnas de `registroejecucion_unico`. DRF no genera
+            # un validador automático para ese `UniqueConstraint` porque `tarea` es nullable
+            # (NULL no es "igual" a NULL en SQL, así que DRF no puede garantizar la unicidad por
+            # sí solo); por eso el duplicado exacto se trata aquí, con 400 en vez del 422 de un
+            # solapamiento genuino entre periodos distintos.
+            raise ValidationError(
+                {
+                    "periodo_inicio": [
+                        "Ya existe un registro idéntico (mismo recurso, proyecto, tarea, "
+                        "periodicidad y periodo)."
+                    ]
+                }
+            )
+
+    if conflictivos:
+        raise ErrorReglaNegocio(
+            {
+                "periodo_inicio": [
+                    "El periodo se solapa con registros existentes del mismo recurso y "
+                    "proyecto; cuentan las mismas horas dos veces."
+                ],
+                "conflictos": [
+                    {
+                        "id": str(c.id),
+                        "periodicidad": c.periodicidad,
+                        "periodo_inicio": c.periodo_inicio.isoformat(),
+                        "periodo_fin": c.periodo_fin.isoformat(),
+                        "horas": str(c.horas),
+                    }
+                    for c in conflictivos
+                ],
+            }
+        )
+
+
+def validar_topes(registro):
+    """Advertencias (nunca bloquean) por exceder el tope de horas de la
+    periodicidad del registro."""
+    advertencias = []
+    if registro.periodicidad == Periodicidad.DIARIA and registro.horas > 24:
+        advertencias.append(f"{registro.horas} horas supera el tope diario de 24 horas.")
+    elif registro.periodicidad == Periodicidad.SEMANAL and registro.horas > 60:
+        advertencias.append(f"{registro.horas} horas supera el tope semanal de 60 horas.")
+    elif registro.periodicidad == Periodicidad.MENSUAL:
+        tope = registro.recurso.capacidad_horas_mes * Decimal("1.5")
+        if registro.horas > tope:
+            advertencias.append(f"{registro.horas} horas supera el tope mensual de {tope} horas.")
+    return advertencias
+
+
+def validar_rango_proyecto(registro):
+    """El periodo debe intersecar el rango del proyecto, tomando el más
+    amplio entre fechas plan y reales (si el proyecto arrancó o cerró fuera
+    de lo planeado, ese rango real también es válido para registrar)."""
+    proyecto = registro.proyecto
+    inicio = min(
+        proyecto.fecha_inicio_plan, proyecto.fecha_inicio_real or proyecto.fecha_inicio_plan
+    )
+    fin = max(proyecto.fecha_fin_plan, proyecto.fecha_fin_real or proyecto.fecha_fin_plan)
+    if registro.periodo_fin < inicio or registro.periodo_inicio > fin:
+        raise ValidationError(
+            {"periodo_inicio": ["El periodo debe intersecar las fechas del proyecto."]}
+        )
+
+
+def validar_tarea(registro):
+    if registro.tarea is None:
+        return
+    if registro.tarea.proyecto_id != registro.proyecto_id:
+        raise ValidationError({"tarea": ["La tarea debe pertenecer al proyecto del registro."]})
+    if registro.tarea.estado == EstadoTarea.CANCELADA:
+        raise ValidationError(
+            {"tarea": ["No se puede registrar ejecución sobre una tarea cancelada."]}
+        )
+
+
+def _suma_horas_aprobadas_tarea(tarea):
+    return (
+        tarea.registros_ejecucion.filter(
+            activo=True, estado_aprobacion=EstadoAprobacion.APROBADO
+        ).aggregate(total=Sum("horas"))["total"]
+        or CERO
+    )
+
+
+def recalcular_tarea(registro):
+    """`Tarea.horas_ejecutadas` = suma de sus registros `APROBADO`. Se
+    invoca después de aprobar, rechazar o reabrir, dentro de la misma
+    transacción."""
+    if registro.tarea_id is None:
+        return
+    total = _suma_horas_aprobadas_tarea(registro.tarea)
+    Tarea.objects.filter(pk=registro.tarea_id).update(horas_ejecutadas=total)
+
+
+def _validar_no_autoaprobacion(registro, usuario):
+    if registro.registrado_por_id == usuario.id and "ADMIN" not in codigos_roles_de(usuario):
+        raise PermissionDenied("No puede aprobar ni rechazar un registro que usted mismo registró.")
+
+
+@transaction.atomic
+def enviar(registro, usuario):
+    if registro.estado_aprobacion not in (EstadoAprobacion.BORRADOR, EstadoAprobacion.RECHAZADO):
+        raise ErrorConflicto("Solo se puede enviar un registro en borrador o rechazado.")
+
+    estado_anterior = registro.estado_aprobacion
+    registro.estado_aprobacion = EstadoAprobacion.ENVIADO
+    registro.motivo_rechazo = ""
+    registro.save(update_fields=["estado_aprobacion", "motivo_rechazo", "actualizado_en"])
+    registrar_evento(
+        tipo_evento=TipoEvento.CAMBIO_ESTADO,
+        entidad="RegistroEjecucion",
+        entidad_id=registro.id,
+        descripcion=f"Registro de {registro.recurso.nombre} enviado a aprobación.",
+        proyecto=registro.proyecto,
+        antes={"estado_aprobacion": estado_anterior},
+        despues={"estado_aprobacion": EstadoAprobacion.ENVIADO},
+        usuario=usuario,
+    )
+    return registro
+
+
+@transaction.atomic
+def aprobar(registro, usuario):
+    _validar_no_autoaprobacion(registro, usuario)
+    if registro.estado_aprobacion != EstadoAprobacion.ENVIADO:
+        raise ErrorConflicto("Solo se puede aprobar un registro enviado.")
+
+    registro.estado_aprobacion = EstadoAprobacion.APROBADO
+    registro.aprobado_por = usuario
+    registro.aprobado_en = timezone.now()
+    registro.save(
+        update_fields=["estado_aprobacion", "aprobado_por", "aprobado_en", "actualizado_en"]
+    )
+    recalcular_tarea(registro)
+    registrar_evento(
+        tipo_evento=TipoEvento.APROBACION,
+        entidad="RegistroEjecucion",
+        entidad_id=registro.id,
+        descripcion=f"Registro de {registro.recurso.nombre} aprobado.",
+        proyecto=registro.proyecto,
+        antes={"estado_aprobacion": EstadoAprobacion.ENVIADO},
+        despues={"estado_aprobacion": EstadoAprobacion.APROBADO},
+        usuario=usuario,
+    )
+    return registro
+
+
+@transaction.atomic
+def rechazar(registro, motivo, usuario):
+    _validar_no_autoaprobacion(registro, usuario)
+    if not motivo:
+        raise ValidationError({"motivo_rechazo": ["Debe indicar el motivo del rechazo."]})
+    if registro.estado_aprobacion != EstadoAprobacion.ENVIADO:
+        raise ErrorConflicto("Solo se puede rechazar un registro enviado.")
+
+    registro.estado_aprobacion = EstadoAprobacion.RECHAZADO
+    registro.motivo_rechazo = motivo
+    registro.save(
+        update_fields=["estado_aprobacion", "motivo_rechazo", "actualizado_en"]
+    )
+    registrar_evento(
+        tipo_evento=TipoEvento.RECHAZO,
+        entidad="RegistroEjecucion",
+        entidad_id=registro.id,
+        descripcion=f"Registro de {registro.recurso.nombre} rechazado: {motivo}",
+        proyecto=registro.proyecto,
+        antes={"estado_aprobacion": EstadoAprobacion.ENVIADO},
+        despues={"estado_aprobacion": EstadoAprobacion.RECHAZADO, "motivo_rechazo": motivo},
+        usuario=usuario,
+    )
+    return registro
+
+
+@transaction.atomic
+def reabrir(registro, usuario):
+    if registro.estado_aprobacion != EstadoAprobacion.APROBADO:
+        raise ErrorConflicto("Solo se puede reabrir un registro aprobado.")
+
+    registro.estado_aprobacion = EstadoAprobacion.ENVIADO
+    registro.aprobado_por = None
+    registro.aprobado_en = None
+    registro.save(
+        update_fields=["estado_aprobacion", "aprobado_por", "aprobado_en", "actualizado_en"]
+    )
+    recalcular_tarea(registro)
+    registrar_evento(
+        tipo_evento=TipoEvento.CAMBIO_ESTADO,
+        entidad="RegistroEjecucion",
+        entidad_id=registro.id,
+        descripcion=f"Registro de {registro.recurso.nombre} reabierto para corrección.",
+        proyecto=registro.proyecto,
+        antes={"estado_aprobacion": EstadoAprobacion.APROBADO},
+        despues={"estado_aprobacion": EstadoAprobacion.ENVIADO},
+        usuario=usuario,
+    )
+    return registro
+
+
+def carga_lote(lista_datos, contexto):
+    """Procesa cada elemento de `lista_datos` de forma independiente contra
+    `RegistroEjecucionSerializer`, en su propio `transaction.atomic()`
+    (savepoint): un error en uno no afecta a los demás. Devuelve
+    `(creados, errores)` con `errores` como `[{indice, detalle}]`."""
+    from .serializers import RegistroEjecucionSerializer
+
+    creados = []
+    errores = []
+    for indice, datos in enumerate(lista_datos):
+        try:
+            with transaction.atomic():
+                serializer = RegistroEjecucionSerializer(data=datos, context=contexto)
+                serializer.is_valid(raise_exception=True)
+                creados.append(serializer.save())
+        except Exception as exc:  # noqa: BLE001 - se reporta tal cual, no se interrumpe el lote
+            errores.append({"indice": indice, "detalle": getattr(exc, "detail", str(exc))})
+    return creados, errores
+
+
+# --- Gasto ejecutado (mismo ciclo de aprobación, sin autor ni autoaprobación
+# porque `GastoEjecutado` no tiene un campo `registrado_por`) -----------------
+
+
+def validar_rubro(gasto):
+    if gasto.rubro.proyecto_id != gasto.proyecto_id:
+        raise ValidationError({"rubro": ["El rubro debe pertenecer al proyecto del gasto."]})
+
+
+def _suma_gastos_aprobados_rubro(rubro):
+    return (
+        rubro.gastos_ejecutados.filter(
+            activo=True, estado_aprobacion=EstadoAprobacion.APROBADO
+        ).aggregate(total=Sum("monto"))["total"]
+        or CERO
+    )
+
+
+def recalcular_rubro(gasto):
+    from apps.proyectos.models import RubroPresupuesto
+
+    total = _suma_gastos_aprobados_rubro(gasto.rubro)
+    RubroPresupuesto.objects.filter(pk=gasto.rubro_id).update(monto_ejecutado=total)
+
+
+@transaction.atomic
+def enviar_gasto(gasto, usuario):
+    if gasto.estado_aprobacion not in (EstadoAprobacion.BORRADOR, EstadoAprobacion.RECHAZADO):
+        raise ErrorConflicto("Solo se puede enviar un gasto en borrador o rechazado.")
+    estado_anterior = gasto.estado_aprobacion
+    gasto.estado_aprobacion = EstadoAprobacion.ENVIADO
+    gasto.save(update_fields=["estado_aprobacion", "actualizado_en"])
+    registrar_evento(
+        tipo_evento=TipoEvento.CAMBIO_ESTADO,
+        entidad="GastoEjecutado",
+        entidad_id=gasto.id,
+        descripcion=f"Gasto de {gasto.rubro.descripcion} enviado a aprobación.",
+        proyecto=gasto.proyecto,
+        antes={"estado_aprobacion": estado_anterior},
+        despues={"estado_aprobacion": EstadoAprobacion.ENVIADO},
+        usuario=usuario,
+    )
+    return gasto
+
+
+@transaction.atomic
+def aprobar_gasto(gasto, usuario):
+    if gasto.estado_aprobacion != EstadoAprobacion.ENVIADO:
+        raise ErrorConflicto("Solo se puede aprobar un gasto enviado.")
+    gasto.estado_aprobacion = EstadoAprobacion.APROBADO
+    gasto.aprobado_por = usuario
+    gasto.aprobado_en = timezone.now()
+    gasto.save(update_fields=["estado_aprobacion", "aprobado_por", "aprobado_en", "actualizado_en"])
+    recalcular_rubro(gasto)
+    registrar_evento(
+        tipo_evento=TipoEvento.APROBACION,
+        entidad="GastoEjecutado",
+        entidad_id=gasto.id,
+        descripcion=f"Gasto de {gasto.rubro.descripcion} aprobado.",
+        proyecto=gasto.proyecto,
+        antes={"estado_aprobacion": EstadoAprobacion.ENVIADO},
+        despues={"estado_aprobacion": EstadoAprobacion.APROBADO},
+        usuario=usuario,
+    )
+    return gasto
+
+
+@transaction.atomic
+def rechazar_gasto(gasto, motivo, usuario):
+    if not motivo:
+        raise ValidationError({"motivo_rechazo": ["Debe indicar el motivo del rechazo."]})
+    if gasto.estado_aprobacion != EstadoAprobacion.ENVIADO:
+        raise ErrorConflicto("Solo se puede rechazar un gasto enviado.")
+    gasto.estado_aprobacion = EstadoAprobacion.RECHAZADO
+    gasto.save(update_fields=["estado_aprobacion", "actualizado_en"])
+    registrar_evento(
+        tipo_evento=TipoEvento.RECHAZO,
+        entidad="GastoEjecutado",
+        entidad_id=gasto.id,
+        descripcion=f"Gasto de {gasto.rubro.descripcion} rechazado: {motivo}",
+        proyecto=gasto.proyecto,
+        antes={"estado_aprobacion": EstadoAprobacion.ENVIADO},
+        despues={"estado_aprobacion": EstadoAprobacion.RECHAZADO, "motivo_rechazo": motivo},
+        usuario=usuario,
+    )
+    return gasto
+
+
+@transaction.atomic
+def reabrir_gasto(gasto, usuario):
+    if gasto.estado_aprobacion != EstadoAprobacion.APROBADO:
+        raise ErrorConflicto("Solo se puede reabrir un gasto aprobado.")
+    gasto.estado_aprobacion = EstadoAprobacion.ENVIADO
+    gasto.aprobado_por = None
+    gasto.aprobado_en = None
+    gasto.save(update_fields=["estado_aprobacion", "aprobado_por", "aprobado_en", "actualizado_en"])
+    recalcular_rubro(gasto)
+    registrar_evento(
+        tipo_evento=TipoEvento.CAMBIO_ESTADO,
+        entidad="GastoEjecutado",
+        entidad_id=gasto.id,
+        descripcion=f"Gasto de {gasto.rubro.descripcion} reabierto para corrección.",
+        proyecto=gasto.proyecto,
+        antes={"estado_aprobacion": EstadoAprobacion.APROBADO},
+        despues={"estado_aprobacion": EstadoAprobacion.ENVIADO},
+        usuario=usuario,
+    )
+    return gasto
+
+
+# --- Comparativo plan vs. ejecutado del proyecto (fase 08 §8.2.4) ------------
+
+
+def _meses_entre(desde, hasta):
+    meses = []
+    anio, mes = desde.year, desde.month
+    while (anio, mes) <= (hasta.year, hasta.month):
+        meses.append((anio, mes))
+        mes += 1
+        if mes > 12:
+            mes = 1
+            anio += 1
+    return meses
+
+
+def comparativo_por_recurso(proyecto):
+    """`[{recurso, recurso_nombre, horas_plan, horas_ejec, costo_plan,
+    costo_ejec, pct_horas, pct_dinero}]` por cada recurso con asignación o
+    ejecución aprobada en el proyecto."""
+    from apps.recursos.models import Recurso
+
+    planeado = {
+        fila["recurso"]: fila
+        for fila in proyecto.asignaciones.filter(activo=True)
+        .values("recurso")
+        .annotate(horas=Sum("horas_planeadas"), costo=Sum("costo_planeado"))
+    }
+    ejecutado = {
+        fila["recurso"]: fila
+        for fila in proyecto.registros_ejecucion.filter(
+            activo=True, estado_aprobacion=EstadoAprobacion.APROBADO
+        )
+        .values("recurso")
+        .annotate(horas=Sum("horas"), costo=Sum("costo"))
+    }
+    ids_recursos = set(planeado) | set(ejecutado)
+    nombres = dict(Recurso.objects.filter(pk__in=ids_recursos).values_list("id", "nombre"))
+
+    resultado = []
+    for recurso_id in ids_recursos:
+        horas_plan = planeado.get(recurso_id, {}).get("horas") or CERO
+        costo_plan = planeado.get(recurso_id, {}).get("costo") or CERO
+        horas_ejec = ejecutado.get(recurso_id, {}).get("horas") or CERO
+        costo_ejec = ejecutado.get(recurso_id, {}).get("costo") or CERO
+        pct_horas = division_segura(horas_ejec, horas_plan)
+        pct_dinero = division_segura(costo_ejec, costo_plan)
+        resultado.append(
+            {
+                "recurso": str(recurso_id),
+                "recurso_nombre": nombres.get(recurso_id, ""),
+                "horas_plan": horas_plan,
+                "horas_ejec": horas_ejec,
+                "costo_plan": costo_plan,
+                "costo_ejec": costo_ejec,
+                "pct_horas": float(pct_horas) * 100 if pct_horas is not None else None,
+                "pct_dinero": float(pct_dinero) * 100 if pct_dinero is not None else None,
+            }
+        )
+    return sorted(resultado, key=lambda fila: fila["recurso_nombre"])
+
+
+def comparativo_por_mes(proyecto):
+    """Igual que `comparativo_por_recurso`, agregado por mes calendario.
+    Lo planeado se prorratea por intersección de días calendario con cada
+    asignación (misma convención que `apps.recursos.services.carga_recurso`);
+    lo ejecutado se asigna completo al mes de `periodo_inicio` del registro
+    (un `SEMANAL` que cruza fin de mes no se fracciona: es una simplificación
+    documentada, no una fórmula de §10)."""
+    asignaciones = list(proyecto.asignaciones.filter(activo=True))
+    registros = list(
+        proyecto.registros_ejecucion.filter(
+            activo=True, estado_aprobacion=EstadoAprobacion.APROBADO
+        )
+    )
+    fechas = [a.fecha_desde for a in asignaciones] + [a.fecha_hasta for a in asignaciones]
+    fechas += [r.periodo_inicio for r in registros] + [r.periodo_fin for r in registros]
+    if not fechas:
+        return []
+
+    resultado = []
+    for anio, mes in _meses_entre(min(fechas), max(fechas)):
+        primer_dia = datetime.date(anio, mes, 1)
+        ultimo_dia = datetime.date(anio, mes, calendar.monthrange(anio, mes)[1])
+
+        horas_plan = CERO
+        costo_plan = CERO
+        for asignacion in asignaciones:
+            total_dias = (asignacion.fecha_hasta - asignacion.fecha_desde).days + 1
+            inicio_interseccion = max(asignacion.fecha_desde, primer_dia)
+            fin_interseccion = min(asignacion.fecha_hasta, ultimo_dia)
+            if inicio_interseccion > fin_interseccion:
+                continue
+            dias_interseccion = (fin_interseccion - inicio_interseccion).days + 1
+            horas_plan += asignacion.horas_planeadas * dias_interseccion / total_dias
+            costo_plan += asignacion.costo_planeado * dias_interseccion / total_dias
+
+        horas_ejec = CERO
+        costo_ejec = CERO
+        for registro in registros:
+            if primer_dia <= registro.periodo_inicio <= ultimo_dia:
+                horas_ejec += registro.horas
+                costo_ejec += registro.costo
+
+        pct_horas = division_segura(horas_ejec, horas_plan)
+        pct_dinero = division_segura(costo_ejec, costo_plan)
+        resultado.append(
+            {
+                "anio": anio,
+                "mes": mes,
+                "horas_plan": horas_plan,
+                "horas_ejec": horas_ejec,
+                "costo_plan": costo_plan,
+                "costo_ejec": costo_ejec,
+                "pct_horas": float(pct_horas) * 100 if pct_horas is not None else None,
+                "pct_dinero": float(pct_dinero) * 100 if pct_dinero is not None else None,
+            }
+        )
+    return resultado

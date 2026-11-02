@@ -32,6 +32,7 @@ export interface FiltrosRecurso {
   search?: string;
   tipo?: string;
   perfil?: string;
+  usuario?: string;
   sin_asignacion?: boolean;
   page?: number;
   page_size?: number;

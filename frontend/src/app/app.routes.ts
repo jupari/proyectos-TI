@@ -41,14 +41,8 @@ export const routes: Routes = [
         loadChildren: () => import('./features/tareas/tareas.routes').then((m) => m.tareasRoutes),
       },
       {
-        path: 'ejecucion/registros',
-        component: EnConstruccion,
-        canActivate: [permisoGuard('ejecucion.registrar')],
-      },
-      {
-        path: 'ejecucion/aprobaciones',
-        component: EnConstruccion,
-        canActivate: [permisoGuard('ejecucion.aprobar')],
+        path: 'ejecucion',
+        loadChildren: () => import('./features/ejecucion/ejecucion.routes').then((m) => m.ejecucionRoutes),
       },
       { path: 'seguimientos', component: EnConstruccion },
       {

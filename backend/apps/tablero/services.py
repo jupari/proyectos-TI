@@ -34,7 +34,9 @@ def _metricas(proyecto, fecha_corte):
     costo_ejecutado = _suma(
         proyecto.registros_ejecucion, "costo", estado_aprobacion=EstadoAprobacion.APROBADO
     ) + _suma(proyecto.gastos_ejecutados, "monto", estado_aprobacion=EstadoAprobacion.APROBADO)
-    horas_pendientes_aprobacion = _suma(proyecto.registros_ejecucion, "horas") - horas_ejecutadas
+    horas_pendientes_aprobacion = _suma(
+        proyecto.registros_ejecucion, "horas", estado_aprobacion=EstadoAprobacion.ENVIADO
+    )
 
     pct_horas = division_segura(horas_ejecutadas, horas_planeadas)
     pct_horas = float(pct_horas) * 100 if pct_horas is not None else None

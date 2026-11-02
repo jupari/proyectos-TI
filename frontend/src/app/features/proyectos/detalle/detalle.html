@@ -362,7 +362,140 @@
       </app-card>
     }
 
-    @if (pestanaActiva() === 'ejecucion' || pestanaActiva() === 'seguimientos' || pestanaActiva() === 'expediente') {
+    @if (pestanaActiva() === 'ejecucion') {
+      @if (proyecto()!.resumen_ejecucion.horas_pendientes_aprobacion > 0) {
+        <div class="rounded-panel bg-alerta/10 px-3 py-2 text-sm text-alerta">
+          Hay {{ proyecto()!.resumen_ejecucion.horas_pendientes_aprobacion | horas }} pendientes de
+          aprobación: los KPIs de abajo todavía no las incluyen.
+        </div>
+      }
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <app-card titulo="Horas plan vs. ejecutadas">
+          <p class="text-lg font-semibold text-neutro-800">
+            {{ proyecto()!.resumen_ejecucion.horas_ejecutadas | horas }} /
+            {{ proyecto()!.resumen_ejecucion.horas_planeadas | horas }}
+          </p>
+        </app-card>
+        <app-card titulo="Dinero plan vs. ejecutado">
+          <p class="text-lg font-semibold text-neutro-800">
+            {{ proyecto()!.resumen_ejecucion.costo_ejecutado | moneda }} /
+            {{ proyecto()!.resumen_ejecucion.costo_planeado | moneda }}
+          </p>
+        </app-card>
+        <app-card titulo="% avance presupuestal">
+          <p class="text-lg font-semibold text-neutro-800">
+            {{ proyecto()!.resumen_ejecucion.pct_dinero | porcentaje }}
+          </p>
+        </app-card>
+        <app-card titulo="Semáforo">
+          <app-semaforo [valor]="esValorSemaforo(proyecto()!.resumen_ejecucion.semaforo)" />
+        </app-card>
+        <app-card titulo="Desviación presupuestal">
+          <p class="text-lg font-semibold text-neutro-800">
+            {{ proyecto()!.resumen_ejecucion.desviacion_presupuestal | moneda }}
+          </p>
+        </app-card>
+      </div>
+
+      <app-card titulo="Plan vs. ejecutado por recurso">
+        @if (cargandoEjecucion()) {
+          <p class="text-sm text-neutro-500">Cargando…</p>
+        } @else {
+          <table class="w-full text-left text-sm">
+            <thead class="text-neutro-500">
+              <tr>
+                <th class="py-1">Recurso</th><th class="py-1">Horas plan</th><th class="py-1">Horas ejec.</th>
+                <th class="py-1">Diferencia</th><th class="py-1">Costo plan</th><th class="py-1">Costo ejec.</th>
+                <th class="py-1">% consumo</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutro-100">
+              @for (fila of comparativoPorRecurso(); track fila.recurso) {
+                <tr>
+                  <td class="py-2">{{ fila.recurso_nombre }}</td>
+                  <td class="py-2">{{ fila.horas_plan | horas }}</td>
+                  <td class="py-2">{{ fila.horas_ejec | horas }}</td>
+                  <td class="py-2">{{ fila.horas_ejec - fila.horas_plan | horas }}</td>
+                  <td class="py-2">{{ fila.costo_plan | moneda }}</td>
+                  <td class="py-2">{{ fila.costo_ejec | moneda }}</td>
+                  <td class="py-2">
+                    <span class="rounded-full px-2 py-0.5 text-xs font-medium" [class]="claseConsumo(fila.pct_horas)">
+                      {{ fila.pct_horas !== null ? (fila.pct_horas | porcentaje) : '—' }}
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="7" class="py-4 text-neutro-400">Sin asignaciones ni ejecución todavía.</td></tr>
+              }
+            </tbody>
+          </table>
+        }
+      </app-card>
+
+      <app-card titulo="Plan vs. ejecutado por mes">
+        @if (!cargandoEjecucion()) {
+          <table class="w-full text-left text-sm">
+            <thead class="text-neutro-500">
+              <tr>
+                <th class="py-1">Mes</th><th class="py-1">Horas plan</th><th class="py-1">Horas ejec.</th>
+                <th class="py-1">Costo plan</th><th class="py-1">Costo ejec.</th><th class="py-1">% consumo</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutro-100">
+              @for (fila of comparativoPorMes(); track etiquetaMes(fila)) {
+                <tr>
+                  <td class="py-2">{{ etiquetaMes(fila) }}</td>
+                  <td class="py-2">{{ fila.horas_plan | horas }}</td>
+                  <td class="py-2">{{ fila.horas_ejec | horas }}</td>
+                  <td class="py-2">{{ fila.costo_plan | moneda }}</td>
+                  <td class="py-2">{{ fila.costo_ejec | moneda }}</td>
+                  <td class="py-2">
+                    <span class="rounded-full px-2 py-0.5 text-xs font-medium" [class]="claseConsumo(fila.pct_dinero)">
+                      {{ fila.pct_dinero !== null ? (fila.pct_dinero | porcentaje) : '—' }}
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="py-4 text-neutro-400">Sin asignaciones ni ejecución todavía.</td></tr>
+              }
+            </tbody>
+          </table>
+        }
+      </app-card>
+
+      <app-card titulo="Gastos ejecutados">
+        <div class="mb-3 flex justify-end">
+          @if (puedeCrearGasto()) {
+            <app-boton tamano="sm" (clic)="abrirNuevoGasto()">+ Nuevo gasto</app-boton>
+          }
+        </div>
+        <table class="w-full text-left text-sm">
+          <thead class="text-neutro-500">
+            <tr>
+              <th class="py-1">Rubro</th><th class="py-1">Fecha</th><th class="py-1">Monto</th>
+              <th class="py-1">Proveedor</th><th class="py-1">Documento</th><th class="py-1">Estado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutro-100">
+            @for (gasto of gastos(); track gasto.id) {
+              <tr>
+                <td class="py-2">{{ gasto.rubro_descripcion }}</td>
+                <td class="py-2">{{ gasto.fecha | fechaCorta }}</td>
+                <td class="py-2">{{ gasto.monto | moneda }}</td>
+                <td class="py-2">{{ gasto.proveedor }}</td>
+                <td class="py-2">{{ gasto.numero_documento }}</td>
+                <td class="py-2"><app-badge [valor]="gasto.estado_aprobacion" /></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="py-4 text-neutro-400">Sin gastos registrados.</td></tr>
+            }
+          </tbody>
+        </table>
+      </app-card>
+    }
+
+    @if (pestanaActiva() === 'seguimientos' || pestanaActiva() === 'expediente') {
       <app-en-construccion />
     }
   </div>
@@ -613,6 +746,47 @@
     <div pie class="flex gap-2">
       <app-boton variante="secundario" (clic)="cerrarDrawerTarea()">Cerrar</app-boton>
       <app-boton [cargando]="guardandoTarea()" (clic)="guardarTarea()">Guardar</app-boton>
+    </div>
+  </app-drawer>
+
+  <app-drawer [abierto]="drawerGastoAbierto()" titulo="Nuevo gasto" (cerrar)="cerrarDrawerGasto()">
+    <div class="flex flex-col gap-4">
+      <app-select
+        etiqueta="Rubro *"
+        [opciones]="opcionesRubros()"
+        [ngModel]="gastoRubro()"
+        (ngModelChange)="gastoRubro.set($event)"
+        name="gastoRubro"
+      />
+      <app-numero
+        etiqueta="Monto *"
+        modo="moneda"
+        [ngModel]="gastoMonto()"
+        (ngModelChange)="gastoMonto.set($event)"
+        name="gastoMonto"
+      />
+      <app-datepicker
+        etiqueta="Fecha *"
+        [ngModel]="gastoFecha()"
+        (ngModelChange)="gastoFecha.set($event)"
+        name="gastoFecha"
+      />
+      <app-input
+        etiqueta="Proveedor"
+        [ngModel]="gastoProveedor()"
+        (ngModelChange)="gastoProveedor.set($event)"
+        name="gastoProveedor"
+      />
+      <app-input
+        etiqueta="Número de documento"
+        [ngModel]="gastoNumeroDocumento()"
+        (ngModelChange)="gastoNumeroDocumento.set($event)"
+        name="gastoNumeroDocumento"
+      />
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarDrawerGasto()">Cancelar</app-boton>
+      <app-boton [cargando]="guardandoGasto()" (clic)="guardarGasto()">Guardar</app-boton>
     </div>
   </app-drawer>
 }

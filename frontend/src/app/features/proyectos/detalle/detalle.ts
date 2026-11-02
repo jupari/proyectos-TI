@@ -12,6 +12,7 @@ import {
   ETIQUETAS_TIPO_DEPENDENCIA,
   ETIQUETAS_TIPO_TAREA,
   ErrorApi,
+  GastoEjecutado,
   TRANSICIONES_PROYECTO,
 } from '../../../core/models';
 import { ToastService } from '../../../core/ui/toast.service';
@@ -30,12 +31,13 @@ import { Semaforo, ValorSemaforo } from '../../../shared/ui/semaforo/semaforo';
 import { PestanaTab, Tabs } from '../../../shared/ui/tabs/tabs';
 import { Textarea } from '../../../shared/ui/textarea/textarea';
 import { EnConstruccion } from '../../comun/en-construccion';
+import { GastoEjecutadoEscritura, GastosService } from '../../ejecucion/data/gastos.service';
 import { AsignacionEscritura, AsignacionesService } from '../../recursos/data/asignaciones.service';
 import { RecursosService } from '../../recursos/data/recursos.service';
 import { DependenciaTareaEscritura, DependenciasService } from '../../tareas/data/dependencias.service';
 import { FilaCronograma, NodoArbolTarea, TareaEscritura } from '../../tareas/data/tareas.model';
 import { TareasService } from '../../tareas/data/tareas.service';
-import { ProyectoDetalle } from '../data/proyectos.model';
+import { FilaComparativoEjecucion, ProyectoDetalle } from '../data/proyectos.model';
 import { ProyectosService } from '../data/proyectos.service';
 import { columnaDeFecha, construirPeriodosMes, construirPeriodosSemana, PeriodoCronograma, rangoFechasDe } from './cronograma.utils';
 import { NodoArbolTareaFila } from './nodo-arbol-tarea';
@@ -88,6 +90,7 @@ export class DetalleProyecto {
   private readonly asignacionesService = inject(AsignacionesService);
   private readonly tareasService = inject(TareasService);
   private readonly dependenciasService = inject(DependenciasService);
+  private readonly gastosService = inject(GastosService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly ruta = inject(ActivatedRoute);
@@ -637,6 +640,101 @@ export class DetalleProyecto {
       .join(', ')}`;
   }
 
+  // --- pestaña Ejecución (fase 08) -----------------------------------------
+
+  protected readonly cargandoEjecucion = signal(false);
+  protected readonly comparativoPorRecurso = signal<FilaComparativoEjecucion[]>([]);
+  protected readonly comparativoPorMes = signal<FilaComparativoEjecucion[]>([]);
+  protected readonly gastos = signal<GastoEjecutado[]>([]);
+
+  protected readonly opcionesRubros = computed<OpcionSelect[]>(() =>
+    (this.proyecto()?.rubros ?? []).map((r) => ({ valor: r.id, etiqueta: r.descripcion })),
+  );
+
+  protected readonly puedeCrearGasto = computed(() => this.auth.tienePermiso('ejecucion.registrar'));
+
+  protected readonly drawerGastoAbierto = signal(false);
+  protected readonly gastoRubro = signal<string | null>(null);
+  protected readonly gastoMonto = signal<number | null>(null);
+  protected readonly gastoProveedor = signal('');
+  protected readonly gastoNumeroDocumento = signal('');
+  protected readonly gastoFecha = signal<string | null>(null);
+  protected readonly guardandoGasto = signal(false);
+
+  private cargarEjecucion(): void {
+    this.cargandoEjecucion.set(true);
+    this.proyectosService.ejecucion(this.id).subscribe({
+      next: (comparativo) => {
+        this.comparativoPorRecurso.set(comparativo.por_recurso);
+        this.comparativoPorMes.set(comparativo.por_mes);
+        this.cargandoEjecucion.set(false);
+      },
+      error: () => {
+        this.toast.mostrar({ tipo: 'error', mensaje: 'No se pudo cargar la ejecución.' });
+        this.cargandoEjecucion.set(false);
+      },
+    });
+    this.gastosService.listar({ proyecto: this.id }).subscribe((r) => this.gastos.set(r.results));
+  }
+
+  protected claseConsumo(pct: number | null): string {
+    if (pct === null) return 'bg-neutro-100 text-neutro-500';
+    if (pct > 100) return 'bg-peligro/10 text-peligro';
+    if (pct >= 90) return 'bg-alerta/10 text-alerta';
+    return 'bg-exito/10 text-exito';
+  }
+
+  protected etiquetaMes(fila: FilaComparativoEjecucion): string {
+    return `${fila.anio}-${String(fila.mes).padStart(2, '0')}`;
+  }
+
+  protected abrirNuevoGasto(): void {
+    this.gastoRubro.set(null);
+    this.gastoMonto.set(null);
+    this.gastoProveedor.set('');
+    this.gastoNumeroDocumento.set('');
+    this.gastoFecha.set(null);
+    this.drawerGastoAbierto.set(true);
+  }
+
+  protected cerrarDrawerGasto(): void {
+    this.drawerGastoAbierto.set(false);
+  }
+
+  protected guardarGasto(): void {
+    if (!this.gastoRubro() || !this.gastoMonto() || !this.gastoFecha()) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Complete los campos obligatorios.' });
+      return;
+    }
+
+    const cuerpo: GastoEjecutadoEscritura = {
+      proyecto: this.id,
+      rubro: this.gastoRubro()!,
+      fecha: this.gastoFecha()!,
+      monto: this.gastoMonto()!,
+      proveedor: this.gastoProveedor(),
+      numero_documento: this.gastoNumeroDocumento(),
+      descripcion: '',
+    };
+
+    this.guardandoGasto.set(true);
+    this.gastosService.crearGasto(cuerpo).subscribe({
+      next: () => {
+        this.guardandoGasto.set(false);
+        this.drawerGastoAbierto.set(false);
+        this.cargarEjecucion();
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Gasto registrado.' });
+      },
+      error: (error: unknown) => {
+        this.guardandoGasto.set(false);
+        this.toast.mostrar({
+          tipo: 'error',
+          mensaje: this.mensajeDeError(error, 'No se pudo registrar el gasto.'),
+        });
+      },
+    });
+  }
+
   constructor() {
     this.cargar();
     this.cargarAsignaciones();
@@ -663,6 +761,9 @@ export class DetalleProyecto {
     }
     if (id === 'cronograma' && this.filasCronograma().length === 0) {
       this.cargarCronograma();
+    }
+    if (id === 'ejecucion' && this.comparativoPorRecurso().length === 0 && this.gastos().length === 0) {
+      this.cargarEjecucion();
     }
   }
 

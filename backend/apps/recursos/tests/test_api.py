@@ -61,6 +61,20 @@ def test_filtro_sin_asignacion(roles, cliente):
     assert str(con_asignacion.id) not in ids
 
 
+def test_filtro_por_usuario_encuentra_el_propio_recurso(roles, cliente):
+    """docs/plan/fase-08-ejecucion-ingesta.md: la pantalla "Mi registro de
+    horas" necesita resolver el `Recurso` del usuario autenticado."""
+    titular = crear_usuario_con_rol("RECURSO")
+    mi_recurso = RecursoFactory(usuario=titular)
+    RecursoFactory()  # de otro usuario, no debe aparecer
+    cliente.force_authenticate(user=titular)
+
+    respuesta = cliente.get(f"/api/v1/recursos/?usuario={titular.id}")
+
+    ids = {r["id"] for r in respuesta.data["results"]}
+    assert ids == {str(mi_recurso.id)}
+
+
 # --- tarifas -------------------------------------------------------------
 
 

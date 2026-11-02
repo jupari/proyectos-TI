@@ -47,6 +47,26 @@ export interface ProyectoEscritura {
   observaciones: string;
 }
 
+/** Fila de `comparativo_por_recurso`/`comparativo_por_mes`
+ * (docs/plan/fase-08-ejecucion-ingesta.md §8.2.4). */
+export interface FilaComparativoEjecucion {
+  recurso?: string;
+  recurso_nombre?: string;
+  anio?: number;
+  mes?: number;
+  horas_plan: number;
+  horas_ejec: number;
+  costo_plan: number;
+  costo_ejec: number;
+  pct_horas: number | null;
+  pct_dinero: number | null;
+}
+
+export interface ComparativoEjecucion {
+  por_recurso: FilaComparativoEjecucion[];
+  por_mes: FilaComparativoEjecucion[];
+}
+
 export interface FiltrosProyecto {
   search?: string;
   estado?: string;

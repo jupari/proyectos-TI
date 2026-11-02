@@ -1,0 +1,81 @@
+<div class="flex flex-col gap-4">
+  <h1 class="text-lg font-semibold text-neutro-800">Aprobaciones de horas</h1>
+
+  <div class="grid grid-cols-1 gap-3 rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta sm:grid-cols-2 lg:grid-cols-5">
+    <app-select
+      etiqueta="Proyecto"
+      [opciones]="opcionesProyectos()"
+      [limpiable]="true"
+      [ngModel]="proyecto()"
+      (ngModelChange)="proyecto.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Recurso"
+      [opciones]="opcionesRecursos()"
+      [limpiable]="true"
+      [ngModel]="recurso()"
+      (ngModelChange)="recurso.set($event); aplicarFiltros()"
+    />
+    <div class="flex items-end justify-end lg:col-span-3">
+      <app-boton variante="secundario" (clic)="limpiarFiltros()">Limpiar filtros</app-boton>
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2">
+    <app-boton
+      variante="secundario"
+      [disabled]="seleccion().length === 0"
+      [cargando]="procesando()"
+      (clic)="abrirDialogoRechazo()"
+    >
+      Rechazar seleccionados
+    </app-boton>
+    <app-boton
+      [disabled]="seleccion().length === 0"
+      [cargando]="procesando()"
+      (clic)="aprobarSeleccionados()"
+    >
+      Aprobar seleccionados
+    </app-boton>
+  </div>
+
+  <ng-template #colPeriodo let-fila>{{ fila.periodo_inicio | fechaCorta }} — {{ fila.periodo_fin | fechaCorta }}</ng-template>
+  <ng-template #colHoras let-fila>{{ fila.horas | horas }}</ng-template>
+  <ng-template #colCosto let-fila>{{ fila.costo | moneda }}</ng-template>
+
+  <app-tabla
+    [columnas]="[
+      columnas[0],
+      columnas[1],
+      columnas[2],
+      { clave: 'periodo_inicio', titulo: 'Periodo', plantilla: colPeriodo },
+      { clave: 'horas', titulo: 'Horas', alinear: 'derecha', plantilla: colHoras },
+      { clave: 'costo', titulo: 'Costo', alinear: 'derecha', plantilla: colCosto },
+      columnas[6]
+    ]"
+    [filas]="respuesta()?.results ?? []"
+    [cargando]="cargando()"
+    [respuesta]="respuesta()"
+    [paginaActual]="paginaActual()"
+    [ordenActual]="ordenActual()"
+    [seleccionable]="true"
+    [seleccion]="seleccion()"
+    mensajeVacio="No hay registros pendientes de aprobación."
+    (cambioOrden)="alCambiarOrden($event)"
+    (cambioPagina)="alCambiarPagina($event)"
+    (cambioSeleccion)="alCambiarSeleccion($event)"
+  />
+</div>
+
+<app-modal [abierto]="dialogoRechazoAbierto()" titulo="Rechazar registros" (cerrar)="cerrarDialogoRechazo()">
+  <app-textarea
+    etiqueta="Motivo del rechazo *"
+    [ngModel]="motivoRechazo()"
+    (ngModelChange)="motivoRechazo.set($event)"
+    name="motivoRechazo"
+  />
+  <div pie class="flex gap-2">
+    <app-boton variante="secundario" (clic)="cerrarDialogoRechazo()">Cancelar</app-boton>
+    <app-boton variante="peligro" (clic)="confirmarRechazoSeleccionados()">Confirmar rechazo</app-boton>
+  </div>
+</app-modal>

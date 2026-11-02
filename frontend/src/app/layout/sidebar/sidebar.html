@@ -15,7 +15,12 @@
           >
             <span aria-hidden="true">{{ item.icono }}</span>
             @if (!colapsado()) {
-              <span>{{ item.etiqueta }}</span>
+              <span class="flex-1">{{ item.etiqueta }}</span>
+              @if (contadorDe(item.ruta) > 0) {
+                <span class="rounded-full bg-peligro px-1.5 py-0.5 text-xs font-semibold text-white">
+                  {{ contadorDe(item.ruta) }}
+                </span>
+              }
             }
           </a>
         </li>

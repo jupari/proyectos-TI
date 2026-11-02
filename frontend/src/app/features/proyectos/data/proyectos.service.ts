@@ -11,7 +11,13 @@ import {
   RubroPresupuesto,
 } from '../../../core/models';
 import { FilaCronograma } from '../../tareas/data/tareas.model';
-import { FiltrosProyecto, ProyectoDetalle, ProyectoEscritura, ProyectoLista } from './proyectos.model';
+import {
+  ComparativoEjecucion,
+  FiltrosProyecto,
+  ProyectoDetalle,
+  ProyectoEscritura,
+  ProyectoLista,
+} from './proyectos.model';
 
 @Injectable({ providedIn: 'root' })
 export class ProyectosService extends ApiService<Proyecto> {
@@ -55,6 +61,10 @@ export class ProyectosService extends ApiService<Proyecto> {
 
   cronograma(id: string): Observable<FilaCronograma[]> {
     return this.accionGet<FilaCronograma[]>(id, 'cronograma');
+  }
+
+  ejecucion(id: string): Observable<ComparativoEjecucion> {
+    return this.accionGet<ComparativoEjecucion>(id, 'ejecucion');
   }
 }
 

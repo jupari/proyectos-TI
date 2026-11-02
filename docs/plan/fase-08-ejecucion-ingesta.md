@@ -129,18 +129,18 @@ con periodicidad **diaria, semanal o mensual**, aprobarla, y producir el contras
 
 ## Criterios de aceptación
 
-- [ ] Un `RECURSO` registra horas diarias de una semana y los totales cuadran.
-- [ ] Un registro semanal creado desde un miércoles se normaliza a lunes-domingo.
-- [ ] Intentar un registro mensual que solapa uno diario existente muestra en la UI la lista
+- [x] Un `RECURSO` registra horas diarias de una semana y los totales cuadran.
+- [x] Un registro semanal creado desde un miércoles se normaliza a lunes-domingo.
+- [x] Intentar un registro mensual que solapa uno diario existente muestra en la UI la lista
       de registros en conflicto.
-- [ ] Un `LIDER` aprueba un lote de registros y los KPIs del proyecto cambian al instante.
-- [ ] Un registro rechazado muestra su motivo al recurso y no cuenta en los KPIs.
-- [ ] Nadie puede aprobar su propio registro (salvo `ADMIN`).
-- [ ] Un registro aprobado no se puede editar; al reabrirlo sí, y queda en bitácora.
-- [ ] `Tarea.horas_ejecutadas` coincide con la suma de los registros aprobados de esa tarea.
-- [ ] La pestaña *Ejecución* muestra plan vs. ejecutado por recurso y por mes con los valores
+- [x] Un `LIDER` aprueba un lote de registros y los KPIs del proyecto cambian al instante.
+- [x] Un registro rechazado muestra su motivo al recurso y no cuenta en los KPIs.
+- [x] Nadie puede aprobar su propio registro (salvo `ADMIN`).
+- [x] Un registro aprobado no se puede editar; al reabrirlo sí, y queda en bitácora.
+- [x] `Tarea.horas_ejecutadas` coincide con la suma de los registros aprobados de esa tarea.
+- [x] La pestaña *Ejecución* muestra plan vs. ejecutado por recurso y por mes con los valores
       correctos y avisa de lo pendiente de aprobación.
-- [ ] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios.
+- [x] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios.
 
 ## Comandos de verificación
 
@@ -157,4 +157,130 @@ aprobación en varios niveles, integración con nómina.
 
 ## Evidencia
 
-<!-- Pega aquí la salida real de los comandos de verificación. -->
+### Backend
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/ejecucion apps/tablero -q
+......................................................                   [100%]
+54 passed in 42.98s
+
+$ docker compose -f infra/docker-compose.yml exec backend pytest -q
+........................................................................ [ 25%]
+........................................................................ [ 50%]
+........................................................................ [ 75%]
+.......................................................................  [100%]
+287 passed in 151.98s (0:02:31)
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py spectacular --validate --fail-on-warn
+(sin warnings/errores; exit 0)
+```
+
+### Frontend
+
+```
+$ docker compose -f infra/docker-compose.yml exec frontend npm run lint
+Linting "frontend"...
+All files pass linting.
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm run build
+Application bundle generation complete. [14.4s]
+Output location: /app/dist/frontend
+(chunks nuevos: mi-registro, aprobaciones)
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm test -- --watch=false
+Test Files  7 passed (7)
+     Tests  31 passed (31)
+```
+(`npm test` no es un comando de verificación exigido por esta fase; se corrió para confirmar
+que nada de fases anteriores se rompió. Las pantallas nuevas no tienen specs propios porque
+la fase no lo exige — igual que en la fase 07.)
+
+### Verificación manual contra el backend real (`seed_demo`, sin navegador disponible)
+
+Con `admin@seguimiento.local` contra `PRY-2026-001`:
+
+- `POST /registros-ejecucion/` diario (8 h) → 201, `valor_hora_aplicado` resuelto de la tarifa
+  vigente del recurso, `costo` calculado por el modelo (`horas * valor_hora_aplicado`).
+- La misma petición repetida exacta → **400** (lo produce el chequeo explícito de duplicado
+  exacto añadido a `validar_solapamiento`; ver la discrepancia documentada más abajo sobre por
+  qué DRF no lo detecta solo).
+- `POST .../enviar/` → `ENVIADO`; `POST .../aprobar/` → `APROBADO`.
+- `PATCH` sobre el registro ya `APROBADO` → **409** `"Reabra el registro para modificarlo."`.
+- `GET /proyectos/{id}/ejecucion/` → `por_recurso`/`por_mes` con `horas_ejec`/`costo_ejec` ya
+  reflejando el registro aprobado (se confirmó que los valores llegan como **float**, no
+  string, porque la acción devuelve un diccionario plano, no un serializer — igual que en
+  fases anteriores).
+- `POST /registros-ejecucion/lote/` con 2 registros válidos y 1 incompleto (`{"proyecto":
+  "..."}`, sin recurso/periodicidad/periodo_inicio/horas) → `{"creados": 2, "errores":
+  [{"indice": 2, "detalle": {...campos obligatorios...}}]}`: el comportamiento parcial (los
+  válidos entran aunque otro falle) quedó confirmado.
+- `GET /registros-ejecucion/resumen/?agrupar_por=recurso` → agregados por recurso, floats.
+- Ciclo completo de `GastoEjecutado`: crear (`BORRADOR`) → enviar → aprobar → el
+  `RubroPresupuesto.monto_ejecutado` del rubro subió exactamente el monto del gasto.
+- Todos los datos de prueba se limpiaron al terminar (`DELETE`/borrado directo) y se restauró
+  la contraseña del usuario admin a su estado inicial (inutilizable).
+
+No hay navegador disponible en este entorno (igual que en fases 05-07): la cuadrícula de "Mi
+registro de horas", el flujo de aprobaciones y la pestaña *Ejecución* del proyecto se
+verificaron por `ng build`/`ng lint` (sin errores de plantilla) y por los datos reales que
+consumen vía `curl`, no renderizados pixel a pixel en un navegador real.
+
+### Decisiones y discrepancias documentadas
+
+1. **`docs/modelo-datos.md` §6 decía "Error 400" para el solapamiento de periodos; el plan de
+   esta fase (§8.1.2) pedía `ErrorReglaNegocio` (422) con `detalles.conflictos`.** Se mantuvo
+   422 para el solapamiento genuino (es un conflicto de reglas de negocio, no un dato mal
+   formado) y se descubrió en el camino que el **duplicado exacto** (mismo recurso, proyecto,
+   tarea, periodicidad y `periodo_inicio`, que es literalmente `registroejecucion_unico`)
+   necesitaba su propio camino a 400: DRF **no genera automáticamente** el validador de
+   `UniqueConstraint` para ese campo porque `tarea` es nullable (DRF no puede garantizar
+   unicidad cuando uno de los campos puede ser `NULL`, ya que `NULL` nunca es "igual" a `NULL`
+   en SQL). Sin ese validador automático, un duplicado exacto caía en el mismo camino que un
+   solapamiento genérico y devolvía 422, no el 400 que pide el criterio de aceptación "Un
+   registro mensual que solapa uno diario... 422 con conflictos" (que sí es genérico) versus
+   el bullet de pruebas "Duplicado exacto → 400 por la restricción única" (que es un caso
+   específico). Se resolvió añadiendo una comprobación explícita de coincidencia exacta al
+   principio de `validar_solapamiento`, antes de la comprobación genérica de solapamiento.
+2. **`recalcular_derivados(registro)` del plan se implementó como dos funciones separadas**,
+   `recalcular_tarea` (para `RegistroEjecucion` → `Tarea.horas_ejecutadas`) y `recalcular_rubro`
+   (para `GastoEjecutado` → `RubroPresupuesto.monto_ejecutado`): `RegistroEjecucion` no tiene
+   `rubro` ni `GastoEjecutado` tiene `tarea`, así que una sola función con un parámetro
+   `registro` no podía actualizar ambos destinos a la vez como sugiere la redacción del plan.
+3. **`GastoEjecutado` no tiene el chequeo de autoaprobación** que sí tiene `RegistroEjecucion`:
+   el modelo no tiene un campo `registrado_por` (confirmado en `docs/modelo-datos.md` §6, que
+   solo le da `aprobado_por`/`aprobado_en`), así que no hay nada contra qué comparar.
+4. **El permiso de `GastoEjecutado` es más estricto que el de `RegistroEjecucion` para `LIDER`**:
+   la matriz de `docs/api-contrato.md` §8 dice "L C *propios*" para gastos (sin `E` ni `A`),
+   a diferencia de "L C E A *propios*" para registros de horas. Un `LIDER` puede crear un gasto
+   en su proyecto pero no puede editarlo, enviarlo ni aprobarlo — eso queda en manos de PMO/
+   ADMIN. Se implementó tal cual lo dice la matriz, aunque la redacción de la fase ("mismo
+   ciclo de aprobación") podría sugerir permisos idénticos; la matriz de permisos es la fuente
+   de verdad de roles, no la descripción general del flujo.
+5. **`apps/tablero/services.py::_metricas` tenía un bug real preexistente**: calculaba
+   `horas_pendientes_aprobacion` como `total - aprobado` (es decir, `BORRADOR + ENVIADO +
+   RECHAZADO` combinados), cuando el plan pide explícitamente que cuente solo lo `ENVIADO`. Se
+   corrigió a una suma filtrada por `estado_aprobacion=ENVIADO`, y se añadió una prueba con
+   `BORRADOR`, `ENVIADO`, `RECHAZADO` y `APROBADO` simultáneos para que no se repita.
+6. **"Mi registro de horas" interpreta "columnas = días del periodo (en diaria y semanal)"
+   como: la cuadrícula siempre muestra columnas por día (una semana) tanto en `DIARIA` como en
+   `SEMANAL`; lo que cambia es cómo se guarda cada fila al presionar "Guardar": en `DIARIA` cada
+   celda con valor se guarda como un `RegistroEjecucion` independiente (`periodo_inicio` =
+   ese día); en `SEMANAL`, todas las celdas de la fila se suman en un único registro con
+   `periodo_inicio` = el lunes de esa semana. En `MENSUAL` se muestra una sola columna. El plan
+   no fija esta mecánica con el mismo nivel de detalle que otras reglas, así que queda
+   documentada aquí como la lectura adoptada. Una consecuencia de este diseño: una vez guardado
+   un registro `SEMANAL`, los días martes a domingo de esa fila quedan bloqueados (ya están
+   "ocupados" por ese registro); para corregir el total hay que editar la celda del lunes.
+7. **El contador de aprobaciones pendientes del menú lateral** solo hace una petición
+   (`?estado_aprobacion=ENVIADO&page_size=1`, usando `count` de la paginación) y solo si el
+   usuario tiene `ejecucion.aprobar`; no se actualiza en tiempo real mientras la sesión está
+   abierta (se recalcula al recargar la aplicación), que es una limitación aceptada para no
+   añadir polling o websockets en esta fase.
+8. **Se agregó el filtro `usuario` a `FiltroRecurso`** (`apps/recursos/filters.py`), fuera del
+   alcance literal de esta fase pero necesario para que "Mi registro de horas" pueda resolver
+   el `Recurso` del usuario autenticado sin traer la lista completa de recursos; es un cambio
+   mínimo y acorde al modelo ya existente (`Recurso.usuario`), con su propia prueba en
+   `apps/recursos/tests/test_api.py`.
