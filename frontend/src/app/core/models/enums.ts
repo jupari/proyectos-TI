@@ -15,6 +15,18 @@ export const ETIQUETAS_ESTADO_PROYECTO: Record<EstadoProyecto, string> = {
   CANCELADO: 'Cancelado',
 };
 
+/** Mismo grafo que `apps/proyectos/services.py::TRANSICIONES` (docs/modelo-datos.md §3).
+ * Solo sirve para que el selector de "Cambiar estado" no muestre opciones
+ * imposibles; el backend siempre vuelve a validar la transición. */
+export const TRANSICIONES_PROYECTO: Record<EstadoProyecto, EstadoProyecto[]> = {
+  BORRADOR: ['PLANEACION', 'CANCELADO'],
+  PLANEACION: ['EJECUCION', 'CANCELADO'],
+  EJECUCION: ['SUSPENDIDO', 'CERRADO', 'CANCELADO'],
+  SUSPENDIDO: ['EJECUCION', 'CANCELADO'],
+  CERRADO: [],
+  CANCELADO: [],
+};
+
 export type Prioridad = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 
 export const ETIQUETAS_PRIORIDAD: Record<Prioridad, string> = {

@@ -30,14 +30,16 @@ export abstract class ApiService<T> {
     return params;
   }
 
-  listar(parametros?: ParametrosConsulta): Observable<RespuestaPaginada<T>> {
-    return this.http.get<RespuestaPaginada<T>>(this.base, {
+  /** `R` permite tipar listados cuyo serializer de lectura expone más
+   * campos que el modelo base (p. ej. nombres resueltos, `resumen_ejecucion`). */
+  listar<R = T>(parametros?: ParametrosConsulta): Observable<RespuestaPaginada<R>> {
+    return this.http.get<RespuestaPaginada<R>>(this.base, {
       params: this.construirParametros(parametros),
     });
   }
 
-  obtener(id: string): Observable<T> {
-    return this.http.get<T>(`${this.base}${id}/`);
+  obtener<R = T>(id: string): Observable<R> {
+    return this.http.get<R>(`${this.base}${id}/`);
   }
 
   crear(cuerpo: Partial<T>): Observable<T> {
@@ -54,5 +56,10 @@ export abstract class ApiService<T> {
 
   accion<R = T>(id: string, nombre: string, cuerpo?: unknown): Observable<R> {
     return this.http.post<R>(`${this.base}${id}/${nombre}/`, cuerpo ?? {});
+  }
+
+  /** Sub-recurso de solo lectura bajo el detalle (p. ej. `/proyectos/{id}/fases/`). */
+  accionGet<R = T>(id: string, nombre: string): Observable<R> {
+    return this.http.get<R>(`${this.base}${id}/${nombre}/`);
   }
 }

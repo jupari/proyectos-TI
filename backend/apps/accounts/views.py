@@ -4,7 +4,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
@@ -13,7 +13,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.core.choices import TipoEvento
 from apps.core.exceptions import ErrorConflicto
-from apps.core.permissions import EsAdmin, EsAdminOSoloLectura
+from apps.core.permissions import EsAdminOSoloLectura
+from apps.core.roles import codigos_roles_de
 from apps.core.services import registrar_evento
 from apps.core.views import ViewSetBase
 
@@ -214,11 +215,23 @@ class GoogleCallbackView(APIView):
         return Response(datos)
 
 
+class _EsAdminOLecturaPmo(BasePermission):
+    """docs/api-contrato.md §8: `usuarios` es `ADMIN: L C E B`, `PMO: L`.
+    PMO necesita poder listar usuarios para elegir gerente/líder técnico al
+    crear o editar un proyecto (fase 05), aunque no pueda administrarlos."""
+
+    def has_permission(self, request, view):
+        codigos = codigos_roles_de(request.user)
+        if request.method in SAFE_METHODS:
+            return bool(codigos & {"ADMIN", "PMO"})
+        return "ADMIN" in codigos
+
+
 class UsuarioViewSet(ViewSetBase):
     queryset = Usuario.objects.all()
     serializer_lectura_class = UsuarioSerializer
     serializer_escritura_class = UsuarioAdminEscrituraSerializer
-    permission_classes = [EsAdmin]
+    permission_classes = [_EsAdminOLecturaPmo]
     search_fields = ["email", "nombres", "apellidos"]
     ordering_fields = ["email", "nombres", "apellidos", "creado_en"]
     filterset_fields = ["is_active", "proveedor_auth"]

@@ -145,6 +145,16 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    # Varios modelos tienen un campo `estado` con su propio TextChoices
+    # (docs/modelo-datos.md): sin esto, drf-spectacular genera nombres de
+    # enum colisionados ("Estado2f9Enum") al no poder distinguirlos por nombre
+    # de campo. Se añaden aquí a medida que cada fase expone el campo en un
+    # serializer.
+    "ENUM_NAME_OVERRIDES": {
+        "EstadoProyectoEnum": "apps.core.choices.EstadoProyecto",
+        "EstadoFaseEnum": "apps.core.choices.EstadoFase",
+        "EstadoHitoEnum": "apps.core.choices.EstadoHito",
+    },
 }
 
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")

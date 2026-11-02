@@ -1,0 +1,142 @@
+<div class="flex flex-col gap-5">
+  <h1 class="text-lg font-semibold text-neutro-800">Catálogos</h1>
+
+  <app-tabs [pestanas]="pestanas" [activa]="pestanaActiva()" (cambio)="cambiarPestana($event)" />
+
+  @if (pestanaActiva() === 'areas') {
+    <div class="flex flex-col gap-3">
+      <div class="flex justify-end">
+        <app-boton (clic)="abrirNuevo('areas')">+ Nueva área</app-boton>
+      </div>
+      <table class="w-full rounded-panel border border-neutro-200 bg-white text-left text-sm shadow-tarjeta">
+        <thead class="bg-neutro-50 text-neutro-600">
+          <tr><th class="px-3 py-2">Código</th><th class="px-3 py-2">Nombre</th><th class="px-3 py-2"></th></tr>
+        </thead>
+        <tbody class="divide-y divide-neutro-100">
+          @for (area of areas(); track area.id) {
+            <tr>
+              <td class="px-3 py-2">{{ area.codigo }}</td>
+              <td class="px-3 py-2">{{ area.nombre }}</td>
+              <td class="flex justify-end gap-3 px-3 py-2">
+                <button type="button" class="text-marca-600 hover:underline" (click)="abrirEditar('areas', area)">Editar</button>
+                <button type="button" class="text-peligro hover:underline" (click)="eliminar('areas', area)">Desactivar</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="3" class="px-3 py-6 text-center text-neutro-400">Sin áreas registradas.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (pestanaActiva() === 'portafolios') {
+    <div class="flex flex-col gap-3">
+      <div class="flex justify-end">
+        <app-boton (clic)="abrirNuevo('portafolios')">+ Nuevo portafolio</app-boton>
+      </div>
+      <table class="w-full rounded-panel border border-neutro-200 bg-white text-left text-sm shadow-tarjeta">
+        <thead class="bg-neutro-50 text-neutro-600">
+          <tr><th class="px-3 py-2">Código</th><th class="px-3 py-2">Nombre</th><th class="px-3 py-2"></th></tr>
+        </thead>
+        <tbody class="divide-y divide-neutro-100">
+          @for (portafolio of portafolios(); track portafolio.id) {
+            <tr>
+              <td class="px-3 py-2">{{ portafolio.codigo }}</td>
+              <td class="px-3 py-2">{{ portafolio.nombre }}</td>
+              <td class="flex justify-end gap-3 px-3 py-2">
+                <button type="button" class="text-marca-600 hover:underline" (click)="abrirEditar('portafolios', portafolio)">Editar</button>
+                <button type="button" class="text-peligro hover:underline" (click)="eliminar('portafolios', portafolio)">Desactivar</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="3" class="px-3 py-6 text-center text-neutro-400">Sin portafolios registrados.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (pestanaActiva() === 'perfiles') {
+    <div class="flex flex-col gap-3">
+      <div class="flex justify-end">
+        <app-boton (clic)="abrirNuevo('perfiles')">+ Nuevo perfil</app-boton>
+      </div>
+      <table class="w-full rounded-panel border border-neutro-200 bg-white text-left text-sm shadow-tarjeta">
+        <thead class="bg-neutro-50 text-neutro-600">
+          <tr><th class="px-3 py-2">Código</th><th class="px-3 py-2">Nombre</th><th class="px-3 py-2">Tarifa</th><th class="px-3 py-2"></th></tr>
+        </thead>
+        <tbody class="divide-y divide-neutro-100">
+          @for (perfil of perfiles(); track perfil.id) {
+            <tr>
+              <td class="px-3 py-2">{{ perfil.codigo }}</td>
+              <td class="px-3 py-2">{{ perfil.nombre }}</td>
+              <td class="px-3 py-2">{{ perfil.tarifa_hora_referencia }} {{ perfil.moneda }}</td>
+              <td class="flex justify-end gap-3 px-3 py-2">
+                <button type="button" class="text-marca-600 hover:underline" (click)="abrirEditar('perfiles', perfil)">Editar</button>
+                <button type="button" class="text-peligro hover:underline" (click)="eliminar('perfiles', perfil)">Desactivar</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" class="px-3 py-6 text-center text-neutro-400">Sin perfiles registrados.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<app-modal
+  [abierto]="modalAbierto()"
+  [titulo]="idEnEdicion() ? 'Editar' : 'Nuevo'"
+  (cerrar)="cerrarModal()"
+>
+  <div class="flex flex-col gap-4">
+    <app-input
+      etiqueta="Código *"
+      [ngModel]="codigo()"
+      (ngModelChange)="codigo.set($event)"
+      [error]="erroresPorCampo()['codigo']?.[0] ?? ''"
+      name="codigo"
+    />
+    <app-input
+      etiqueta="Nombre *"
+      [ngModel]="nombre()"
+      (ngModelChange)="nombre.set($event)"
+      [error]="erroresPorCampo()['nombre']?.[0] ?? ''"
+      name="nombre"
+    />
+    @if (tipoEnEdicion() === 'portafolios') {
+      <app-textarea
+        etiqueta="Descripción"
+        [ngModel]="descripcion()"
+        (ngModelChange)="descripcion.set($event)"
+        name="descripcion"
+      />
+    }
+    @if (tipoEnEdicion() === 'areas' || tipoEnEdicion() === 'portafolios') {
+      <app-select
+        etiqueta="Responsable"
+        [opciones]="opcionesResponsables()"
+        [limpiable]="true"
+        [ngModel]="responsable()"
+        (ngModelChange)="responsable.set($event)"
+        name="responsable"
+      />
+    }
+    @if (tipoEnEdicion() === 'perfiles') {
+      <app-numero
+        etiqueta="Tarifa por hora de referencia"
+        modo="moneda"
+        [ngModel]="tarifaHoraReferencia()"
+        (ngModelChange)="tarifaHoraReferencia.set($event)"
+        name="tarifaHoraReferencia"
+      />
+      <app-input etiqueta="Moneda" [ngModel]="moneda()" (ngModelChange)="moneda.set($event)" name="moneda" />
+    }
+  </div>
+  <div pie class="flex gap-2">
+    <app-boton variante="secundario" (clic)="cerrarModal()">Cancelar</app-boton>
+    <app-boton [cargando]="guardando()" (clic)="guardar()">Guardar</app-boton>
+  </div>
+</app-modal>

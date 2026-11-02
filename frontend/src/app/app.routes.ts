@@ -32,7 +32,10 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'tablero' },
       { path: 'tablero', component: EnConstruccion },
-      { path: 'proyectos', component: EnConstruccion },
+      {
+        path: 'proyectos',
+        loadChildren: () => import('./features/proyectos/proyectos.routes').then((m) => m.proyectosRoutes),
+      },
       { path: 'tareas', component: EnConstruccion },
       {
         path: 'ejecucion/registros',
@@ -67,8 +70,9 @@ export const routes: Routes = [
       },
       {
         path: 'admin/catalogos',
-        component: EnConstruccion,
-        canActivate: [permisoGuard('admin.usuarios')],
+        loadComponent: () =>
+          import('./features/admin/catalogos/catalogos').then((m) => m.Catalogos),
+        canActivate: [permisoGuard('catalogos.crear')],
       },
       { path: 'perfil', component: Perfil },
     ],

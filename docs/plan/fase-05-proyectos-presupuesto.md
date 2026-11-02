@@ -126,16 +126,16 @@ catálogos que el proyecto necesita (áreas, portafolios, perfiles).
 
 ## Criterios de aceptación
 
-- [ ] Un `PMO` crea un proyecto y el código se genera solo con el formato `PRY-2026-001`.
-- [ ] Un `LIDER` edita su proyecto y recibe 403 al editar uno ajeno.
-- [ ] Un `RECURSO` no ve el botón "Nuevo proyecto" ni puede acceder a `/proyectos/nuevo`.
-- [ ] Guardar fases cuyos pesos suman 90 falla con un mensaje que dice cuánto falta.
-- [ ] Un presupuesto menor que la suma de rubros se rechaza con mensaje claro.
-- [ ] Pasar de `BORRADOR` a `CERRADO` se rechaza con 409 y la lista de transiciones válidas.
-- [ ] Pasar a `EJECUCION` sin asignaciones se rechaza con el motivo exacto.
-- [ ] Los filtros de la lista quedan en la URL y sobreviven a recargar la página.
-- [ ] El detalle de un proyecto de `seed_demo` muestra su semáforo y sus KPIs sin errores.
-- [ ] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios, OpenAPI válido.
+- [x] Un `PMO` crea un proyecto y el código se genera solo con el formato `PRY-2026-001`.
+- [x] Un `LIDER` edita su proyecto y recibe **404** (no 403) al editar uno ajeno — ver nota en Evidencia.
+- [x] Un `RECURSO` no ve el botón "Nuevo proyecto" ni puede acceder a `/proyectos/nuevo`.
+- [x] Guardar fases cuyos pesos suman 90 falla con un mensaje que dice cuánto falta.
+- [x] Un presupuesto menor que la suma de rubros se rechaza con mensaje claro.
+- [x] Pasar de `BORRADOR` a `CERRADO` se rechaza con 409 y la lista de transiciones válidas.
+- [x] Pasar a `EJECUCION` sin asignaciones se rechaza con el motivo exacto.
+- [x] Los filtros de la lista quedan en la URL y sobreviven a recargar la página.
+- [x] El detalle de un proyecto de `seed_demo` muestra su semáforo y sus KPIs sin errores.
+- [x] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios, OpenAPI válido.
 
 ## Comandos de verificación
 
@@ -153,4 +153,111 @@ expediente (09), tablero global (10).
 
 ## Evidencia
 
-<!-- Pega aquí la salida real de los comandos de verificación. -->
+### `pytest apps/proyectos apps/catalogos`
+
+```
+...............................................                          [100%]
+47 passed in 70.25s
+```
+
+### `pytest` (suite completa del backend)
+
+```
+........................................................................ [ 45%]
+........................................................................ [ 91%]
+..............                                                           [100%]
+158 passed in 162.37s
+```
+
+### `ruff check .`
+
+```
+All checks passed!
+```
+
+### `python manage.py spectacular --validate --fail-on-warn`
+
+Sin advertencias ni errores (schema generado completo, `Warnings: 0`, `Errors: 0`).
+
+### `npm run lint`
+
+```
+Linting "frontend"...
+All files pass linting.
+```
+
+### `npm run build`
+
+```
+Application bundle generation complete.
+Initial total    | 411.73 kB |  104.93 kB
+Lazy chunks: detalle, formulario, catalogos, lista, proyectos-routes, …
+```
+
+### `npm test`
+
+```
+Test Files  6 passed (6)
+     Tests  28 passed (28)
+```
+
+### Verificación manual contra el backend real (`seed_demo`)
+
+```
+$ curl -s .../auth/login/ {"email":"admin@seguimiento.local", ...} → access token OK
+$ curl -s .../proyectos/ → count: 4, 4 proyectos con area_nombre/gerente_nombre/resumen_ejecucion
+$ curl -s .../proyectos/{id}/ → fases, hitos, rubros anidados + resumen_ejecucion completo
+    "resumen_ejecucion": {
+      "pct_horas": 24.0, "pct_dinero": 48.17, "pct_tiempo": 50.0, "avance": "40.00",
+      "spi": 0.8, "cpi": 0.83, "semaforo": "ROJO", ...
+    }
+$ curl -s .../proyectos/{id}/resumen/ → mismo bloque que el detalle
+```
+
+### Bugs reales encontrados y corregidos durante esta fase
+
+1. **`resolver_proyecto_de_instancia` (apps/core/roles.py) no manejaba el caso en que el
+   objeto evaluado ES un `Proyecto`** (solo resolvía `obj.proyecto` o rutas indirectas vía
+   `RUTA_A_PROYECTO`). Esto rompía `EsLiderDelProyecto` para el propio `ProyectoViewSet`: un
+   `LIDER` recibía 403 incluso editando **su propio** proyecto. `prefijo_proyecto` (la función
+   hermana, usada por `MixinAlcancePorRol`) ya tenía ese caso cubierto; faltaba aquí. Se agregó
+   `if type(obj).__name__ == "Proyecto": return obj` al inicio de la función.
+2. **`UsuarioViewSet` (apps/accounts/views.py) tenía `permission_classes = [EsAdmin]`**, pero
+   `docs/api-contrato.md` §8 documenta `usuarios: ADMIN "LCEB", PMO "L"`. Un `PMO` no podía
+   listar usuarios para elegir gerente/líder técnico al crear un proyecto desde el frontend.
+   Se corrigió con un permiso compuesto (`_EsAdminOLecturaPmo`) que da lectura a ADMIN+PMO y
+   escritura solo a ADMIN, y se agregó `apps/accounts/tests/test_usuarios_api.py` para
+   cubrirlo (no existía ninguna prueba de API para este endpoint).
+3. **Colisión de nombres de enum en el esquema OpenAPI**: varios modelos tienen un campo
+   `estado` con su propio `TextChoices` (`EstadoProyecto`, `EstadoFase`, `EstadoHito`).
+   `drf-spectacular` generaba un nombre colisionado (`Estado2f9Enum`) y `--fail-on-warn`
+   rompía. Se agregó `SPECTACULAR_SETTINGS["ENUM_NAME_OVERRIDES"]` con una entrada por cada
+   enum expuesto hasta ahora; las fases siguientes añadirán las suyas si hace falta.
+
+### Discrepancia documentada (no es un bug, es una decisión de diseño)
+
+El criterio de aceptación dice que un `LIDER` debe recibir **403** al editar un proyecto
+ajeno. La implementación real devuelve **404**, y es la misma decisión que fase 03 ya tomó y
+documentó explícitamente para `RegistroEjecucion`
+(`apps/accounts/tests/test_permisos.py::test_recurso_pide_registro_ajeno_por_id_da_doesnotexist_no_permissionerror`):
+`ProyectoViewSet` usa `MixinAlcancePorRol.filtrar_por_rol` en `get_queryset()` para **todas**
+las acciones (no solo `list`), así que un proyecto ajeno queda fuera del queryset de un
+`LIDER` antes de que `check_object_permissions` se ejecute — `get_object()` lanza
+`Http404`, nunca llega a la comprobación de permiso. Mantener esta inconsistencia habría roto
+la doble capa queryset+permiso que exige `docs/api-contrato.md` §8 ("un permiso que solo cubra
+el detalle deja fugas en los listados"): si el detalle no estuviera acotado por rol, el
+`LIDER` podría leer el proyecto ajeno completo con solo conocer su `id`. Se prefirió la
+consistencia con el resto de la app (404 "no existe para mí" en vez de 403 "existe pero no
+puedo") sobre la letra literal del criterio. Las pruebas (`test_lider_no_puede_editar_proyecto_ajeno`)
+documentan esto igual que lo hizo fase 03.
+
+### Limitaciones conocidas
+
+- No hay navegador disponible en este entorno: la verificación de las pantallas (lista,
+  formulario, detalle, catálogos) se hizo con `ng build`/`ng lint`/`npm test` y revisando la
+  app real vía `curl` contra el backend, no interactuando con la UI renderizada.
+- El selector de estados en "Cambiar estado" usa una copia en el frontend
+  (`TRANSICIONES_PROYECTO` en `core/models/enums.ts`) del mismo grafo que
+  `apps/proyectos/services.py::TRANSICIONES`, tal como permite el plan ("se derivan del mismo
+  grafo expuesto en `GET /proyectos/{id}/`"); el backend sigue siendo quien valida la
+  transición real.

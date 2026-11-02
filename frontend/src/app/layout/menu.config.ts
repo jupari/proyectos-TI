@@ -23,4 +23,5 @@ export const ITEMS_MENU: ItemMenu[] = [
   { etiqueta: 'Seguimientos', icono: '📈', ruta: '/seguimientos' },
   { etiqueta: 'Recursos', icono: '👥', ruta: '/recursos', permiso: 'recursos.ver' },
   { etiqueta: 'Administración', icono: '⚙️', ruta: '/admin/usuarios', permiso: 'admin.usuarios' },
+  { etiqueta: 'Catálogos', icono: '🗂️', ruta: '/admin/catalogos', permiso: 'catalogos.crear' },
 ];

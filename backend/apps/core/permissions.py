@@ -75,3 +75,13 @@ class EsAdminOSoloLectura(BasePermission):
         if request.method in SAFE_METHODS:
             return bool(request.user and request.user.is_authenticated)
         return "ADMIN" in codigos_roles_de(request.user)
+
+
+class EsPmoOAdminOSoloLectura(BasePermission):
+    """Lectura para cualquier autenticado, escritura solo ADMIN y PMO
+    (catálogos, docs/api-contrato.md §3)."""
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return bool(request.user and request.user.is_authenticated)
+        return bool(codigos_roles_de(request.user) & {"ADMIN", "PMO"})

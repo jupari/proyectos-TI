@@ -29,6 +29,8 @@ def resolver_proyecto_de_instancia(obj):
     transacción) se trata como "sin proyecto", nunca como una excepción.
     """
     try:
+        if type(obj).__name__ == "Proyecto":
+            return obj
         if hasattr(obj, "proyecto_id"):
             return obj.proyecto
         ruta = RUTA_A_PROYECTO.get(type(obj).__name__)

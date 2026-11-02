@@ -1,0 +1,213 @@
+@if (cargando()) {
+  <p class="text-sm text-neutro-500">Cargando…</p>
+} @else if (proyecto()) {
+  <div class="flex flex-col gap-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p class="text-xs font-medium uppercase tracking-wide text-neutro-400">
+          {{ proyecto()!.codigo }}
+        </p>
+        <h1 class="text-xl font-semibold text-neutro-900">{{ proyecto()!.nombre }}</h1>
+        <div class="mt-2 flex items-center gap-2">
+          <app-badge
+            [valor]="proyecto()!.estado"
+            [etiqueta]="proyecto()!.estado | etiquetaEnum: ETIQUETAS_ESTADO_PROYECTO"
+          />
+          <app-semaforo [valor]="esValorSemaforo(proyecto()!.semaforo)" />
+        </div>
+      </div>
+      @if (puedeEditar()) {
+        <div class="flex gap-2">
+          <app-boton variante="secundario" [routerLink]="['/proyectos', proyecto()!.id, 'editar']">
+            Editar
+          </app-boton>
+          @if (opcionesTransicion().length > 0) {
+            <app-boton (clic)="abrirDialogoEstado()">Cambiar estado</app-boton>
+          }
+        </div>
+      }
+    </div>
+
+    <app-tabs [pestanas]="pestanas" [activa]="pestanaActiva()" (cambio)="cambiarPestana($event)" />
+
+    @if (pestanaActiva() === 'resumen') {
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <app-card titulo="Horas plan vs. ejecutadas">
+          <p class="text-lg font-semibold text-neutro-800">
+            {{ proyecto()!.resumen_ejecucion.horas_ejecutadas | horas }} /
+            {{ proyecto()!.resumen_ejecucion.horas_planeadas | horas }}
+          </p>
+          <p class="text-sm text-neutro-500">{{ proyecto()!.resumen_ejecucion.pct_horas | porcentaje }}</p>
+        </app-card>
+        <app-card titulo="Dinero plan vs. ejecutado">
+          <p class="text-lg font-semibold text-neutro-800">
+            {{ proyecto()!.resumen_ejecucion.costo_ejecutado | moneda }} /
+            {{ proyecto()!.resumen_ejecucion.costo_planeado | moneda }}
+          </p>
+          <p class="text-sm text-neutro-500">{{ proyecto()!.resumen_ejecucion.pct_dinero | porcentaje }}</p>
+        </app-card>
+        <app-card titulo="Avance">
+          <app-progreso [valor]="numero(proyecto()!.avance_reportado)" class="block" />
+        </app-card>
+        <app-card titulo="Semáforo">
+          <app-semaforo [valor]="esValorSemaforo(proyecto()!.resumen_ejecucion.semaforo)" />
+        </app-card>
+        <app-card titulo="Fechas plan">
+          <p class="text-sm text-neutro-700">
+            {{ proyecto()!.fecha_inicio_plan | fechaCorta }} — {{ proyecto()!.fecha_fin_plan | fechaCorta }}
+          </p>
+        </app-card>
+        <app-card titulo="SPI / CPI">
+          <p class="text-sm text-neutro-700">
+            SPI: {{ proyecto()!.resumen_ejecucion.spi ?? '—' }} · CPI: {{ proyecto()!.resumen_ejecucion.cpi ?? '—' }}
+          </p>
+        </app-card>
+        <app-card titulo="Hitos">
+          <p class="text-sm text-neutro-700">
+            {{ proyecto()!.resumen_ejecucion.hitos_cumplidos }} cumplidos ·
+            {{ proyecto()!.resumen_ejecucion.hitos_incumplidos }} incumplidos
+          </p>
+        </app-card>
+        <app-card titulo="Tareas">
+          <p class="text-sm text-neutro-700">
+            {{ proyecto()!.resumen_ejecucion.tareas_abiertas }} abiertas ·
+            {{ proyecto()!.resumen_ejecucion.tareas_vencidas }} vencidas
+          </p>
+        </app-card>
+        <app-card titulo="Datos generales" class="sm:col-span-2 lg:col-span-4">
+          <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div><dt class="text-neutro-400">Área</dt><dd class="text-neutro-800">{{ proyecto()!.area_nombre }}</dd></div>
+            <div><dt class="text-neutro-400">Portafolio</dt><dd class="text-neutro-800">{{ proyecto()!.portafolio_nombre ?? '—' }}</dd></div>
+            <div><dt class="text-neutro-400">Gerente</dt><dd class="text-neutro-800">{{ proyecto()!.gerente_nombre }}</dd></div>
+            <div><dt class="text-neutro-400">Prioridad</dt><dd class="text-neutro-800">{{ proyecto()!.prioridad }}</dd></div>
+          </dl>
+        </app-card>
+      </div>
+    }
+
+    @if (pestanaActiva() === 'fases') {
+      <app-card titulo="Fases">
+        <div
+          class="mb-3 rounded-panel px-3 py-2 text-sm"
+          [class]="sumaPesosFases() === 100 ? 'bg-exito/10 text-exito' : 'bg-alerta/10 text-alerta'"
+        >
+          Suma de pesos: {{ sumaPesosFases() }}%
+          @if (sumaPesosFases() !== 100) {
+            — debe sumar 100%
+          }
+        </div>
+        <table class="w-full text-left text-sm">
+          <thead class="text-neutro-500">
+            <tr>
+              <th class="py-1">#</th><th class="py-1">Nombre</th><th class="py-1">Peso</th>
+              <th class="py-1">Inicio plan</th><th class="py-1">Fin plan</th><th class="py-1">Estado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutro-100">
+            @for (fase of proyecto()!.fases; track fase.id) {
+              <tr>
+                <td class="py-2">{{ fase.orden }}</td>
+                <td class="py-2">{{ fase.nombre }}</td>
+                <td class="py-2">{{ fase.peso }}%</td>
+                <td class="py-2">{{ fase.fecha_inicio_plan | fechaCorta }}</td>
+                <td class="py-2">{{ fase.fecha_fin_plan | fechaCorta }}</td>
+                <td class="py-2"><app-badge [valor]="fase.estado" /></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="py-4 text-neutro-400">Sin fases registradas.</td></tr>
+            }
+          </tbody>
+        </table>
+      </app-card>
+    }
+
+    @if (pestanaActiva() === 'hitos') {
+      <app-card titulo="Hitos">
+        <table class="w-full text-left text-sm">
+          <thead class="text-neutro-500">
+            <tr>
+              <th class="py-1">Nombre</th><th class="py-1">Fecha plan</th><th class="py-1">Fecha real</th>
+              <th class="py-1">Estado</th><th class="py-1">Entregable</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutro-100">
+            @for (hito of proyecto()!.hitos; track hito.id) {
+              <tr [class.text-peligro]="hito.estado === 'INCUMPLIDO'">
+                <td class="py-2">{{ hito.nombre }}</td>
+                <td class="py-2">{{ hito.fecha_plan | fechaCorta }}</td>
+                <td class="py-2">{{ hito.fecha_real | fechaCorta }}</td>
+                <td class="py-2"><app-badge [valor]="hito.estado" /></td>
+                <td class="py-2">{{ hito.es_entregable ? 'Sí' : 'No' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="py-4 text-neutro-400">Sin hitos registrados.</td></tr>
+            }
+          </tbody>
+        </table>
+      </app-card>
+    }
+
+    @if (pestanaActiva() === 'presupuesto') {
+      <app-card titulo="Presupuesto">
+        <table class="w-full text-left text-sm">
+          <thead class="text-neutro-500">
+            <tr>
+              <th class="py-1">Categoría</th><th class="py-1">Descripción</th>
+              <th class="py-1">Planeado</th><th class="py-1">Ejecutado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutro-100">
+            @for (rubro of proyecto()!.rubros; track rubro.id) {
+              <tr>
+                <td class="py-2"><app-badge [valor]="rubro.categoria" /></td>
+                <td class="py-2">{{ rubro.descripcion }}</td>
+                <td class="py-2">{{ rubro.monto_planeado | moneda }}</td>
+                <td class="py-2">{{ rubro.monto_ejecutado | moneda }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="py-4 text-neutro-400">Sin rubros registrados.</td></tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr class="border-t border-neutro-200 font-medium">
+              <td class="py-2" colspan="2">Total rubros</td>
+              <td class="py-2">{{ totalRubrosPlaneado() | moneda }}</td>
+              <td class="py-2">{{ totalRubrosEjecutado() | moneda }}</td>
+            </tr>
+            <tr class="text-neutro-500">
+              <td class="py-2" colspan="2">Presupuesto aprobado</td>
+              <td class="py-2">{{ proyecto()!.presupuesto_dinero | moneda }}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </app-card>
+    }
+
+    @if (pestanaActiva() === 'tareas' || pestanaActiva() === 'ejecucion' || pestanaActiva() === 'seguimientos' || pestanaActiva() === 'expediente') {
+      <app-en-construccion />
+    }
+  </div>
+
+  <app-modal [abierto]="dialogoEstadoAbierto()" titulo="Cambiar estado" (cerrar)="cerrarDialogoEstado()">
+    <div class="flex flex-col gap-4">
+      <app-select
+        etiqueta="Nuevo estado *"
+        [opciones]="opcionesTransicion()"
+        [ngModel]="estadoSeleccionado()"
+        (ngModelChange)="estadoSeleccionado.set($event)"
+        name="estadoSeleccionado"
+      />
+      <app-textarea
+        etiqueta="Observación *"
+        [ngModel]="observacionEstado()"
+        (ngModelChange)="observacionEstado.set($event)"
+        name="observacionEstado"
+      />
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarDialogoEstado()">Cancelar</app-boton>
+      <app-boton [cargando]="cambiandoEstado()" (clic)="confirmarCambioEstado()">Confirmar</app-boton>
+    </div>
+  </app-modal>
+}

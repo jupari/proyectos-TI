@@ -1,0 +1,165 @@
+<div class="mx-auto flex max-w-3xl flex-col gap-6">
+  <h1 class="text-lg font-semibold text-neutro-800">
+    {{ esEdicion() ? 'Editar proyecto' : 'Nuevo proyecto' }}
+  </h1>
+
+  @if (mensajeError()) {
+    <div class="rounded-panel border border-peligro/30 bg-peligro/5 px-4 py-3 text-sm text-peligro">
+      {{ mensajeError() }}
+    </div>
+  }
+
+  @if (cargandoDetalle()) {
+    <p class="text-sm text-neutro-500">Cargando…</p>
+  } @else {
+    <form class="flex flex-col gap-8" (ngSubmit)="guardar()">
+      <section class="flex flex-col gap-4 rounded-panel border border-neutro-200 bg-white p-5 shadow-tarjeta">
+        <h2 class="text-sm font-semibold text-neutro-700">Identificación</h2>
+        <app-input
+          etiqueta="Nombre *"
+          [ngModel]="nombre()"
+          (ngModelChange)="actualizar(nombre, $event)"
+          [error]="erroresPorCampo()['nombre']?.[0] ?? ''"
+          name="nombre"
+        />
+        <app-textarea
+          etiqueta="Descripción"
+          [ngModel]="descripcion()"
+          (ngModelChange)="actualizar(descripcion, $event)"
+          name="descripcion"
+        />
+        <app-textarea
+          etiqueta="Objetivo"
+          [ngModel]="objetivo()"
+          (ngModelChange)="actualizar(objetivo, $event)"
+          name="objetivo"
+        />
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <app-select
+            etiqueta="Área solicitante *"
+            [opciones]="opcionesAreas()"
+            [ngModel]="areaSolicitante()"
+            (ngModelChange)="actualizar(areaSolicitante, $event)"
+            [error]="erroresPorCampo()['area_solicitante']?.[0] ?? ''"
+            name="areaSolicitante"
+          />
+          <app-select
+            etiqueta="Portafolio"
+            [opciones]="opcionesPortafolios()"
+            [limpiable]="true"
+            [ngModel]="portafolio()"
+            (ngModelChange)="actualizar(portafolio, $event)"
+            name="portafolio"
+          />
+        </div>
+        <app-select
+          etiqueta="Prioridad"
+          [opciones]="opcionesPrioridad"
+          [ngModel]="prioridad()"
+          (ngModelChange)="actualizar(prioridad, $event)"
+          name="prioridad"
+        />
+      </section>
+
+      <section class="flex flex-col gap-4 rounded-panel border border-neutro-200 bg-white p-5 shadow-tarjeta">
+        <h2 class="text-sm font-semibold text-neutro-700">Responsables</h2>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <app-select
+            etiqueta="Gerente *"
+            [opciones]="opcionesUsuarios()"
+            [ngModel]="gerente()"
+            (ngModelChange)="actualizar(gerente, $event)"
+            [error]="erroresPorCampo()['gerente']?.[0] ?? ''"
+            name="gerente"
+          />
+          <app-select
+            etiqueta="Líder técnico"
+            [opciones]="opcionesUsuarios()"
+            [limpiable]="true"
+            [ngModel]="liderTecnico()"
+            (ngModelChange)="actualizar(liderTecnico, $event)"
+            name="liderTecnico"
+          />
+        </div>
+      </section>
+
+      <section class="flex flex-col gap-4 rounded-panel border border-neutro-200 bg-white p-5 shadow-tarjeta">
+        <h2 class="text-sm font-semibold text-neutro-700">Cronograma</h2>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <app-datepicker
+            etiqueta="Inicio plan *"
+            [ngModel]="fechaInicioPlan()"
+            (ngModelChange)="actualizar(fechaInicioPlan, $event)"
+            [error]="erroresPorCampo()['fecha_inicio_plan']?.[0] ?? ''"
+            name="fechaInicioPlan"
+          />
+          <app-datepicker
+            etiqueta="Fin plan *"
+            [minimo]="fechaInicioPlan()"
+            [ngModel]="fechaFinPlan()"
+            (ngModelChange)="actualizar(fechaFinPlan, $event)"
+            [error]="errorFechaFin()"
+            name="fechaFinPlan"
+          />
+          <app-datepicker
+            etiqueta="Inicio real"
+            [ngModel]="fechaInicioReal()"
+            (ngModelChange)="actualizar(fechaInicioReal, $event)"
+            name="fechaInicioReal"
+          />
+          <app-datepicker
+            etiqueta="Fin real"
+            [ngModel]="fechaFinReal()"
+            (ngModelChange)="actualizar(fechaFinReal, $event)"
+            name="fechaFinReal"
+          />
+        </div>
+      </section>
+
+      <section class="flex flex-col gap-4 rounded-panel border border-neutro-200 bg-white p-5 shadow-tarjeta">
+        <h2 class="text-sm font-semibold text-neutro-700">Presupuesto</h2>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <app-numero
+            etiqueta="Presupuesto en horas *"
+            modo="horas"
+            [ngModel]="presupuestoHoras()"
+            (ngModelChange)="actualizar(presupuestoHoras, $event)"
+            [error]="erroresPorCampo()['presupuesto_horas']?.[0] ?? ''"
+            name="presupuestoHoras"
+          />
+          <app-numero
+            etiqueta="Presupuesto en dinero *"
+            modo="moneda"
+            [ngModel]="presupuestoDinero()"
+            (ngModelChange)="actualizar(presupuestoDinero, $event)"
+            [error]="erroresPorCampo()['presupuesto_dinero']?.[0] ?? ''"
+            name="presupuestoDinero"
+          />
+        </div>
+        <app-input
+          etiqueta="Moneda"
+          [ngModel]="moneda()"
+          (ngModelChange)="actualizar(moneda, $event)"
+          name="moneda"
+        />
+      </section>
+
+      <section class="flex flex-col gap-4 rounded-panel border border-neutro-200 bg-white p-5 shadow-tarjeta">
+        <h2 class="text-sm font-semibold text-neutro-700">Observaciones</h2>
+        <app-textarea
+          [filas]="4"
+          [ngModel]="observaciones()"
+          (ngModelChange)="actualizar(observaciones, $event)"
+          name="observaciones"
+        />
+      </section>
+
+      <div class="flex justify-end gap-3">
+        <app-boton variante="secundario" (clic)="cancelar()">Cancelar</app-boton>
+        <app-boton tipo="submit" [cargando]="guardando()">
+          {{ esEdicion() ? 'Guardar cambios' : 'Crear proyecto' }}
+        </app-boton>
+      </div>
+    </form>
+  }
+</div>
