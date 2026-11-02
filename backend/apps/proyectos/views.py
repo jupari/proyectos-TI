@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -247,6 +247,65 @@ class ProyectoViewSet(MixinAlcancePorRol, ViewSetBase):
                 "por_mes": comparativo_por_mes(proyecto),
             }
         )
+
+    @extend_schema(
+        summary="Expediente digital del proyecto",
+        description="docs/plan/fase-09-seguimiento-expediente.md §9.2.4.",
+        parameters=[
+            OpenApiParameter("pagina", int, required=False),
+            OpenApiParameter("tamano", int, required=False),
+        ],
+        responses={200: {"type": "object"}},
+    )
+    @action(detail=True, methods=["get"])
+    def expediente(self, request, pk=None):
+        from apps.expediente.serializers import (
+            DocumentoExpedienteSerializer,
+            EntradaBitacoraSerializer,
+        )
+        from apps.expediente.services import armar_expediente
+
+        proyecto = self.get_object()
+        try:
+            pagina = max(1, int(request.query_params.get("pagina", 1)))
+            tamano = max(1, min(200, int(request.query_params.get("tamano", 50))))
+        except ValueError as exc:
+            raise ValidationError({"pagina": ["Debe ser un entero."]}) from exc
+
+        datos = armar_expediente(proyecto, pagina=pagina, tamano_pagina=tamano)
+        contexto = self.get_serializer_context()
+        return Response(
+            {
+                "documentos_por_categoria": {
+                    categoria: DocumentoExpedienteSerializer(
+                        documentos, many=True, context=contexto
+                    ).data
+                    for categoria, documentos in datos["documentos_por_categoria"].items()
+                },
+                "linea_tiempo": EntradaBitacoraSerializer(datos["linea_tiempo"], many=True).data,
+                "total_eventos_linea_tiempo": datos["total_eventos_linea_tiempo"],
+                "totales": datos["totales"],
+            }
+        )
+
+    @extend_schema(
+        summary="Exporta el expediente a PDF",
+        responses={200: {"type": "string", "format": "binary"}},
+    )
+    @action(detail=True, methods=["get"], url_path="expediente/exportar")
+    def exportar_expediente(self, request, pk=None):
+        from django.http import HttpResponse
+
+        from apps.expediente.pdf import generar_pdf_expediente
+        from apps.expediente.services import armar_expediente
+
+        proyecto = self.get_object()
+        datos = armar_expediente(proyecto, pagina=1, tamano_pagina=10_000)
+        contenido_pdf = generar_pdf_expediente(proyecto, datos)
+        respuesta = HttpResponse(contenido_pdf, content_type="application/pdf")
+        nombre_archivo = f"expediente-{proyecto.codigo}.pdf"
+        respuesta["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
+        return respuesta
 
 
 class FaseProyectoViewSet(ViewSetBase):

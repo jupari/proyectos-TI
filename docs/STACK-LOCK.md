@@ -14,6 +14,7 @@
 | drf-spectacular | 0.30.0 |
 | django-environ | 0.14.0 |
 | psycopg | 3.3.6 |
+| reportlab (fase 09, PDF del expediente) | 5.1.0 |
 | Node (imagen frontend) | 22.23.4 |
 | Angular CLI / Angular | 22.2.5 / 22.2.4 |
 | Tailwind CSS | 3.4.19 |

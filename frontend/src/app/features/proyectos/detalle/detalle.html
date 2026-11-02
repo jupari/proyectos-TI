@@ -495,8 +495,39 @@
       </app-card>
     }
 
-    @if (pestanaActiva() === 'seguimientos' || pestanaActiva() === 'expediente') {
-      <app-en-construccion />
+    @if (pestanaActiva() === 'seguimientos') {
+      <app-card titulo="Historial de seguimientos">
+        <p class="mb-3 text-xs text-neutro-400">
+          Gráfico de evolución del avance: pendiente para la fase 10.
+        </p>
+        @if (cargandoSeguimientos()) {
+          <p class="text-sm text-neutro-500">Cargando…</p>
+        } @else if (seguimientosProyecto().length > 0) {
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @for (s of seguimientosProyecto(); track s.id) {
+              <a
+                [routerLink]="['/seguimientos', s.id]"
+                class="flex flex-col gap-2 rounded-panel border border-neutro-200 p-4 hover:border-marca-400"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-medium text-neutro-800">
+                    {{ s.periodicidad }} — {{ s.periodo_inicio | fechaCorta }}
+                  </span>
+                  <app-semaforo [valor]="esValorSemaforo(s.semaforo)" [mostrarTexto]="false" />
+                </div>
+                <p class="text-sm text-neutro-600">Avance: {{ s.avance_reportado }}%</p>
+                <app-badge [valor]="s.estado" />
+              </a>
+            }
+          </div>
+        } @else {
+          <p class="py-4 text-sm text-neutro-400">Este proyecto todavía no tiene seguimientos.</p>
+        }
+      </app-card>
+    }
+
+    @if (pestanaActiva() === 'expediente') {
+      <app-panel-expediente [proyectoId]="proyecto()!.id" />
     }
   </div>
 

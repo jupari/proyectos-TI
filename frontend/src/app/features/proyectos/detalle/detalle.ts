@@ -13,6 +13,7 @@ import {
   ETIQUETAS_TIPO_TAREA,
   ErrorApi,
   GastoEjecutado,
+  Seguimiento,
   TRANSICIONES_PROYECTO,
 } from '../../../core/models';
 import { ToastService } from '../../../core/ui/toast.service';
@@ -30,8 +31,9 @@ import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { Semaforo, ValorSemaforo } from '../../../shared/ui/semaforo/semaforo';
 import { PestanaTab, Tabs } from '../../../shared/ui/tabs/tabs';
 import { Textarea } from '../../../shared/ui/textarea/textarea';
-import { EnConstruccion } from '../../comun/en-construccion';
 import { GastoEjecutadoEscritura, GastosService } from '../../ejecucion/data/gastos.service';
+import { PanelExpediente } from '../../expediente/panel/panel-expediente';
+import { SeguimientosService } from '../../seguimientos/data/seguimientos.service';
 import { AsignacionEscritura, AsignacionesService } from '../../recursos/data/asignaciones.service';
 import { RecursosService } from '../../recursos/data/recursos.service';
 import { DependenciaTareaEscritura, DependenciasService } from '../../tareas/data/dependencias.service';
@@ -75,8 +77,8 @@ const PESTANAS: PestanaTab[] = [
     Datepicker,
     Numero,
     Input,
-    EnConstruccion,
     NodoArbolTareaFila,
+    PanelExpediente,
     EtiquetaEnumPipe,
     FechaCortaPipe,
     MonedaPipe,
@@ -91,6 +93,7 @@ export class DetalleProyecto {
   private readonly tareasService = inject(TareasService);
   private readonly dependenciasService = inject(DependenciasService);
   private readonly gastosService = inject(GastosService);
+  private readonly seguimientosService = inject(SeguimientosService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly ruta = inject(ActivatedRoute);
@@ -765,6 +768,26 @@ export class DetalleProyecto {
     if (id === 'ejecucion' && this.comparativoPorRecurso().length === 0 && this.gastos().length === 0) {
       this.cargarEjecucion();
     }
+    if (id === 'seguimientos' && this.seguimientosProyecto().length === 0) {
+      this.cargarSeguimientos();
+    }
+  }
+
+  protected readonly cargandoSeguimientos = signal(false);
+  protected readonly seguimientosProyecto = signal<Seguimiento[]>([]);
+
+  private cargarSeguimientos(): void {
+    this.cargandoSeguimientos.set(true);
+    this.seguimientosService.listarSeguimientos({ proyecto: this.id, page_size: 50 }).subscribe({
+      next: (respuesta) => {
+        this.seguimientosProyecto.set(respuesta.results);
+        this.cargandoSeguimientos.set(false);
+      },
+      error: () => {
+        this.toast.mostrar({ tipo: 'error', mensaje: 'No se pudieron cargar los seguimientos.' });
+        this.cargandoSeguimientos.set(false);
+      },
+    });
   }
 
   protected esValorSemaforo(valor: string): ValorSemaforo {

@@ -18,6 +18,11 @@ export const proyectosRoutes: Routes = [
     canActivate: [permisoGuard('proyectos.editar')],
   },
   {
+    path: ':id/expediente',
+    loadComponent: () =>
+      import('../expediente/expediente-proyecto').then((m) => m.ExpedienteProyecto),
+  },
+  {
     path: ':id',
     loadComponent: () => import('./detalle/detalle').then((m) => m.DetalleProyecto),
   },

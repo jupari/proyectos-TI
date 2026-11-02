@@ -1,0 +1,75 @@
+<div class="flex flex-col gap-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-lg font-semibold text-neutro-800">Seguimientos</h1>
+    @if (puedeCrear()) {
+      <app-boton routerLink="/seguimientos/nuevo">+ Nuevo seguimiento</app-boton>
+    }
+  </div>
+
+  <div class="grid grid-cols-1 gap-3 rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta sm:grid-cols-2 lg:grid-cols-4">
+    <app-select
+      etiqueta="Proyecto"
+      [opciones]="opcionesProyectos()"
+      [limpiable]="true"
+      [ngModel]="proyecto()"
+      (ngModelChange)="proyecto.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Periodicidad"
+      [opciones]="opcionesPeriodicidad"
+      [limpiable]="true"
+      [ngModel]="periodicidad()"
+      (ngModelChange)="periodicidad.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Estado"
+      [opciones]="opcionesEstado"
+      [limpiable]="true"
+      [ngModel]="estado()"
+      (ngModelChange)="estado.set($event); aplicarFiltros()"
+    />
+    <div class="flex items-end justify-end">
+      <app-boton variante="secundario" (clic)="limpiarFiltros()">Limpiar filtros</app-boton>
+    </div>
+  </div>
+
+  <ng-template #colAvance let-fila>{{ fila.avance_reportado }}%</ng-template>
+  <ng-template #colSemaforo let-fila>
+    <app-semaforo [valor]="esValorSemaforo(fila.semaforo)" [mostrarTexto]="false" />
+  </ng-template>
+  <ng-template #colEstado let-fila>
+    <app-badge
+      [valor]="fila.estado"
+      [etiqueta]="fila.estado | etiquetaEnum: ETIQUETAS_ESTADO_SEGUIMIENTO"
+    />
+  </ng-template>
+  <ng-template #colPeriodo let-fila>{{ fila.periodo_inicio | fechaCorta }}</ng-template>
+  <ng-template #colFechaCorte let-fila>{{ fila.fecha_corte | fechaCorta }}</ng-template>
+  <ng-template #colAcciones let-fila>
+    <a [routerLink]="['/seguimientos', fila.id]" class="text-sm font-medium text-marca-600 hover:underline">
+      Ver
+    </a>
+  </ng-template>
+
+  <app-tabla
+    [columnas]="[
+      columnas[0],
+      columnas[1],
+      { clave: 'periodo_inicio', titulo: 'Periodo', ordenable: true, plantilla: colPeriodo },
+      { clave: 'fecha_corte', titulo: 'Fecha de corte', ordenable: true, plantilla: colFechaCorte },
+      { clave: 'avance_reportado', titulo: 'Avance', plantilla: colAvance },
+      { clave: 'semaforo', titulo: 'Semáforo', alinear: 'centro', plantilla: colSemaforo },
+      { clave: 'estado', titulo: 'Estado', plantilla: colEstado },
+      columnas[7],
+      { clave: 'acciones', titulo: '', alinear: 'derecha', plantilla: colAcciones }
+    ]"
+    [filas]="respuesta()?.results ?? []"
+    [cargando]="cargando()"
+    [respuesta]="respuesta()"
+    [paginaActual]="paginaActual()"
+    [ordenActual]="ordenActual()"
+    mensajeVacio="No hay seguimientos que coincidan con los filtros."
+    (cambioOrden)="alCambiarOrden($event)"
+    (cambioPagina)="alCambiarPagina($event)"
+  />
+</div>

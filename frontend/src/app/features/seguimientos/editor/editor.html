@@ -1,0 +1,238 @@
+@if (cargando()) {
+  <p class="text-sm text-neutro-500">Cargando…</p>
+} @else {
+  <div class="flex flex-col gap-5 lg:flex-row">
+    <div class="flex flex-1 flex-col gap-5">
+      <div class="flex items-center justify-between">
+        <h1 class="text-lg font-semibold text-neutro-800">
+          {{ esNuevo ? 'Nuevo seguimiento' : 'Seguimiento' }}
+        </h1>
+        @if (seguimiento()) {
+          <app-badge [valor]="seguimiento()!.estado" />
+        }
+      </div>
+
+      <app-card titulo="1. Periodo a reportar">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <app-select
+            etiqueta="Proyecto *"
+            [opciones]="opcionesProyectos()"
+            [disabled]="!esNuevo"
+            [ngModel]="proyectoSel()"
+            (ngModelChange)="proyectoSel.set($event)"
+          />
+          <app-select
+            etiqueta="Periodicidad *"
+            [opciones]="opcionesPeriodicidad"
+            [disabled]="!esNuevo"
+            [ngModel]="periodicidadSel()"
+            (ngModelChange)="periodicidadSel.set($event)"
+          />
+          <app-datepicker
+            etiqueta="Periodo (cualquier fecha dentro) *"
+            [disabled]="!esNuevo"
+            [ngModel]="periodoInicioSel()"
+            (ngModelChange)="periodoInicioSel.set($event)"
+          />
+        </div>
+        <div class="mt-3 flex justify-end">
+          <app-boton [cargando]="precargando()" (clic)="precargar()">Precargar datos</app-boton>
+        </div>
+      </app-card>
+
+      @if (precarga()) {
+        <app-card titulo="2. Datos calculados (de solo lectura)">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p class="text-xs uppercase text-neutro-400">Horas del periodo</p>
+              <p class="font-medium">{{ precarga()!.horas_periodo | horas }}</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase text-neutro-400">Costo del periodo</p>
+              <p class="font-medium">{{ precarga()!.costo_periodo | moneda }}</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase text-neutro-400">Horas acumuladas</p>
+              <p class="font-medium">{{ precarga()!.horas_acumuladas | horas }}</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase text-neutro-400">Costo acumulado</p>
+              <p class="font-medium">{{ precarga()!.costo_acumulado | moneda }}</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center gap-2">
+            <span class="text-xs uppercase text-neutro-400">Semáforo calculado</span>
+            <app-semaforo [valor]="esValorSemaforo(precarga()!.semaforo_calculado)" />
+          </div>
+        </app-card>
+
+        <app-card titulo="3. Avance y semáforo declarados">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <p class="mb-1 text-xs uppercase text-neutro-400">
+                Avance anterior: {{ avanceAnterior() ?? '—' }}%
+              </p>
+              <app-numero
+                etiqueta="Avance reportado (%) *"
+                [disabled]="esInmutable()"
+                [ngModel]="avanceReportado()"
+                (ngModelChange)="avanceReportado.set($event)"
+              />
+            </div>
+            <div>
+              <p class="mb-1 text-xs uppercase text-neutro-400">Semáforo declarado *</p>
+              <div class="flex gap-2">
+                @for (opcion of opcionesSemaforo; track opcion.valor) {
+                  <button
+                    type="button"
+                    class="rounded-panel border px-2 py-1"
+                    [class.border-neutro-800]="semaforoDeclarado() === opcion.valor"
+                    [class.border-neutro-200]="semaforoDeclarado() !== opcion.valor"
+                    [disabled]="esInmutable()"
+                    (click)="semaforoDeclarado.set(opcion.valor)"
+                  >
+                    <app-semaforo [valor]="opcion.valor" [mostrarTexto]="false" />
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+          @if (necesitaJustificacion()) {
+            <app-textarea
+              class="mt-3 block"
+              etiqueta="Justificación (obligatoria: el semáforo declarado difiere del calculado) *"
+              [disabled]="esInmutable()"
+              [ngModel]="justificacionSemaforo()"
+              (ngModelChange)="justificacionSemaforo.set($event)"
+            />
+          }
+        </app-card>
+      }
+
+      <app-card titulo="4. Narrativa del periodo">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <app-textarea etiqueta="Logros" [disabled]="esInmutable()" [ngModel]="logros()" (ngModelChange)="logros.set($event)" />
+          <app-textarea etiqueta="Dificultades" [disabled]="esInmutable()" [ngModel]="dificultades()" (ngModelChange)="dificultades.set($event)" />
+          <app-textarea etiqueta="Riesgos" [disabled]="esInmutable()" [ngModel]="riesgos()" (ngModelChange)="riesgos.set($event)" />
+          <app-textarea etiqueta="Acciones siguientes" [disabled]="esInmutable()" [ngModel]="accionesSiguientes()" (ngModelChange)="accionesSiguientes.set($event)" />
+        </div>
+      </app-card>
+
+      @if (seguimiento()) {
+        <app-card titulo="5. Compromisos">
+          <table class="w-full text-left text-sm">
+            <thead class="text-neutro-500">
+              <tr>
+                <th class="py-1">Descripción</th><th class="py-1">Responsable</th>
+                <th class="py-1">Fecha</th><th class="py-1">Estado</th><th class="py-1"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutro-100">
+              @for (fila of compromisos(); track $index) {
+                <tr>
+                  <td class="py-2">
+                    <input
+                      class="w-full rounded-panel border border-neutro-300 px-2 py-1"
+                      [ngModel]="fila.descripcion"
+                      (ngModelChange)="actualizarCompromiso($index, { descripcion: $event })"
+                    />
+                  </td>
+                  <td class="py-2">
+                    <app-select
+                      [opciones]="opcionesResponsables()"
+                      [ngModel]="fila.responsable"
+                      (ngModelChange)="actualizarCompromiso($index, { responsable: $event })"
+                    />
+                  </td>
+                  <td class="py-2">
+                    <app-datepicker
+                      [ngModel]="fila.fecha_compromiso"
+                      (ngModelChange)="actualizarCompromiso($index, { fecha_compromiso: $event })"
+                    />
+                  </td>
+                  <td class="py-2">{{ fila.id ? 'Guardado' : 'Sin guardar' }}</td>
+                  <td class="py-2 text-right">
+                    <app-boton tamano="sm" [cargando]="fila.guardando" (clic)="guardarCompromiso($index)">
+                      Guardar
+                    </app-boton>
+                    <button type="button" class="ml-2 text-xs text-peligro" (click)="eliminarCompromiso($index)">
+                      Quitar
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5" class="py-4 text-neutro-400">Sin compromisos.</td></tr>
+              }
+            </tbody>
+          </table>
+          <app-boton variante="secundario" tamano="sm" class="mt-2" (clic)="agregarCompromiso()">
+            + Agregar compromiso
+          </app-boton>
+        </app-card>
+
+        <app-card titulo="6. Adjuntos">
+          <input type="file" (change)="alSeleccionarAdjunto($event)" [disabled]="subiendoAdjunto()" />
+          @if (subiendoAdjunto()) {
+            <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutro-100">
+              <div class="h-full bg-marca-500" [style.width.%]="progresoAdjunto()"></div>
+            </div>
+          }
+        </app-card>
+      }
+
+      <div class="flex justify-end gap-2">
+        <app-boton variante="secundario" routerLink="/seguimientos">Cancelar</app-boton>
+        @if (!esInmutable()) {
+          <app-boton variante="secundario" [cargando]="guardando()" (clic)="guardarBorrador()">
+            Guardar borrador
+          </app-boton>
+          @if (seguimiento()) {
+            <app-boton [cargando]="publicando()" (clic)="publicar()">Publicar</app-boton>
+          }
+        }
+      </div>
+    </div>
+
+    @if (precarga()) {
+      <aside class="flex w-full flex-col gap-4 lg:w-80">
+        <app-card titulo="Ayuda para redactar">
+          <button type="button" class="mb-3 text-sm font-medium text-marca-600 hover:underline" (click)="insertarEnLogros()">
+            Insertar en Logros
+          </button>
+          <p class="text-xs font-medium uppercase text-neutro-400">Tareas completadas</p>
+          <ul class="mb-3 list-disc pl-4 text-sm">
+            @for (t of precarga()!.tareas_completadas_en_periodo; track t.id) {
+              <li>{{ t.codigo }}: {{ t.nombre }}</li>
+            } @empty {
+              <li class="text-neutro-400">Ninguna.</li>
+            }
+          </ul>
+          <p class="text-xs font-medium uppercase text-neutro-400">Tareas vencidas</p>
+          <ul class="mb-3 list-disc pl-4 text-sm">
+            @for (t of precarga()!.tareas_vencidas; track t.id) {
+              <li>{{ t.codigo }}: {{ t.nombre }}</li>
+            } @empty {
+              <li class="text-neutro-400">Ninguna.</li>
+            }
+          </ul>
+          <p class="text-xs font-medium uppercase text-neutro-400">Hitos del periodo</p>
+          <ul class="mb-3 list-disc pl-4 text-sm">
+            @for (h of precarga()!.hitos_del_periodo; track h.id) {
+              <li>{{ h.nombre }}</li>
+            } @empty {
+              <li class="text-neutro-400">Ninguno.</li>
+            }
+          </ul>
+          <p class="text-xs font-medium uppercase text-neutro-400">Tareas nuevas del periodo</p>
+          <ul class="list-disc pl-4 text-sm">
+            @for (t of precarga()!.tareas_creadas_en_periodo; track t.id) {
+              <li>{{ t.codigo }}: {{ t.nombre }}</li>
+            } @empty {
+              <li class="text-neutro-400">Ninguna.</li>
+            }
+          </ul>
+        </app-card>
+      </aside>
+    }
+  </div>
+}

@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { ApiService } from '../../../core/api/api.service';
+import { environment } from '../../../../environments/environment';
+import { ApiService, ParametrosConsulta } from '../../../core/api/api.service';
 import {
   AsignacionRecurso,
   FaseProyecto,
@@ -13,6 +14,7 @@ import {
 import { FilaCronograma } from '../../tareas/data/tareas.model';
 import {
   ComparativoEjecucion,
+  ExpedienteProyecto,
   FiltrosProyecto,
   ProyectoDetalle,
   ProyectoEscritura,
@@ -65,6 +67,19 @@ export class ProyectosService extends ApiService<Proyecto> {
 
   ejecucion(id: string): Observable<ComparativoEjecucion> {
     return this.accionGet<ComparativoEjecucion>(id, 'ejecucion');
+  }
+
+  expediente(id: string, parametros?: ParametrosConsulta): Observable<ExpedienteProyecto> {
+    return this.accionGet<ExpedienteProyecto>(id, 'expediente', parametros);
+  }
+
+  /** La exportación siempre pasa por este endpoint autenticado (nunca un
+   * enlace directo): se descarga como blob y se entrega con
+   * `URL.createObjectURL` desde el componente. */
+  exportarExpediente(id: string): Observable<Blob> {
+    return this.http.get(`${environment.apiBaseUrl}/proyectos/${id}/expediente/exportar/`, {
+      responseType: 'blob',
+    });
   }
 }
 

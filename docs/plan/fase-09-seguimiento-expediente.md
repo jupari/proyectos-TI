@@ -153,20 +153,20 @@ versionados y una línea de tiempo auditable.
 
 ## Criterios de aceptación
 
-- [ ] "Precargar datos" trae horas y costos reales del periodo, solo de lo aprobado.
-- [ ] Declarar verde cuando el cálculo da rojo exige justificación.
-- [ ] Al publicar, el proyecto queda con el avance y el semáforo del seguimiento.
-- [ ] Un seguimiento publicado no se puede editar y un `ADMIN` puede reabrirlo, con rastro.
-- [ ] Subir un archivo de extensión no permitida se bloquea en el cliente y en el servidor.
-- [ ] Subir dos veces el mismo archivo avisa que ya existe y enlaza al existente.
-- [ ] Una segunda versión deja la anterior accesible pero marcada como no vigente.
-- [ ] La descarga de un documento de otro proyecto por un `RECURSO` devuelve 404.
-- [ ] Un archivo llamado `../../x.pdf` se guarda con nombre seguro y se descarga con su
+- [x] "Precargar datos" trae horas y costos reales del periodo, solo de lo aprobado.
+- [x] Declarar verde cuando el cálculo da rojo exige justificación.
+- [x] Al publicar, el proyecto queda con el avance y el semáforo del seguimiento.
+- [x] Un seguimiento publicado no se puede editar y un `ADMIN` puede reabrirlo, con rastro.
+- [x] Subir un archivo de extensión no permitida se bloquea en el cliente y en el servidor.
+- [x] Subir dos veces el mismo archivo avisa que ya existe y enlaza al existente.
+- [x] Una segunda versión deja la anterior accesible pero marcada como no vigente.
+- [x] La descarga de un documento de otro proyecto por un `RECURSO` devuelve 404.
+- [x] Un archivo llamado `../../x.pdf` se guarda con nombre seguro y se descarga con su
       nombre original saneado.
-- [ ] La línea de tiempo muestra creación del proyecto, cambios de estado, aprobaciones,
+- [x] La línea de tiempo muestra creación del proyecto, cambios de estado, aprobaciones,
       publicaciones y cargas de documentos.
-- [ ] "Exportar expediente" produce un PDF (o HTML imprimible, si quedó anotado) legible.
-- [ ] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios.
+- [x] "Exportar expediente" produce un PDF (o HTML imprimible, si quedó anotado) legible.
+- [x] `pytest` verde, `ruff` limpio, `npm run build` y `npm run lint` limpios.
 
 ## Comandos de verificación
 
@@ -184,4 +184,121 @@ notificaciones por correo, OCR de adjuntos.
 
 ## Evidencia
 
-<!-- Pega aquí la salida real de los comandos de verificación. -->
+### Backend
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/seguimiento apps/expediente -q
+.......................................................                  [100%]
+55 passed in 90.73s (0:01:30)
+
+$ docker compose -f infra/docker-compose.yml exec backend pytest -q
+........................................................................ [ 21%]
+........................................................................ [ 42%]
+........................................................................ [ 63%]
+........................................................................ [ 84%]
+......................................................                   [100%]
+342 passed in 441.86s (0:07:21)
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py spectacular --validate --fail-on-warn
+(sin warnings/errores; exit 0)
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py actualizar_compromisos
+2 compromiso(s) marcado(s) como VENCIDO.
+```
+
+### Frontend
+
+```
+$ docker compose -f infra/docker-compose.yml exec frontend npm run lint
+Linting "frontend"...
+All files pass linting.
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm run build
+Application bundle generation complete. [30.2s]
+(chunks nuevos: editor, lista, aprobaciones ya existentes + lista/editor de
+seguimientos, panel de expediente embebido en la pestaña del proyecto)
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm test -- --watch=false
+Test Files  7 passed (7)
+     Tests  31 passed (31)
+```
+(`npm test` no es un comando de verificación exigido por esta fase; se corrió para confirmar
+que nada de fases anteriores se rompió — igual que en las fases 07 y 08.)
+
+### Verificación manual contra el backend real (`seed_demo`, sin navegador disponible)
+
+Con `admin@seguimiento.local` contra `PRY-2026-001`:
+
+- `precargar()` sobre un periodo con registros `APROBADO`, `ENVIADO` y de otro mes confirmó
+  que solo entra lo `APROBADO` y dentro del rango exacto del periodo.
+- `guardar_documento` con `SimpleUploadedFile("../../etc/passwd", ...)` → `nombre_original`
+  saneado a `"passwd"`; la ruta de almacenamiento ya era segura por construcción (usa un
+  `uuid`, nunca el nombre original).
+- Subir el mismo contenido dos veces → 409 con `detalles.documento_existente` apuntando al id
+  del primero.
+- `nueva_version` encadenó v1 → v2 → v3, con `documento_padre` siempre apuntando a la raíz
+  (v1), no al eslabón anterior, y solo la última `es_version_vigente=True`.
+- `armar_expediente` + `generar_pdf_expediente` produjeron un PDF real (`%PDF-` en los
+  primeros bytes) con portada, seguimientos publicados, resumen de tareas y de ejecución, e
+  índice de documentos.
+- Todos los datos de prueba creados a mano se limpiaron al terminar (incluido el archivo
+  físico del documento de prueba) y se restauró la contraseña del usuario admin a su estado
+  inicial (inutilizable).
+
+No hay navegador disponible en este entorno (igual que en fases 05-08): el editor de
+seguimiento, la zona de arrastrar y soltar del expediente y la línea de tiempo se verificaron
+por `ng build`/`ng lint` (sin errores de plantilla) y por la forma real de los datos que
+consumen, no renderizados pixel a pixel en un navegador real.
+
+### Decisiones y discrepancias documentadas
+
+1. **Bug real encontrado y corregido: DRF trata un `BooleanField` ausente en
+   `multipart/form-data` como `False`, no como "use el default del modelo".** Como
+   `DocumentoExpedienteSerializer` incluía `"activo"` como campo escribible normal (igual que
+   todos los demás serializers del proyecto, que nunca reciben multipart porque no suben
+   archivos), cada alta de documento vía la API quedaba con `activo=False` — invisible para
+   cualquier `GET`/`DELETE` posterior, incluida la propia detección de duplicados (que filtra
+   `activo=True`). Se corrigió marcando `"activo"` como `read_only` en ese serializer
+   específico (no hacía falta tocar los demás, que no son multipart). Se encontró al escribir
+   la prueba de duplicado exacto, que fallaba con un 201 en vez de 409; queda anotado aquí
+   para que no se repita si se agrega otro endpoint de subida de archivos.
+2. **El duplicado exacto se detecta comparando `hash_sha256` dentro del mismo `proyecto`**
+   antes de guardar: `guardar_documento` lanza `ErrorConflicto` (409) con el id y el nombre
+   del documento existente en `detalles`, tal como pide el plan.
+3. **`Proyecto.semaforo` se actualiza con el semáforo *declarado* del seguimiento (`seguimiento.semaforo`), no con el calculado.** `docs/modelo-datos.md` §7 dice "actualiza
+   Proyecto.avance_reportado y Proyecto.semaforo" sin precisar cuál de los dos; se usó el
+   declarado porque es el juicio humano del líder (respaldado por `justificacion_semaforo`
+   cuando difiere del calculado) — el calculado queda disponible de todas formas en
+   `semaforo_calculado`, congelado en el mismo registro.
+4. **La línea de tiempo del expediente es directamente `EntradaBitacora` del proyecto**, sin
+   "mezclar" manualmente seguimientos, hitos y documentos como sugiere la redacción del plan:
+   las señales de auditoría (fase 02) y los `registrar_evento` explícitos (publicar, aprobar,
+   cargar documento, nueva versión) ya escriben ahí todo eso. Reconstruir esas listas por
+   separado habría sido trabajo duplicado sin ningún beneficio, y la prueba
+   `test_linea_tiempo_incluye_publicacion_y_carga` confirma que ambos tipos de evento aparecen
+   mezclados y ordenados por fecha.
+5. **`BitacoraViewSet` (fase 02 lo dejó pendiente, fase 07 lo documentó como hueco) quedó
+   construido en esta fase**, con los filtros de `docs/api-contrato.md` §6 y un permiso propio
+   que excluye a RECURSO y CONSULTA (la matriz de §8 les da "—", a diferencia de los demás
+   recursos donde CONSULTA entra en `ROLES_ALCANCE_TOTAL`). Esto cierra la referencia que
+   `docs/plan/fase-07-tareas-programacion.md`'s Evidencia dejó abierta sobre el detalle de
+   tarea.
+6. **`armar_expediente` pagina la línea de tiempo con `pagina`/`tamano` simples (slicing en
+   Python), no con el paginador estándar de DRF**, porque va embebida dentro de la respuesta
+   de `/proyectos/{id}/expediente/` junto con `documentos_por_categoria` y `totales`, no como
+   un listado propio de un `ViewSet`.
+7. **El PDF se generó con `reportlab`** (agregado a `pyproject.toml` y a `docs/STACK-LOCK.md`,
+   versión real instalada 5.1.0): no hizo falta recurrir a la alternativa de HTML imprimible
+   que el criterio de aceptación permitía si esto se complicaba.
+8. **El permiso de borrado de documentos para `RECURSO` sigue el texto específico de esta
+   fase** ("puede borrar solo los que él mismo subió", §9.3.5) en vez de la matriz general de
+   `docs/api-contrato.md` §8 (que no le da "B" a RECURSO en absoluto) — mismo criterio que en
+   fases anteriores: el texto más detallado de la fase gana, y queda anotado aquí para que
+   quien revise la matriz no lo lea como una contradicción sin explicación.
+9. **El filtro `usuario` en `FiltroRecurso`** que la fase 08 agregó para "Mi registro de
+   horas" también lo reutiliza el editor de seguimiento para resolver nombres de responsables
+   de compromisos vía `UsuariosService` (ya existente desde fase 03), sin cambios adicionales
+   al backend.

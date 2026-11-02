@@ -1,4 +1,6 @@
 import {
+  DocumentoExpediente,
+  EntradaBitacora,
   FaseProyecto,
   Hito,
   Proyecto,
@@ -65,6 +67,20 @@ export interface FilaComparativoEjecucion {
 export interface ComparativoEjecucion {
   por_recurso: FilaComparativoEjecucion[];
   por_mes: FilaComparativoEjecucion[];
+}
+
+/** `GET /proyectos/{id}/expediente/` (docs/plan/fase-09-seguimiento-expediente.md §9.2.4). */
+export interface ExpedienteProyecto {
+  documentos_por_categoria: Record<string, DocumentoExpediente[]>;
+  linea_tiempo: EntradaBitacora[];
+  total_eventos_linea_tiempo: number;
+  totales: {
+    documentos: number;
+    seguimientos_publicados: number;
+    horas_acumuladas: number;
+    costo_acumulado: number;
+    tareas_cerradas: number;
+  };
 }
 
 export interface FiltrosProyecto {

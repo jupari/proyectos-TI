@@ -3,6 +3,7 @@ import { CategoriaDocumento, TipoEvento } from './enums';
 
 export interface DocumentoExpediente extends ModeloBase {
   proyecto: string;
+  proyecto_codigo: string;
   seguimiento: string | null;
   tarea: string | null;
   categoria: CategoriaDocumento;
@@ -16,6 +17,9 @@ export interface DocumentoExpediente extends ModeloBase {
   documento_padre: string | null;
   es_version_vigente: boolean;
   descripcion: string;
+  creado_por: string | null;
+  creado_por_nombre: string | null;
+  creado_en: string;
 }
 
 export interface EntradaBitacora extends ModeloBase {
@@ -27,5 +31,6 @@ export interface EntradaBitacora extends ModeloBase {
   datos_antes: Record<string, unknown> | null;
   datos_despues: Record<string, unknown> | null;
   usuario: string | null;
+  usuario_nombre: string | null;
   ocurrido_en: string;
 }
