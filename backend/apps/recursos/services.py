@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.db.models import Q, Sum
 from rest_framework.exceptions import ValidationError
 
-from apps.core.calculos import division_segura
+from apps.core.calculos import division_segura, meses_entre, prorratear_por_mes
 from apps.core.exceptions import ErrorReglaNegocio
 
 
@@ -89,19 +89,6 @@ def validar_vigencias(recurso, tarifa_nueva):
     return avisos
 
 
-def _meses_entre(desde, hasta):
-    """Lista de `(año, mes)` que el rango `[desde, hasta]` atraviesa."""
-    meses = []
-    anio, mes = desde.year, desde.month
-    while (anio, mes) <= (hasta.year, hasta.month):
-        meses.append((anio, mes))
-        mes += 1
-        if mes > 12:
-            mes = 1
-            anio += 1
-    return meses
-
-
 def calcular_costo_planeado(asignacion):
     return asignacion.horas_planeadas * asignacion.valor_hora_plan
 
@@ -115,7 +102,7 @@ def _advertencias_sobreasignacion(asignacion):
         otras = otras.exclude(pk=asignacion.pk)
 
     advertencias = []
-    for anio, mes in _meses_entre(asignacion.fecha_desde, asignacion.fecha_hasta):
+    for anio, mes in meses_entre(asignacion.fecha_desde, asignacion.fecha_hasta):
         primer_dia = datetime.date(anio, mes, 1)
         ultimo_dia = datetime.date(anio, mes, calendar.monthrange(anio, mes)[1])
         dedicacion_otras = (
@@ -162,34 +149,51 @@ def validar_asignacion(asignacion):
 
 
 def carga_recurso(recurso, desde, hasta):
-    """Horas planeadas por mes entre `desde` y `hasta`, prorrateadas por
-    días calendario de intersección entre cada asignación y el mes (p. ej.
-    una asignación del 01/02 al 31/03 con 200 horas reparte esas 200 horas
-    proporcional a los 28 días de febrero y los 31 de marzo que aporta cada
-    uno al total de 59 días de la asignación). `horas_ejecutadas` queda en
-    0 hasta que la fase 08 tenga registros de ejecución reales.
-    """
+    """Horas planeadas y ejecutadas por mes entre `desde` y `hasta`. Lo
+    planeado se prorratea por días calendario de intersección entre cada
+    asignación y el mes (p. ej. una asignación del 01/02 al 31/03 con 200
+    horas reparte esas 200 horas proporcional a los 28 días de febrero y
+    los 31 de marzo que aporta cada uno al total de 59 días de la
+    asignación). Lo ejecutado suma los registros `APROBADO` cuyo
+    `periodo_inicio` cae en el mes (misma convención de simplificación que
+    `apps.ejecucion.services.comparativo_por_mes`: un `SEMANAL` que cruza
+    fin de mes no se fracciona)."""
+    from apps.core.choices import EstadoAprobacion
+
     asignaciones = list(
         recurso.asignaciones.filter(activo=True, fecha_desde__lte=hasta, fecha_hasta__gte=desde)
     )
+    registros = list(
+        recurso.registros_ejecucion.filter(
+            activo=True,
+            estado_aprobacion=EstadoAprobacion.APROBADO,
+            periodo_inicio__gte=desde,
+            periodo_inicio__lte=hasta,
+        )
+    )
 
     resultado = []
-    for anio, mes in _meses_entre(desde, hasta):
-        primer_dia = datetime.date(anio, mes, 1)
-        ultimo_dia = datetime.date(anio, mes, calendar.monthrange(anio, mes)[1])
-
+    for anio, mes in meses_entre(desde, hasta):
         horas_planeadas = Decimal("0")
         for asignacion in asignaciones:
-            total_dias = (asignacion.fecha_hasta - asignacion.fecha_desde).days + 1
-            inicio_interseccion = max(asignacion.fecha_desde, primer_dia)
-            fin_interseccion = min(asignacion.fecha_hasta, ultimo_dia)
-            if inicio_interseccion > fin_interseccion:
-                continue
-            dias_interseccion = (fin_interseccion - inicio_interseccion).days + 1
-            horas_planeadas += asignacion.horas_planeadas * dias_interseccion / total_dias
+            horas_planeadas += prorratear_por_mes(
+                asignacion.fecha_desde,
+                asignacion.fecha_hasta,
+                asignacion.horas_planeadas,
+                anio,
+                mes,
+            )
+
+        horas_ejecutadas = sum(
+            (
+                r.horas
+                for r in registros
+                if r.periodo_inicio.year == anio and r.periodo_inicio.month == mes
+            ),
+            Decimal("0"),
+        )
 
         capacidad = recurso.capacidad_horas_mes
-        horas_ejecutadas = Decimal("0")
         pct_ocupacion = division_segura(horas_planeadas, capacidad)
         pct_ocupacion = float(pct_ocupacion) * 100 if pct_ocupacion is not None else None
 

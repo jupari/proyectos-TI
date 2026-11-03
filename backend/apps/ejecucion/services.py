@@ -3,8 +3,6 @@
 más importante del proyecto porque es lo único que impide contar las mismas
 horas dos veces entre periodicidades distintas."""
 
-import calendar
-import datetime
 from decimal import Decimal
 
 from django.db import transaction
@@ -12,7 +10,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from apps.core.calculos import division_segura
+from apps.core.calculos import division_segura, meses_entre, prorratear_por_mes
 from apps.core.choices import EstadoAprobacion, EstadoTarea, Periodicidad, TipoEvento
 from apps.core.exceptions import ErrorConflicto, ErrorReglaNegocio
 from apps.core.periodos import normalizar_periodo
@@ -395,18 +393,6 @@ def reabrir_gasto(gasto, usuario):
 # --- Comparativo plan vs. ejecutado del proyecto (fase 08 §8.2.4) ------------
 
 
-def _meses_entre(desde, hasta):
-    meses = []
-    anio, mes = desde.year, desde.month
-    while (anio, mes) <= (hasta.year, hasta.month):
-        meses.append((anio, mes))
-        mes += 1
-        if mes > 12:
-            mes = 1
-            anio += 1
-    return meses
-
-
 def comparativo_por_recurso(proyecto):
     """`[{recurso, recurso_nombre, horas_plan, horas_ejec, costo_plan,
     costo_ejec, pct_horas, pct_dinero}]` por cada recurso con asignación o
@@ -472,26 +458,29 @@ def comparativo_por_mes(proyecto):
         return []
 
     resultado = []
-    for anio, mes in _meses_entre(min(fechas), max(fechas)):
-        primer_dia = datetime.date(anio, mes, 1)
-        ultimo_dia = datetime.date(anio, mes, calendar.monthrange(anio, mes)[1])
-
+    for anio, mes in meses_entre(min(fechas), max(fechas)):
         horas_plan = CERO
         costo_plan = CERO
         for asignacion in asignaciones:
-            total_dias = (asignacion.fecha_hasta - asignacion.fecha_desde).days + 1
-            inicio_interseccion = max(asignacion.fecha_desde, primer_dia)
-            fin_interseccion = min(asignacion.fecha_hasta, ultimo_dia)
-            if inicio_interseccion > fin_interseccion:
-                continue
-            dias_interseccion = (fin_interseccion - inicio_interseccion).days + 1
-            horas_plan += asignacion.horas_planeadas * dias_interseccion / total_dias
-            costo_plan += asignacion.costo_planeado * dias_interseccion / total_dias
+            horas_plan += prorratear_por_mes(
+                asignacion.fecha_desde,
+                asignacion.fecha_hasta,
+                asignacion.horas_planeadas,
+                anio,
+                mes,
+            )
+            costo_plan += prorratear_por_mes(
+                asignacion.fecha_desde,
+                asignacion.fecha_hasta,
+                asignacion.costo_planeado,
+                anio,
+                mes,
+            )
 
         horas_ejec = CERO
         costo_ejec = CERO
         for registro in registros:
-            if primer_dia <= registro.periodo_inicio <= ultimo_dia:
+            if registro.periodo_inicio.year == anio and registro.periodo_inicio.month == mes:
                 horas_ejec += registro.horas
                 costo_ejec += registro.costo
 

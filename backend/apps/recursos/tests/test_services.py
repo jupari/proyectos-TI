@@ -4,7 +4,9 @@ from decimal import Decimal
 import pytest
 from rest_framework.exceptions import ValidationError
 
+from apps.core.choices import EstadoAprobacion
 from apps.core.exceptions import ErrorReglaNegocio
+from apps.ejecucion.tests.factories import RegistroEjecucionFactory
 from apps.proyectos.tests.factories import ProyectoFactory
 
 from ..models import AsignacionRecurso, TarifaRecurso
@@ -239,3 +241,29 @@ def test_carga_recurso_reparte_las_horas_de_una_asignacion_que_cruza_meses():
     assert febrero["horas_planeadas"] == Decimal("280")
     assert marzo["horas_planeadas"] == Decimal("310")
     assert febrero["horas_planeadas"] + marzo["horas_planeadas"] == Decimal("590")
+
+
+def test_carga_recurso_suma_horas_ejecutadas_aprobadas_del_mes():
+    """docs/plan/fase-10-tablero-control.md §10.1: `carga_recurso` ya no
+    deja `horas_ejecutadas` en 0 ahora que la fase 08 tiene registros
+    reales; solo cuenta lo `APROBADO` y lo asigna al mes de `periodo_inicio`."""
+    recurso = RecursoFactory(capacidad_horas_mes=160)
+    RegistroEjecucionFactory(
+        recurso=recurso,
+        periodo_inicio=datetime.date(2026, 2, 10),
+        periodo_fin=datetime.date(2026, 2, 10),
+        horas=8,
+        estado_aprobacion=EstadoAprobacion.APROBADO,
+    )
+    RegistroEjecucionFactory(
+        recurso=recurso,
+        periodo_inicio=datetime.date(2026, 2, 11),
+        periodo_fin=datetime.date(2026, 2, 11),
+        horas=4,
+        estado_aprobacion=EstadoAprobacion.ENVIADO,
+    )
+
+    carga = carga_recurso(recurso, datetime.date(2026, 2, 1), datetime.date(2026, 2, 28))
+
+    assert len(carga) == 1
+    assert carga[0]["horas_ejecutadas"] == Decimal("8.00")

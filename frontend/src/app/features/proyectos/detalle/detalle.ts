@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ChartData, ChartOptions } from 'chart.js';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import {
@@ -13,6 +14,7 @@ import {
   ETIQUETAS_TIPO_TAREA,
   ErrorApi,
   GastoEjecutado,
+  ResumenTareasTablero,
   Seguimiento,
   TRANSICIONES_PROYECTO,
 } from '../../../core/models';
@@ -23,6 +25,8 @@ import { Boton } from '../../../shared/ui/boton/boton';
 import { Card } from '../../../shared/ui/card/card';
 import { Datepicker } from '../../../shared/ui/datepicker/datepicker';
 import { Drawer } from '../../../shared/ui/drawer/drawer';
+import { EstadoVacio } from '../../../shared/ui/estado-vacio/estado-vacio';
+import { Grafico } from '../../../shared/ui/grafico/grafico';
 import { Input } from '../../../shared/ui/input/input';
 import { Modal } from '../../../shared/ui/modal/modal';
 import { Numero } from '../../../shared/ui/numero/numero';
@@ -34,6 +38,7 @@ import { Textarea } from '../../../shared/ui/textarea/textarea';
 import { GastoEjecutadoEscritura, GastosService } from '../../ejecucion/data/gastos.service';
 import { PanelExpediente } from '../../expediente/panel/panel-expediente';
 import { SeguimientosService } from '../../seguimientos/data/seguimientos.service';
+import { TableroService } from '../../tablero/data/tablero.service';
 import { AsignacionEscritura, AsignacionesService } from '../../recursos/data/asignaciones.service';
 import { RecursosService } from '../../recursos/data/recursos.service';
 import { DependenciaTareaEscritura, DependenciasService } from '../../tareas/data/dependencias.service';
@@ -79,6 +84,8 @@ const PESTANAS: PestanaTab[] = [
     Input,
     NodoArbolTareaFila,
     PanelExpediente,
+    Grafico,
+    EstadoVacio,
     EtiquetaEnumPipe,
     FechaCortaPipe,
     MonedaPipe,
@@ -94,6 +101,7 @@ export class DetalleProyecto {
   private readonly dependenciasService = inject(DependenciasService);
   private readonly gastosService = inject(GastosService);
   private readonly seguimientosService = inject(SeguimientosService);
+  private readonly tableroService = inject(TableroService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly ruta = inject(ActivatedRoute);
@@ -738,9 +746,118 @@ export class DetalleProyecto {
     });
   }
 
+  // --- Gráficos de la pestaña Resumen (fase 10 §10.3.8) --------------------
+
+  protected readonly resumenTareas = signal<ResumenTareasTablero | null>(null);
+
+  private readonly MARCA_400 = '#60a5fa';
+  private readonly MARCA_900 = '#1e3a8a';
+  private readonly SEMAFORO: Record<string, string> = {
+    PENDIENTE: '#94a3b8',
+    EN_PROGRESO: '#60a5fa',
+    BLOQUEADA: '#dc2626',
+    EN_REVISION: '#eab308',
+    COMPLETADA: '#16a34a',
+    CANCELADA: '#334155',
+  };
+
+  protected readonly graficoEjecucionMensual = computed<ChartData>(() => {
+    const serie = this.comparativoPorMes();
+    return {
+      labels: serie.map((fila) => this.etiquetaMes(fila)),
+      datasets: [
+        { label: 'Horas plan', data: serie.map((f) => f.horas_plan), borderColor: this.MARCA_400, backgroundColor: 'transparent' },
+        { label: 'Horas ejec.', data: serie.map((f) => f.horas_ejec), borderColor: this.MARCA_900, backgroundColor: 'transparent' },
+      ],
+    };
+  });
+
+  protected readonly filasTablaEjecucionMensual = computed(() =>
+    this.comparativoPorMes().map((f) => [this.etiquetaMes(f), f.horas_plan, f.horas_ejec]),
+  );
+
+  protected readonly graficoPorRecurso = computed<ChartData>(() => {
+    const filas = this.comparativoPorRecurso();
+    return {
+      labels: filas.map((f) => f.recurso_nombre ?? ''),
+      datasets: [
+        { label: 'Horas plan', data: filas.map((f) => f.horas_plan), backgroundColor: this.MARCA_400 },
+        { label: 'Horas ejec.', data: filas.map((f) => f.horas_ejec), backgroundColor: this.MARCA_900 },
+      ],
+    };
+  });
+
+  protected readonly filasTablaPorRecurso = computed(() =>
+    this.comparativoPorRecurso().map((f) => [f.recurso_nombre ?? '', f.horas_plan, f.horas_ejec]),
+  );
+
+  protected readonly graficoTareasPorEstado = computed<ChartData>(() => {
+    const porEstado = this.resumenTareas()?.por_estado ?? {};
+    const estados = Object.keys(porEstado);
+    return {
+      labels: estados.map((estado) => ETIQUETAS_ESTADO_TAREA[estado as keyof typeof ETIQUETAS_ESTADO_TAREA] ?? estado),
+      datasets: [
+        {
+          label: 'Tareas',
+          data: estados.map((estado) => porEstado[estado]),
+          backgroundColor: estados.map((estado) => this.SEMAFORO[estado] ?? '#94a3b8'),
+        },
+      ],
+    };
+  });
+
+  protected readonly filasTablaTareasPorEstado = computed(() => {
+    const porEstado = this.resumenTareas()?.por_estado ?? {};
+    return Object.entries(porEstado).map(([estado, total]) => [
+      ETIQUETAS_ESTADO_TAREA[estado as keyof typeof ETIQUETAS_ESTADO_TAREA] ?? estado,
+      total,
+    ]);
+  });
+
+  protected readonly opcionesGraficoSinLeyenda: ChartOptions = {
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+  };
+
+  protected readonly graficoAvanceSeguimientos = computed<ChartData>(() => {
+    const seguimientos = [...this.seguimientosProyecto()].sort((a, b) =>
+      a.periodo_inicio.localeCompare(b.periodo_inicio),
+    );
+    return {
+      labels: seguimientos.map((s) => s.periodo_inicio),
+      datasets: [
+        {
+          label: 'Avance reportado',
+          data: seguimientos.map((s) => Number(s.avance_reportado)),
+          borderColor: this.MARCA_900,
+          backgroundColor: 'transparent',
+        },
+      ],
+    };
+  });
+
+  protected readonly filasTablaAvanceSeguimientos = computed(() =>
+    [...this.seguimientosProyecto()]
+      .sort((a, b) => a.periodo_inicio.localeCompare(b.periodo_inicio))
+      .map((s) => [s.periodo_inicio, s.avance_reportado]),
+  );
+
+  private cargarResumenTareas(): void {
+    this.tableroService.tareas({ proyecto: this.id }).subscribe({
+      next: (respuesta) => this.resumenTareas.set(respuesta),
+      error: () => undefined,
+    });
+  }
+
   constructor() {
     this.cargar();
     this.cargarAsignaciones();
+    // La pestaña Resumen es la activa por defecto, así que su ejecución
+    // mensual/por-recurso y su distribución de tareas se cargan de una vez
+    // (no de forma perezosa como las demás pestañas en `cambiarPestana`).
+    this.cargarEjecucion();
+    this.cargarResumenTareas();
+    this.cargarSeguimientos();
   }
 
   private cargar(): void {

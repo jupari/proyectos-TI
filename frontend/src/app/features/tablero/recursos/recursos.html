@@ -1,0 +1,84 @@
+<div class="flex flex-col gap-4">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-lg font-semibold text-neutro-800">Ocupación de recursos</h1>
+    <app-boton variante="secundario" tamano="sm" [cargando]="exportando()" (clic)="exportarCsv()">
+      Exportar CSV
+    </app-boton>
+  </div>
+
+  <div class="grid grid-cols-1 gap-3 rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta sm:grid-cols-2 lg:grid-cols-4">
+    <app-input
+      etiqueta="Desde"
+      placeholder="AAAA-MM-DD"
+      [ngModel]="desde()"
+      (ngModelChange)="desde.set($event)"
+      (keydown.enter)="cargar()"
+    />
+    <app-input
+      etiqueta="Hasta"
+      placeholder="AAAA-MM-DD"
+      [ngModel]="hasta()"
+      (ngModelChange)="hasta.set($event)"
+      (keydown.enter)="cargar()"
+    />
+    <app-select
+      etiqueta="Perfil"
+      [opciones]="opcionesPerfiles()"
+      [limpiable]="true"
+      [ngModel]="perfil()"
+      (ngModelChange)="perfil.set($event); cargar()"
+    />
+    <div class="flex items-end">
+      <app-boton (clic)="cargar()">Aplicar</app-boton>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="rounded-panel border border-peligro/30 bg-peligro/5 p-4 text-sm text-peligro">
+      No se pudo cargar la ocupación de recursos.
+      <app-boton variante="secundario" tamano="sm" (clic)="cargar(true)">Reintentar</app-boton>
+    </div>
+  } @else {
+    <app-card titulo="% de ocupación por recurso y mes">
+      @if (cargando()) {
+        <div class="h-56 animate-pulse rounded bg-neutro-100"></div>
+      } @else if (filas().length === 0) {
+        <app-estado-vacio mensaje="No hay asignaciones en el rango seleccionado." />
+      } @else {
+        <app-grafico
+          tipo="bar"
+          [datos]="grafico()"
+          [opciones]="opcionesGrafico"
+          etiqueta="Porcentaje de ocupación por recurso y mes; los que superan 100% se resaltan en rojo"
+          aspectRatio="21 / 9"
+          [columnasTabla]="['Recurso', 'Mes', '% ocupación']"
+          [filasTabla]="filasTablaGrafico()"
+        />
+      }
+    </app-card>
+
+    <ng-template #colHorasPlan let-fila>{{ fila.horas_planeadas | horas }}</ng-template>
+    <ng-template #colHorasEjec let-fila>{{ fila.horas_ejecutadas | horas }}</ng-template>
+    <ng-template #colCapacidad let-fila>{{ fila.capacidad | horas }}</ng-template>
+    <ng-template #colPct let-fila>
+      <span [class.text-peligro]="(fila.pct_ocupacion ?? 0) > 100">{{ fila.pct_ocupacion | porcentaje }}</span>
+    </ng-template>
+
+    <div class="overflow-x-auto">
+      <app-tabla
+        [columnas]="[
+          columnas[0],
+          columnas[1],
+          columnas[2],
+          { clave: 'horas_planeadas', titulo: 'Horas planeadas', alinear: 'derecha', plantilla: colHorasPlan },
+          { clave: 'horas_ejecutadas', titulo: 'Horas ejecutadas', alinear: 'derecha', plantilla: colHorasEjec },
+          { clave: 'capacidad', titulo: 'Capacidad', alinear: 'derecha', plantilla: colCapacidad },
+          { clave: 'pct_ocupacion', titulo: '% ocupación', alinear: 'derecha', plantilla: colPct }
+        ]"
+        [filas]="filas()"
+        [cargando]="cargando()"
+        mensajeVacio="No hay asignaciones en el rango seleccionado."
+      />
+    </div>
+  }
+</div>

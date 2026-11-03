@@ -1,0 +1,25 @@
+<div class="w-full" [style.aspect-ratio]="aspectRatio()">
+  <canvas #lienzo role="img" [attr.aria-label]="etiqueta()"></canvas>
+</div>
+
+@if (columnasTabla().length > 0) {
+  <table class="sr-only">
+    <caption>{{ etiqueta() }}</caption>
+    <thead>
+      <tr>
+        @for (columna of columnasTabla(); track columna) {
+          <th scope="col">{{ columna }}</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (fila of filasTabla(); track $index) {
+        <tr>
+          @for (celda of fila; track $index) {
+            <td>{{ celda }}</td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+}

@@ -6,5 +6,6 @@ export * from './expediente.model';
 export * from './proyecto.model';
 export * from './recurso.model';
 export * from './seguimiento.model';
+export * from './tablero.model';
 export * from './tarea.model';
 export * from './usuario.model';

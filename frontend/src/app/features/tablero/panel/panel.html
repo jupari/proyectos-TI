@@ -1,0 +1,265 @@
+<div class="flex flex-col gap-4">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-lg font-semibold text-neutro-800">Tablero de control</h1>
+    <div class="flex items-center gap-3 text-sm text-neutro-500">
+      @if (calculadoHaceSegundos()) {
+        <span>Calculado {{ calculadoHaceSegundos() }}</span>
+      }
+      <app-boton variante="secundario" tamano="sm" routerLink="/tablero/recursos">
+        Ver ocupación de recursos
+      </app-boton>
+      <app-boton variante="secundario" tamano="sm" [cargando]="exportando()" (clic)="exportarCsv()">
+        Exportar CSV
+      </app-boton>
+      <app-boton variante="secundario" tamano="sm" (clic)="refrescar()">Refrescar</app-boton>
+    </div>
+  </div>
+
+  <!-- Barra de filtros global: compartida por KPIs, gráficos y tabla. -->
+  <div class="grid grid-cols-1 gap-3 rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta sm:grid-cols-2 lg:grid-cols-4">
+    <app-select
+      etiqueta="Estado"
+      [opciones]="opcionesEstado"
+      [limpiable]="true"
+      [ngModel]="estado()"
+      (ngModelChange)="estado.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Portafolio"
+      [opciones]="opcionesPortafolios()"
+      [limpiable]="true"
+      [ngModel]="portafolio()"
+      (ngModelChange)="portafolio.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Área"
+      [opciones]="opcionesAreas()"
+      [limpiable]="true"
+      [ngModel]="area()"
+      (ngModelChange)="area.set($event); aplicarFiltros()"
+    />
+    <app-select
+      etiqueta="Gerente"
+      [opciones]="opcionesGerentes()"
+      [limpiable]="true"
+      [ngModel]="gerente()"
+      (ngModelChange)="gerente.set($event); aplicarFiltros()"
+    />
+    <app-input
+      etiqueta="Desde"
+      placeholder="AAAA-MM-DD"
+      [ngModel]="desde()"
+      (ngModelChange)="desde.set($event)"
+      (keydown.enter)="aplicarFiltros()"
+    />
+    <app-input
+      etiqueta="Hasta"
+      placeholder="AAAA-MM-DD"
+      [ngModel]="hasta()"
+      (ngModelChange)="hasta.set($event)"
+      (keydown.enter)="aplicarFiltros()"
+    />
+    <div class="flex items-end">
+      <app-switch
+        etiqueta="Solo mis proyectos"
+        [ngModel]="soloMisProyectos()"
+        (ngModelChange)="soloMisProyectos.set($event); aplicarFiltros()"
+      />
+    </div>
+    <div class="flex items-end justify-end gap-2">
+      <app-boton variante="primario" tamano="sm" (clic)="aplicarFiltros()">Aplicar</app-boton>
+      <app-boton variante="secundario" tamano="sm" (clic)="limpiarFiltros()">Limpiar</app-boton>
+    </div>
+  </div>
+
+  <!-- Tarjetas de KPI: cada una enlaza a la lista ya filtrada. -->
+  @if (errorResumen()) {
+    <div class="rounded-panel border border-peligro/30 bg-peligro/5 p-4 text-sm text-peligro">
+      No se pudieron cargar los indicadores globales.
+      <app-boton variante="secundario" tamano="sm" (clic)="refrescar()">Reintentar</app-boton>
+    </div>
+  } @else if (cargandoResumen()) {
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      @for (indice of [0, 1, 2, 3, 4, 5]; track indice) {
+        <div class="h-20 animate-pulse rounded-panel border border-neutro-200 bg-neutro-100"></div>
+      }
+    </div>
+  } @else if (resumen()) {
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <a [routerLink]="['/proyectos']" [queryParams]="{ estado: 'EJECUCION' }" class="block">
+        <app-card titulo="Proyectos activos">
+          <p class="text-2xl font-semibold text-neutro-800">
+            {{ resumen()!.por_estado['EJECUCION'] ?? 0 }}
+          </p>
+        </app-card>
+      </a>
+      <a [routerLink]="['/proyectos']" [queryParams]="{ semaforo: 'ROJO' }" class="block">
+        <app-card titulo="En riesgo">
+          <p class="text-2xl font-semibold text-peligro">{{ resumen()!.proyectos_en_riesgo }}</p>
+        </app-card>
+      </a>
+      <app-card titulo="Horas ejec. / plan.">
+        <p class="text-lg font-semibold text-neutro-800">
+          {{ resumen()!.horas_ejecutadas | horas }} / {{ resumen()!.horas_planeadas | horas }}
+        </p>
+        <p class="text-sm text-neutro-500">{{ resumen()!.pct_horas | porcentaje }}</p>
+      </app-card>
+      <app-card titulo="Dinero ejec. / plan.">
+        <p class="text-lg font-semibold text-neutro-800">
+          {{ resumen()!.costo_ejecutado | moneda }} / {{ resumen()!.costo_planeado | moneda }}
+        </p>
+        <p class="text-sm text-neutro-500">{{ resumen()!.pct_dinero | porcentaje }}</p>
+      </app-card>
+      <a routerLink="/ejecucion/aprobaciones" class="block">
+        <app-card titulo="Horas pend. aprobación">
+          <p class="text-2xl font-semibold text-neutro-800">
+            {{ resumen()!.horas_pendientes_aprobacion | horas }}
+          </p>
+        </app-card>
+      </a>
+      <a routerLink="/seguimientos" class="block">
+        <app-card titulo="Compromisos vencidos">
+          <p class="text-2xl font-semibold text-neutro-800">{{ resumen()!.compromisos_vencidos }}</p>
+        </app-card>
+      </a>
+    </div>
+  } @else {
+    <app-estado-vacio mensaje="No hay proyectos en su alcance todavía." />
+  }
+
+  <!-- Gráficos -->
+  @if (errorGraficos()) {
+    <div class="rounded-panel border border-peligro/30 bg-peligro/5 p-4 text-sm text-peligro">
+      No se pudieron cargar los gráficos.
+      <app-boton variante="secundario" tamano="sm" (clic)="refrescar()">Reintentar</app-boton>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <app-card titulo="Distribución de proyectos por semáforo">
+        @if (cargandoGraficos()) {
+          <div class="h-48 animate-pulse rounded bg-neutro-100"></div>
+        } @else if (!resumen() || resumen()!.total_proyectos === 0) {
+          <app-estado-vacio mensaje="No hay proyectos para graficar." />
+        } @else {
+          <app-grafico
+            tipo="bar"
+            [datos]="graficoSemaforo()"
+            [opciones]="opcionesGraficoSemaforo"
+            etiqueta="Cantidad de proyectos por color de semáforo"
+            [columnasTabla]="['Semáforo', 'Proyectos']"
+            [filasTabla]="[
+              ['Verde', resumen()?.por_semaforo?.['VERDE'] ?? 0],
+              ['Amarillo', resumen()?.por_semaforo?.['AMARILLO'] ?? 0],
+              ['Rojo', resumen()?.por_semaforo?.['ROJO'] ?? 0]
+            ]"
+          />
+        }
+      </app-card>
+
+      <app-card titulo="Horas planeadas vs. ejecutadas (top 10 por presupuesto)">
+        @if (cargandoTabla()) {
+          <div class="h-48 animate-pulse rounded bg-neutro-100"></div>
+        } @else if (filas().length === 0) {
+          <app-estado-vacio mensaje="No hay proyectos para graficar." />
+        } @else {
+          <app-grafico
+            tipo="bar"
+            [datos]="graficoHoras()"
+            [opciones]="opcionesGraficoHoras"
+            etiqueta="Horas planeadas y ejecutadas por proyecto, los 10 de mayor presupuesto"
+            [columnasTabla]="['Proyecto', 'Horas planeadas', 'Horas ejecutadas']"
+            [filasTabla]="filasTablaHoras()"
+          />
+        }
+      </app-card>
+
+      <app-card titulo="Evolución mensual del costo, acumulado">
+        @if (cargandoGraficos()) {
+          <div class="h-48 animate-pulse rounded bg-neutro-100"></div>
+        } @else if (serieMensual().length === 0) {
+          <app-estado-vacio mensaje="No hay ejecución registrada en el rango seleccionado." />
+        } @else {
+          <app-grafico
+            tipo="line"
+            [datos]="graficoCosto()"
+            [opciones]="opcionesGraficoCosto"
+            etiqueta="Costo acumulado ejecutado frente al planeado, por mes"
+            [columnasTabla]="['Mes', 'Planeado acumulado', 'Ejecutado acumulado']"
+            [filasTabla]="filasTablaCosto()"
+          />
+        }
+      </app-card>
+
+      <app-card titulo="Ocupación de recursos en el periodo">
+        @if (cargandoGraficos()) {
+          <div class="h-48 animate-pulse rounded bg-neutro-100"></div>
+        } @else if (ocupacion().length === 0) {
+          <app-estado-vacio mensaje="No hay asignaciones en el rango seleccionado." />
+        } @else {
+          <app-grafico
+            tipo="bar"
+            [datos]="graficoOcupacion()"
+            [opciones]="opcionesGraficoOcupacion"
+            etiqueta="Porcentaje de ocupación promedio por recurso en el periodo"
+            [columnasTabla]="['Recurso', '% ocupación promedio']"
+            [filasTabla]="filasTablaOcupacion()"
+          />
+        }
+      </app-card>
+    </div>
+  }
+
+  <!-- Semáforo por proyecto -->
+  @if (errorTabla()) {
+    <div class="rounded-panel border border-peligro/30 bg-peligro/5 p-4 text-sm text-peligro">
+      No se pudo cargar la tabla de proyectos.
+      <app-boton variante="secundario" tamano="sm" (clic)="refrescar()">Reintentar</app-boton>
+    </div>
+  } @else {
+    <ng-template #colGerente let-fila>{{ fila.gerente ?? '—' }}</ng-template>
+    <ng-template #colAvance let-fila>
+      <app-progreso [valor]="numero(fila.resumen_ejecucion.avance)" class="block w-28" />
+    </ng-template>
+    <ng-template #colPctHoras let-fila>{{ fila.resumen_ejecucion.pct_horas | porcentaje }}</ng-template>
+    <ng-template #colPctDinero let-fila>{{ fila.resumen_ejecucion.pct_dinero | porcentaje }}</ng-template>
+    <ng-template #colSpi let-fila>{{ fila.resumen_ejecucion.spi ?? '—' }}</ng-template>
+    <ng-template #colCpi let-fila>{{ fila.resumen_ejecucion.cpi ?? '—' }}</ng-template>
+    <ng-template #colDesviacion let-fila>
+      <span [class.text-peligro]="fila.resumen_ejecucion.desviacion_presupuestal > 0">
+        {{ fila.resumen_ejecucion.desviacion_presupuestal | moneda }}
+      </span>
+    </ng-template>
+    <ng-template #colSemaforo let-fila>
+      <app-semaforo [valor]="esValorSemaforo(fila.resumen_ejecucion.semaforo)" [mostrarTexto]="false" />
+    </ng-template>
+    <ng-template #colAcciones let-fila>
+      <a [routerLink]="['/proyectos', fila.id]" class="text-sm font-medium text-marca-600 hover:underline">
+        Ver
+      </a>
+    </ng-template>
+
+    <div class="overflow-x-auto">
+      <app-tabla
+        [columnas]="[
+          columnas[0],
+          columnas[1],
+          { clave: 'gerente', titulo: 'Gerente', plantilla: colGerente },
+          columnas[3],
+          { clave: 'avance', titulo: 'Avance', plantilla: colAvance },
+          { clave: 'pct_horas', titulo: '% horas', alinear: 'derecha', ordenable: true, plantilla: colPctHoras },
+          { clave: 'pct_dinero', titulo: '% dinero', alinear: 'derecha', ordenable: true, plantilla: colPctDinero },
+          { clave: 'spi', titulo: 'SPI', alinear: 'derecha', ordenable: true, plantilla: colSpi },
+          { clave: 'cpi', titulo: 'CPI', alinear: 'derecha', ordenable: true, plantilla: colCpi },
+          { clave: 'desviacion', titulo: 'Desviación', alinear: 'derecha', ordenable: true, plantilla: colDesviacion },
+          { clave: 'semaforo', titulo: 'Semáforo', alinear: 'centro', plantilla: colSemaforo },
+          { clave: 'acciones', titulo: '', alinear: 'derecha', plantilla: colAcciones }
+        ]"
+        [filas]="filasOrdenadas()"
+        [cargando]="cargandoTabla()"
+        [ordenActual]="ordenActual()"
+        mensajeVacio="No hay proyectos que coincidan con los filtros."
+        (cambioOrden)="alCambiarOrden($event)"
+      />
+    </div>
+  }
+</div>

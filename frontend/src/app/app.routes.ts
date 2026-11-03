@@ -31,7 +31,10 @@ export const routes: Routes = [
     canActivateChild: [cambioClaveGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'tablero' },
-      { path: 'tablero', component: EnConstruccion },
+      {
+        path: 'tablero',
+        loadChildren: () => import('./features/tablero/tablero.routes').then((m) => m.tableroRoutes),
+      },
       {
         path: 'proyectos',
         loadChildren: () => import('./features/proyectos/proyectos.routes').then((m) => m.proyectosRoutes),

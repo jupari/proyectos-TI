@@ -4,3 +4,8 @@ from django.apps import AppConfig
 class TableroConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.tablero"
+
+    def ready(self):
+        from apps.tablero.signals import conectar
+
+        conectar()

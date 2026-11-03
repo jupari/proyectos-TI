@@ -83,6 +83,57 @@
           </dl>
         </app-card>
       </div>
+
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <app-card titulo="Ejecución mensual (horas)">
+          @if (cargandoEjecucion()) {
+            <div class="h-40 animate-pulse rounded bg-neutro-100"></div>
+          } @else if (comparativoPorMes().length === 0) {
+            <app-estado-vacio mensaje="Sin ejecución registrada todavía." />
+          } @else {
+            <app-grafico
+              tipo="line"
+              [datos]="graficoEjecucionMensual()"
+              [opciones]="opcionesGraficoSinLeyenda"
+              etiqueta="Horas planeadas frente a ejecutadas por mes"
+              [columnasTabla]="['Mes', 'Horas plan', 'Horas ejec.']"
+              [filasTabla]="filasTablaEjecucionMensual()"
+            />
+          }
+        </app-card>
+        <app-card titulo="Consumo por recurso">
+          @if (cargandoEjecucion()) {
+            <div class="h-40 animate-pulse rounded bg-neutro-100"></div>
+          } @else if (comparativoPorRecurso().length === 0) {
+            <app-estado-vacio mensaje="Sin asignaciones ni ejecución todavía." />
+          } @else {
+            <app-grafico
+              tipo="bar"
+              [datos]="graficoPorRecurso()"
+              [opciones]="opcionesGraficoSinLeyenda"
+              etiqueta="Horas planeadas frente a ejecutadas por recurso"
+              [columnasTabla]="['Recurso', 'Horas plan', 'Horas ejec.']"
+              [filasTabla]="filasTablaPorRecurso()"
+            />
+          }
+        </app-card>
+        <app-card titulo="Tareas por estado">
+          @if (!resumenTareas()) {
+            <div class="h-40 animate-pulse rounded bg-neutro-100"></div>
+          } @else if (resumenTareas()!.total === 0) {
+            <app-estado-vacio mensaje="Este proyecto todavía no tiene tareas." />
+          } @else {
+            <app-grafico
+              tipo="bar"
+              [datos]="graficoTareasPorEstado()"
+              [opciones]="opcionesGraficoSinLeyenda"
+              etiqueta="Cantidad de tareas por estado"
+              [columnasTabla]="['Estado', 'Tareas']"
+              [filasTabla]="filasTablaTareasPorEstado()"
+            />
+          }
+        </app-card>
+      </div>
     }
 
     @if (pestanaActiva() === 'fases') {
@@ -496,10 +547,24 @@
     }
 
     @if (pestanaActiva() === 'seguimientos') {
+      <app-card titulo="Evolución del avance reportado">
+        @if (cargandoSeguimientos()) {
+          <div class="h-40 animate-pulse rounded bg-neutro-100"></div>
+        } @else if (seguimientosProyecto().length === 0) {
+          <app-estado-vacio mensaje="Este proyecto todavía no tiene seguimientos." />
+        } @else {
+          <app-grafico
+            tipo="line"
+            [datos]="graficoAvanceSeguimientos()"
+            [opciones]="opcionesGraficoSinLeyenda"
+            etiqueta="Avance reportado por seguimiento, en orden cronológico"
+            [columnasTabla]="['Periodo', 'Avance reportado']"
+            [filasTabla]="filasTablaAvanceSeguimientos()"
+          />
+        }
+      </app-card>
+
       <app-card titulo="Historial de seguimientos">
-        <p class="mb-3 text-xs text-neutro-400">
-          Gráfico de evolución del avance: pendiente para la fase 10.
-        </p>
         @if (cargandoSeguimientos()) {
           <p class="text-sm text-neutro-500">Cargando…</p>
         } @else if (seguimientosProyecto().length > 0) {
