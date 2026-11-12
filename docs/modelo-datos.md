@@ -274,11 +274,16 @@ Fila única (singleton): `auto_aprobar_importados` Boolean, default `False`.
   persona) y cuentan de inmediato para los KPIs.
 - Edita este valor solo `ADMIN`, vía `GET`/`PATCH /configuracion-importacion-jira/` (siempre
   sobre la única fila existente, sin `{id}` en la ruta).
+- Es solo el **valor por defecto**: `POST /integraciones/jira/importar/` (adenda) puede indicar
+  `auto_aprobar` explícito para esa corrida puntual, sin cambiar esta fila.
 
 ### Integración de horas con Jira/Tempo (fase 12)
 
-Importación **unidireccional** (Jira/Tempo → esta app, nunca al revés), por un comando de
-gestión que se corre manualmente (`importar_horas_jira --desde --hasta`):
+Importación **unidireccional** (Jira/Tempo → esta app, nunca al revés), por dos caminos
+equivalentes: el comando de gestión (`importar_horas_jira --desde --hasta`) o el botón "Importar
+horas desde Jira/Tempo ahora" de `/admin/integraciones` (`POST /integraciones/jira/importar/`,
+adenda posterior a la fase original), que deja elegir las fechas y el modo de aprobación sin usar
+la terminal:
 
 - Un worklog de Tempo se mapea a un `RegistroEjecucion` con `periodicidad=DIARIA`,
   `periodo_inicio = periodo_fin = ` la fecha del worklog.

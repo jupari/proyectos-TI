@@ -129,6 +129,11 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
   a `Proyecto.clave_jira` en el formulario de proyecto (nunca se escribe esa clave a mano)
 - `/configuracion-importacion-jira/` (fase 12, solo `ADMIN`) — `GET`/`PATCH` sobre la única fila
   de `ConfiguracionImportacionJira` (`{auto_aprobar_importados}`), sin `{id}` en la ruta
+- `POST /integraciones/jira/importar/` (fase 12 adenda, solo `ADMIN`) — `{desde, hasta, dry_run?,
+  auto_aprobar?}` → dispara `importar_horas_jira` sin pasar por la terminal; `auto_aprobar`, si se
+  envía, decide la aprobación **solo para esa corrida** sin tocar `ConfiguracionImportacionJira`;
+  si se omite, usa el valor global. Devuelve el mismo resumen que el comando
+  (`{creados, actualizados, omitidos, errores}`)
 
 **Seguimiento**
 - `/seguimientos/` — filtros `proyecto`, `periodicidad`, `estado`, `fecha_corte__gte`

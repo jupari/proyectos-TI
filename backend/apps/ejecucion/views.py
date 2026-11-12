@@ -1,3 +1,6 @@
+import datetime
+
+from django.conf import settings
 from django.db.models import Q, Sum
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import serializers, status
@@ -19,10 +22,19 @@ from .integraciones.jira_tempo import ClienteJiraTempo
 from .models import ConfiguracionImportacionJira, GastoEjecutado, RegistroEjecucion
 from .serializers import GastoEjecutadoSerializer, RegistroEjecucionSerializer
 from .services import aprobar as aprobar_registro
-from .services import aprobar_gasto, carga_lote, enviar_gasto, reabrir_gasto, rechazar_gasto
+from .services import (
+    aprobar_gasto,
+    carga_lote,
+    enviar_gasto,
+    importar_horas_jira,
+    reabrir_gasto,
+    rechazar_gasto,
+)
 from .services import enviar as enviar_registro
 from .services import reabrir as reabrir_registro
 from .services import rechazar as rechazar_registro
+
+VARIABLES_JIRA_REQUERIDAS = ("JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN", "TEMPO_API_TOKEN")
 
 ESTADOS_EDITABLES = (EstadoAprobacion.BORRADOR, EstadoAprobacion.RECHAZADO)
 
@@ -436,3 +448,58 @@ class ConfiguracionImportacionJiraView(RetrieveUpdateAPIView):
 
     def get_object(self):
         return ConfiguracionImportacionJira.obtener()
+
+
+class ImportarHorasJiraView(APIView):
+    """`POST /integraciones/jira/importar/` (solo `ADMIN`): dispara
+    `importar_horas_jira` con las fechas y el modo de aprobación que elige
+    quien lo llama, sin pasar por la terminal (fase 12, adenda: antes el
+    único disparo era el comando de gestión)."""
+
+    permission_classes = [PermisoSoloAdmin]
+
+    @extend_schema(
+        summary="Dispara la importación de horas desde Jira/Tempo (fase 12)",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "desde": {"type": "string", "format": "date"},
+                    "hasta": {"type": "string", "format": "date"},
+                    "dry_run": {"type": "boolean"},
+                    "auto_aprobar": {"type": "boolean"},
+                },
+                "required": ["desde", "hasta"],
+            }
+        },
+        responses={200: {"type": "object"}},
+    )
+    def post(self, request):
+        faltantes = [
+            nombre for nombre in VARIABLES_JIRA_REQUERIDAS if not getattr(settings, nombre)
+        ]
+        if faltantes:
+            raise ValidationError(
+                {"__all__": [f"Faltan las variables de entorno: {', '.join(faltantes)}."]}
+            )
+
+        desde_raw = request.data.get("desde")
+        hasta_raw = request.data.get("hasta")
+        if not desde_raw or not hasta_raw:
+            raise ValidationError({"desde": ["Debe indicar desde y hasta."]})
+        try:
+            desde = datetime.date.fromisoformat(desde_raw)
+            hasta = datetime.date.fromisoformat(hasta_raw)
+        except ValueError as exc:
+            raise ValidationError({"desde": ["Fecha inválida, use YYYY-MM-DD."]}) from exc
+        if hasta < desde:
+            raise ValidationError({"hasta": ["Debe ser igual o posterior a desde."]})
+
+        auto_aprobar = request.data.get("auto_aprobar")
+        resumen = importar_horas_jira(
+            desde,
+            hasta,
+            dry_run=bool(request.data.get("dry_run")),
+            auto_aprobar=auto_aprobar if auto_aprobar is not None else None,
+        )
+        return Response(resumen)

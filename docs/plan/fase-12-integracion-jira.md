@@ -211,11 +211,16 @@ cd frontend && npm run lint && npm run build
 ## Fuera de alcance de esta fase
 
 Sincronización en sentido contrario (esta app → Jira), importación automática/programada o por
-webhook, botón de "sincronizar ahora" (el disparo sigue siendo el comando de gestión), selector
-de issues de Jira para `Tarea.clave_jira` (queda como texto libre), importar issues de Jira como
-`Tarea` automáticamente, Azure DevOps, resolución automática de conflictos de solapamiento (se
-reportan, no se resuelven solos), aprobación automática configurable **por proyecto** (el
-interruptor es global, no por proyecto — ver la decisión documentada al crear esta fase).
+webhook, selector de issues de Jira para `Tarea.clave_jira` (queda como texto libre), importar
+issues de Jira como `Tarea` automáticamente, Azure DevOps, resolución automática de conflictos de
+solapamiento (se reportan, no se resuelven solos), aprobación automática configurable **por
+proyecto** (el interruptor es global, no por proyecto — ver la decisión documentada al crear esta
+fase).
+
+> **Adenda posterior**: el botón de "sincronizar ahora" estaba originalmente fuera de alcance
+> (el disparo iba a ser solo el comando de gestión); el usuario pidió agregarlo después de probar
+> la fase, dejando que decida las fechas y el modo de aprobación por corrida sin usar la
+> terminal. Ver sección "Adenda: botón de importación" más abajo.
 
 ## Evidencia
 
@@ -304,3 +309,45 @@ del `.env` del usuario) y `--dry-run` (sin escribir nada):
    se tocó ni se necesitó para esta fase: todas las pruebas contra el Jira real fueron de
    **solo lectura** (`--dry-run` o lectura directa), y el único cambio de datos real (el mapeo de
    prueba de `PRY-2026-004`) se revirtió en el mismo turno.
+
+## Adenda: botón de importación en `/admin/integraciones`
+
+Pedido por el usuario después de probar la fase: un botón que dispare la importación eligiendo
+fechas y modo de aprobación, sin usar la terminal.
+
+### Diseño
+
+- `importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None)` gana el parámetro
+  `auto_aprobar`: si se indica explícito (`True`/`False`), decide la aprobación **solo para esa
+  corrida**, sin tocar `ConfiguracionImportacionJira`; si se omite (`None`, el caso del comando de
+  gestión), sigue usando el interruptor global, sin cambiar el comportamiento existente.
+- `POST /integraciones/jira/importar/` (`ImportarHorasJiraView`, solo `ADMIN`): valida variables
+  de entorno, fechas y `hasta >= desde` antes de llamar al servicio; devuelve el mismo resumen que
+  el comando.
+- `/admin/integraciones`: nueva tarjeta con fecha desde/hasta, un selector "¿Cómo deben entrar
+  estas horas?" (pendientes de aprobación / aprobadas automáticamente — por defecto, el valor
+  actual del interruptor global, pero editable solo para esa corrida), un interruptor "Solo
+  simular" y el botón; muestra el resumen (creados, actualizados, omitidos, errores) al terminar.
+  La tarjeta del interruptor global se mantiene aparte, aclarando que solo es el valor por
+  defecto del comando de terminal.
+
+### Evidencia
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/ejecucion -q
+........................................................................ [ 66%]
+....................................                                     [100%]
+108 passed in 58.28s
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py spectacular --validate --fail-on-warn
+(sin warnings/errores; exit 0)
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm run lint
+All files pass linting.
+
+$ docker compose -f infra/docker-compose.yml exec frontend npx ng build
+Application bundle generation complete. [26.455 seconds]
+```
