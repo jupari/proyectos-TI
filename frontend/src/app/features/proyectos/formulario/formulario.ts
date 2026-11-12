@@ -11,6 +11,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { AuthService } from '../../../core/auth/auth.service';
 import { ErrorApi, ETIQUETAS_PRIORIDAD } from '../../../core/models';
 import { ConfirmacionService } from '../../../core/ui/confirmacion.service';
 import { ToastService } from '../../../core/ui/toast.service';
@@ -21,6 +22,7 @@ import { Numero } from '../../../shared/ui/numero/numero';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { Textarea } from '../../../shared/ui/textarea/textarea';
 import { AreasService, PortafoliosService } from '../../admin/data/catalogos.service';
+import { IntegracionesJiraService } from '../../admin/data/integraciones-jira.service';
 import { UsuariosService } from '../../admin/data/usuarios.service';
 import { ProyectoEscritura } from '../data/proyectos.model';
 import { ProyectosService } from '../data/proyectos.service';
@@ -36,6 +38,8 @@ export class FormularioProyecto {
   private readonly areasService = inject(AreasService);
   private readonly portafoliosService = inject(PortafoliosService);
   private readonly usuariosService = inject(UsuariosService);
+  private readonly integracionesJiraService = inject(IntegracionesJiraService);
+  private readonly auth = inject(AuthService);
   private readonly confirmacion = inject(ConfirmacionService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
@@ -66,10 +70,16 @@ export class FormularioProyecto {
   protected readonly presupuestoHoras = signal<number | null>(null);
   protected readonly presupuestoDinero = signal<number | null>(null);
   protected readonly observaciones = signal('');
+  protected readonly claveJira = signal<string | null>(null);
+
+  protected readonly puedeMapearJira = computed(
+    () => this.auth.tieneRol('ADMIN') || this.auth.tieneRol('PMO'),
+  );
 
   protected readonly opcionesAreas = signal<OpcionSelect[]>([]);
   protected readonly opcionesPortafolios = signal<OpcionSelect[]>([]);
   protected readonly opcionesUsuarios = signal<OpcionSelect[]>([]);
+  protected readonly opcionesProyectosJira = signal<OpcionSelect[]>([]);
   protected readonly opcionesPrioridad: OpcionSelect[] = Object.entries(ETIQUETAS_PRIORIDAD).map(
     ([valor, etiqueta]) => ({ valor, etiqueta }),
   );
@@ -122,6 +132,19 @@ export class FormularioProyecto {
           r.results.map((u) => ({ valor: u.id, etiqueta: `${u.nombres} ${u.apellidos}` })),
         ),
       );
+    if (this.puedeMapearJira()) {
+      this.integracionesJiraService.listarProyectosJira().subscribe({
+        next: (proyectos) =>
+          this.opcionesProyectosJira.set(
+            proyectos.map((p) => ({ valor: p.clave, etiqueta: `${p.clave} — ${p.nombre}` })),
+          ),
+        error: () =>
+          this.toast.mostrar({
+            tipo: 'alerta',
+            mensaje: 'No se pudo cargar la lista de proyectos de Jira.',
+          }),
+      });
+    }
   }
 
   private cargarProyecto(id: string): void {
@@ -144,6 +167,7 @@ export class FormularioProyecto {
         this.presupuestoHoras.set(Number(proyecto.presupuesto_horas));
         this.presupuestoDinero.set(Number(proyecto.presupuesto_dinero));
         this.observaciones.set(proyecto.observaciones);
+        this.claveJira.set(proyecto.clave_jira || null);
         this.cargandoDetalle.set(false);
       },
       error: () => {
@@ -199,6 +223,7 @@ export class FormularioProyecto {
       presupuesto_dinero: this.presupuestoDinero() ?? 0,
       avance_reportado: 0,
       observaciones: this.observaciones(),
+      clave_jira: this.claveJira() ?? '',
     };
 
     this.guardando.set(true);

@@ -10,7 +10,7 @@ class FiltroRegistroEjecucion(django_filters.FilterSet):
 
     class Meta:
         model = RegistroEjecucion
-        fields = ["proyecto", "tarea", "recurso", "periodicidad", "estado_aprobacion"]
+        fields = ["proyecto", "tarea", "recurso", "periodicidad", "estado_aprobacion", "origen"]
 
     def filtrar_mis_registros(self, queryset, name, value):
         if not value:

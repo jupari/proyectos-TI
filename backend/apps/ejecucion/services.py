@@ -3,6 +3,7 @@
 más importante del proyecto porque es lo único que impide contar las mismas
 horas dos veces entre periodicidades distintas."""
 
+import datetime
 from decimal import Decimal
 
 from django.db import transaction
@@ -11,7 +12,13 @@ from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.core.calculos import division_segura, meses_entre, prorratear_por_mes
-from apps.core.choices import EstadoAprobacion, EstadoTarea, Periodicidad, TipoEvento
+from apps.core.choices import (
+    EstadoAprobacion,
+    EstadoTarea,
+    OrigenRegistro,
+    Periodicidad,
+    TipoEvento,
+)
 from apps.core.exceptions import ErrorConflicto, ErrorReglaNegocio
 from apps.core.periodos import normalizar_periodo
 from apps.core.roles import codigos_roles_de
@@ -19,7 +26,7 @@ from apps.core.services import registrar_evento
 from apps.recursos.services import valor_hora_vigente
 from apps.tareas.models import Tarea
 
-from .models import RegistroEjecucion
+from .models import ConfiguracionImportacionJira, RegistroEjecucion
 
 CERO = Decimal("0")
 
@@ -437,6 +444,167 @@ def comparativo_por_recurso(proyecto):
             }
         )
     return sorted(resultado, key=lambda fila: fila["recurso_nombre"])
+
+
+# --- Importación de horas desde Jira/Tempo (fase 12) -------------------------
+
+
+def _resolver_recurso_por_worklog(cliente, worklog, resumen):
+    account_id = worklog["author"]["accountId"]
+    try:
+        correo = cliente.resolver_correo_usuario(account_id)
+    except Exception as exc:  # noqa: BLE001 - se reporta, no se interrumpe el lote
+        resumen["errores"].append(
+            {"motivo": f"no se pudo resolver el usuario {account_id}", "detalle": str(exc)}
+        )
+        return None
+    if not correo:
+        return None
+
+    from apps.recursos.models import Recurso
+
+    return Recurso.objects.filter(email__iexact=correo).first()
+
+
+@transaction.atomic
+def importar_horas_jira(desde, hasta, *, dry_run=False):
+    """Trae los worklogs de Tempo entre `desde` y `hasta` (fechas) y los
+    deja como `RegistroEjecucion` con `origen=JIRA` (docs/modelo-datos.md §6
+    y docs/plan/fase-12-integracion-jira.md). Nunca llama a la red fuera de
+    `ClienteJiraTempo`, para que los tests puedan mockearlo por completo.
+    Devuelve `{creados, actualizados, omitidos: [...], errores: [...]}`."""
+    from apps.proyectos.models import Proyecto
+
+    from .integraciones.jira_tempo import ClienteJiraTempo, ErrorIntegracionJira
+
+    resumen = {"creados": 0, "actualizados": 0, "omitidos": [], "errores": []}
+    cliente = ClienteJiraTempo()
+
+    try:
+        worklogs = cliente.obtener_worklogs(desde, hasta)
+    except ErrorIntegracionJira as exc:
+        resumen["errores"].append(
+            {"motivo": "no se pudieron obtener los worklogs", "detalle": str(exc)}
+        )
+        return resumen
+    if not worklogs:
+        return resumen
+
+    issue_ids = {worklog["issue"]["id"] for worklog in worklogs}
+    try:
+        claves_por_issue = cliente.resolver_claves_issue(issue_ids)
+    except ErrorIntegracionJira as exc:
+        resumen["errores"].append(
+            {"motivo": "no se pudieron resolver las claves de los issues", "detalle": str(exc)}
+        )
+        return resumen
+
+    auto_aprobar = ConfiguracionImportacionJira.obtener().auto_aprobar_importados
+    estado_inicial = EstadoAprobacion.APROBADO if auto_aprobar else EstadoAprobacion.ENVIADO
+    proyectos_afectados = {}
+
+    for worklog in worklogs:
+        id_externo = str(worklog["tempoWorklogId"])
+        issue_id = str(worklog["issue"]["id"])
+        clave_issue = claves_por_issue.get(issue_id)
+        if not clave_issue:
+            resumen["omitidos"].append(
+                {"id_externo": id_externo, "motivo": "no se pudo resolver la clave del issue"}
+            )
+            continue
+
+        clave_proyecto = clave_issue.rsplit("-", 1)[0]
+        proyecto = Proyecto.objects.filter(clave_jira=clave_proyecto).first()
+        if proyecto is None:
+            resumen["omitidos"].append(
+                {
+                    "id_externo": id_externo,
+                    "motivo": f"proyecto de Jira «{clave_proyecto}» no está mapeado",
+                }
+            )
+            continue
+
+        recurso = _resolver_recurso_por_worklog(cliente, worklog, resumen)
+        if recurso is None:
+            resumen["omitidos"].append(
+                {"id_externo": id_externo, "motivo": "no se encontró un recurso con ese correo"}
+            )
+            continue
+
+        es_creacion = True
+        try:
+            with transaction.atomic():
+                existente = RegistroEjecucion.objects.filter(
+                    origen=OrigenRegistro.JIRA, id_externo=id_externo
+                ).first()
+                if (
+                    existente is not None
+                    and existente.estado_aprobacion == EstadoAprobacion.APROBADO
+                ):
+                    resumen["omitidos"].append(
+                        {"id_externo": id_externo, "motivo": "ya aprobado, no se modifica"}
+                    )
+                    continue
+
+                es_creacion = existente is None
+                registro = existente or RegistroEjecucion(
+                    origen=OrigenRegistro.JIRA, id_externo=id_externo
+                )
+                registro.proyecto = proyecto
+                registro.tarea = Tarea.objects.filter(clave_jira=clave_issue).first()
+                registro.recurso = recurso
+                registro.periodicidad = Periodicidad.DIARIA
+                registro.periodo_inicio = datetime.date.fromisoformat(worklog["startDate"])
+                registro.periodo_fin = registro.periodo_inicio
+                registro.horas = Decimal(str(worklog["timeSpentSeconds"])) / Decimal(3600)
+                registro.descripcion = worklog.get("description") or ""
+                if es_creacion:
+                    registro.estado_aprobacion = estado_inicial
+                    if estado_inicial == EstadoAprobacion.APROBADO:
+                        registro.aprobado_en = timezone.now()
+                else:
+                    registro.estado_aprobacion = EstadoAprobacion.ENVIADO
+                    registro.motivo_rechazo = ""
+
+                preparar_registro(registro)
+                validar_rango_proyecto(registro)
+                validar_tarea(registro)
+                validar_solapamiento(registro)
+                registro.save()
+                if registro.estado_aprobacion == EstadoAprobacion.APROBADO:
+                    recalcular_tarea(registro)
+        except Exception as exc:  # noqa: BLE001 - se reporta, no se interrumpe el lote
+            resumen["errores"].append(
+                {
+                    "id_externo": id_externo,
+                    "motivo": "no se pudo guardar el registro",
+                    "detalle": getattr(exc, "detail", str(exc)),
+                }
+            )
+            continue
+
+        if es_creacion:
+            resumen["creados"] += 1
+        else:
+            resumen["actualizados"] += 1
+        proyectos_afectados[proyecto.id] = proyecto
+
+    for proyecto in proyectos_afectados.values():
+        registrar_evento(
+            tipo_evento=TipoEvento.IMPORTACION,
+            entidad="Proyecto",
+            entidad_id=proyecto.id,
+            descripcion=(
+                f"Importación de horas desde Jira/Tempo para {proyecto.codigo} "
+                f"({desde} a {hasta})."
+            ),
+            proyecto=proyecto,
+            despues=resumen,
+        )
+
+    if dry_run:
+        transaction.set_rollback(True)
+    return resumen
 
 
 def comparativo_por_mes(proyecto):

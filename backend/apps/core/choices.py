@@ -47,6 +47,11 @@ class EstadoAprobacion(models.TextChoices):
     RECHAZADO = "RECHAZADO", "Rechazado"
 
 
+class OrigenRegistro(models.TextChoices):
+    MANUAL = "MANUAL", "Manual"
+    JIRA = "JIRA", "Jira/Tempo"
+
+
 class Semaforo(models.TextChoices):
     VERDE = "VERDE", "Verde"
     AMARILLO = "AMARILLO", "Amarillo"
@@ -89,6 +94,7 @@ class TipoEvento(models.TextChoices):
     NUEVA_VERSION = "NUEVA_VERSION", "Nueva versión"
     LOGIN = "LOGIN", "Inicio de sesión"
     ASIGNACION = "ASIGNACION", "Asignación"
+    IMPORTACION = "IMPORTACION", "Importación"
 
 
 class EstadoCompromiso(models.TextChoices):

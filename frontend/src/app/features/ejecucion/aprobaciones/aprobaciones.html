@@ -39,13 +39,21 @@
     </app-boton>
   </div>
 
+  <ng-template #colProyecto let-fila>
+    <span class="flex items-center gap-2">
+      {{ fila.proyecto_codigo }}
+      @if (fila.origen === 'JIRA') {
+        <app-badge valor="JIRA" etiqueta="Jira" />
+      }
+    </span>
+  </ng-template>
   <ng-template #colPeriodo let-fila>{{ fila.periodo_inicio | fechaCorta }} — {{ fila.periodo_fin | fechaCorta }}</ng-template>
   <ng-template #colHoras let-fila>{{ fila.horas | horas }}</ng-template>
   <ng-template #colCosto let-fila>{{ fila.costo | moneda }}</ng-template>
 
   <app-tabla
     [columnas]="[
-      columnas[0],
+      { clave: 'proyecto_codigo', titulo: 'Proyecto', plantilla: colProyecto },
       columnas[1],
       columnas[2],
       { clave: 'periodo_inicio', titulo: 'Periodo', plantilla: colPeriodo },

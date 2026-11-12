@@ -24,6 +24,8 @@ export interface RegistroEjecucion extends ModeloBase {
   aprobado_en: string | null;
   registrado_por: string | null;
   registrado_por_nombre: string | null;
+  /** `MANUAL` o `JIRA` (fase 12); de solo lectura. */
+  origen: 'MANUAL' | 'JIRA';
 }
 
 export interface GastoEjecutado extends ModeloBase {

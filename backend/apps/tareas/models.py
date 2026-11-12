@@ -43,6 +43,7 @@ class Tarea(ModeloBase):
     orden = models.PositiveIntegerField(default=0)
     creada_durante_ejecucion = models.BooleanField(default=False)
     motivo_creacion = models.TextField(blank=True)
+    clave_jira = models.CharField(max_length=30, null=True, blank=True, unique=True)
 
     class Meta:
         verbose_name = "tarea"

@@ -31,6 +31,7 @@ interface CeldaCaptura {
   estado: string | null;
   motivoRechazo: string | null;
   guardando: boolean;
+  origen: string | null;
 }
 
 const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -133,8 +134,14 @@ export class MiRegistro {
         estado: null,
         motivoRechazo: null,
         guardando: false,
+        origen: null,
       }
     );
+  }
+
+  protected tituloCelda(c: CeldaCaptura): string {
+    const base = c.estado === 'APROBADO' ? 'Aprobado: para corregirlo, pida que lo reabran.' : 'Enviado a aprobación.';
+    return c.origen === 'JIRA' ? `${base} Importado desde Jira/Tempo.` : base;
   }
 
   protected alCambiarValor(filaClave: string, fecha: Date, valor: number | null): void {
@@ -277,6 +284,7 @@ export class MiRegistro {
             estado: esPrimerDia ? registro.estado_aprobacion : 'OCUPADO',
             motivoRechazo: registro.motivo_rechazo || null,
             guardando: false,
+            origen: registro.origen,
           };
         }
       }
@@ -383,6 +391,7 @@ export class MiRegistro {
               estado: respuesta.estado_aprobacion,
               motivoRechazo: respuesta.motivo_rechazo || null,
               guardando: false,
+              origen: respuesta.origen,
             },
           }));
           advertencias.push(...respuesta.advertencias);

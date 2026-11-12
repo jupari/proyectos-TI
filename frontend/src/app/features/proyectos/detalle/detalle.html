@@ -785,6 +785,13 @@
           Sugerir fechas
         </app-boton>
       </div>
+      <app-input
+        etiqueta="Clave en Jira"
+        ayuda="Opcional. Para asociarle horas importadas desde Tempo (fase 12), p. ej. PROY-123."
+        [ngModel]="tarClaveJira()"
+        (ngModelChange)="tarClaveJira.set($event)"
+        name="tarClaveJira"
+      />
 
       @if (idTareaEnEdicion()) {
         <div class="border-t border-neutro-200 pt-4">

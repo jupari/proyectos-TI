@@ -51,11 +51,11 @@
                       —
                     </span>
                   } @else if (estaBloqueada(c)) {
-                    <span
-                      class="inline-flex items-center gap-1 text-xs text-neutro-500"
-                      [title]="c.estado === 'APROBADO' ? 'Aprobado: para corregirlo, pida que lo reabran.' : 'Enviado a aprobación.'"
-                    >
+                    <span class="inline-flex items-center gap-1 text-xs text-neutro-500" [title]="tituloCelda(c)">
                       🔒 {{ c.valor }}
+                      @if (c.origen === 'JIRA') {
+                        <span class="text-[10px] font-semibold text-marca-600">J</span>
+                      }
                     </span>
                   } @else {
                     <input

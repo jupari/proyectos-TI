@@ -1,0 +1,23 @@
+<div class="flex flex-col gap-4">
+  <h1 class="text-lg font-semibold text-neutro-800">Integraciones</h1>
+
+  <app-card titulo="Importación de horas desde Jira/Tempo">
+    @if (cargando()) {
+      <p class="text-sm text-neutro-500">Cargando…</p>
+    } @else {
+      <div class="flex items-start gap-3">
+        <app-switch
+          etiqueta="Aprobar automáticamente las horas importadas"
+          [ngModel]="autoAprobarImportados()"
+          (ngModelChange)="cambiarAutoAprobar($event)"
+        />
+      </div>
+      <p class="mt-2 text-sm text-neutro-500">
+        Si está apagado (recomendado), las horas que trae
+        <code class="rounded bg-neutro-100 px-1">python manage.py importar_horas_jira</code>
+        quedan pendientes de aprobación, igual que un registro manual. Si lo enciendes, entran
+        directamente aprobadas y cuentan de inmediato para los KPIs del proyecto.
+      </p>
+    }
+  </app-card>
+</div>

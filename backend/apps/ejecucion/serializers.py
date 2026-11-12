@@ -46,6 +46,7 @@ class RegistroEjecucionSerializer(serializers.ModelSerializer):
             "aprobado_en",
             "registrado_por",
             "registrado_por_nombre",
+            "origen",
             "activo",
         ]
         read_only_fields = [
@@ -58,6 +59,7 @@ class RegistroEjecucionSerializer(serializers.ModelSerializer):
             "aprobado_por",
             "aprobado_en",
             "registrado_por",
+            "origen",
         ]
 
     def get_registrado_por_nombre(self, obj) -> str | None:
