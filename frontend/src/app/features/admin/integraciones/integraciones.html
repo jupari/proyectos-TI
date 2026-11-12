@@ -1,7 +1,73 @@
 <div class="flex flex-col gap-4">
   <h1 class="text-lg font-semibold text-neutro-800">Integraciones</h1>
 
-  <app-card titulo="Importación de horas desde Jira/Tempo">
+  <app-card titulo="Importar horas desde Jira/Tempo ahora">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <app-datepicker
+        etiqueta="Desde *"
+        [ngModel]="fechaDesde()"
+        (ngModelChange)="fechaDesde.set($event)"
+      />
+      <app-datepicker
+        etiqueta="Hasta *"
+        [ngModel]="fechaHasta()"
+        (ngModelChange)="fechaHasta.set($event)"
+      />
+      <app-select
+        etiqueta="¿Cómo deben entrar estas horas?"
+        [opciones]="opcionesAprobacion"
+        [ngModel]="modoAprobacion()"
+        (ngModelChange)="modoAprobacion.set($event)"
+      />
+      <div class="flex items-end">
+        <app-switch
+          etiqueta="Solo simular (no guarda nada)"
+          [ngModel]="soloSimular()"
+          (ngModelChange)="soloSimular.set($event)"
+        />
+      </div>
+    </div>
+
+    <div class="mt-4 flex justify-end">
+      <app-boton [cargando]="importando()" (clic)="importarAhora()">
+        {{ soloSimular() ? 'Simular importación' : 'Importar ahora' }}
+      </app-boton>
+    </div>
+
+    @if (resumen(); as r) {
+      <div class="mt-4 flex flex-col gap-3 border-t border-neutro-100 pt-4">
+        <div class="flex flex-wrap gap-4 text-sm">
+          <span class="font-medium text-exito">Creados: {{ r.creados }}</span>
+          <span class="font-medium text-marca-600">Actualizados: {{ r.actualizados }}</span>
+          <span class="font-medium text-neutro-500">Omitidos: {{ r.omitidos.length }}</span>
+          <span class="font-medium text-peligro">Errores: {{ r.errores.length }}</span>
+        </div>
+
+        @if (r.omitidos.length > 0) {
+          <details class="text-sm">
+            <summary class="cursor-pointer text-neutro-600">Ver omitidos</summary>
+            <ul class="mt-2 flex flex-col gap-1 pl-4 text-neutro-500">
+              @for (o of r.omitidos; track $index) {
+                <li>{{ o.id_externo ? o.id_externo + ': ' : '' }}{{ o.motivo }}</li>
+              }
+            </ul>
+          </details>
+        }
+        @if (r.errores.length > 0) {
+          <details class="text-sm" open>
+            <summary class="cursor-pointer text-peligro">Ver errores</summary>
+            <ul class="mt-2 flex flex-col gap-1 pl-4 text-peligro">
+              @for (e of r.errores; track $index) {
+                <li>{{ e.id_externo ? e.id_externo + ': ' : '' }}{{ e.motivo }}{{ e.detalle ? ' — ' + e.detalle : '' }}</li>
+              }
+            </ul>
+          </details>
+        }
+      </div>
+    }
+  </app-card>
+
+  <app-card titulo="Valor por defecto del comando de terminal">
     @if (cargando()) {
       <p class="text-sm text-neutro-500">Cargando…</p>
     } @else {
@@ -13,10 +79,10 @@
         />
       </div>
       <p class="mt-2 text-sm text-neutro-500">
-        Si está apagado (recomendado), las horas que trae
+        Este valor solo aplica cuando se corre
         <code class="rounded bg-neutro-100 px-1">python manage.py importar_horas_jira</code>
-        quedan pendientes de aprobación, igual que un registro manual. Si lo enciendes, entran
-        directamente aprobadas y cuentan de inmediato para los KPIs del proyecto.
+        desde la terminal, sin indicar el modo de aprobación. El botón de arriba siempre deja
+        elegir el modo para esa corrida en particular, sin cambiar este valor.
       </p>
     }
   </app-card>

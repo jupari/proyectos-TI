@@ -467,11 +467,15 @@ def _resolver_recurso_por_worklog(cliente, worklog, resumen):
 
 
 @transaction.atomic
-def importar_horas_jira(desde, hasta, *, dry_run=False):
+def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
     """Trae los worklogs de Tempo entre `desde` y `hasta` (fechas) y los
     deja como `RegistroEjecucion` con `origen=JIRA` (docs/modelo-datos.md §6
     y docs/plan/fase-12-integracion-jira.md). Nunca llama a la red fuera de
     `ClienteJiraTempo`, para que los tests puedan mockearlo por completo.
+    `auto_aprobar`: si se indica explícitamente (True/False), decide la
+    aprobación solo para esta corrida, sin tocar el interruptor global; si
+    se omite (`None`, el caso del comando de gestión), se usa
+    `ConfiguracionImportacionJira.auto_aprobar_importados`.
     Devuelve `{creados, actualizados, omitidos: [...], errores: [...]}`."""
     from apps.proyectos.models import Proyecto
 
@@ -499,7 +503,8 @@ def importar_horas_jira(desde, hasta, *, dry_run=False):
         )
         return resumen
 
-    auto_aprobar = ConfiguracionImportacionJira.obtener().auto_aprobar_importados
+    if auto_aprobar is None:
+        auto_aprobar = ConfiguracionImportacionJira.obtener().auto_aprobar_importados
     estado_inicial = EstadoAprobacion.APROBADO if auto_aprobar else EstadoAprobacion.ENVIADO
     proyectos_afectados = {}
 

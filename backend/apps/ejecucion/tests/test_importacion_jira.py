@@ -82,6 +82,23 @@ def test_con_auto_aprobar_activado_crea_directo_aprobado():
     assert tarea.horas_ejecutadas == Decimal("8.00")
 
 
+def test_auto_aprobar_por_corrida_anula_el_interruptor_global():
+    """`ConfiguracionImportacionJira` sigue en `False`: el botón de
+    /admin/integraciones puede decidir la aprobación solo para esta corrida,
+    sin tocar el valor global."""
+    _preparar_proyecto_recurso_tarea()
+    cliente = _cliente_mock([_worklog()])
+
+    with patch(RUTA_CLIENTE, return_value=cliente):
+        importar_horas_jira(
+            datetime.date(2026, 3, 1), datetime.date(2026, 3, 31), auto_aprobar=True
+        )
+
+    registro = RegistroEjecucion.objects.get(origen=OrigenRegistro.JIRA, id_externo="555")
+    assert registro.estado_aprobacion == EstadoAprobacion.APROBADO
+    assert ConfiguracionImportacionJira.obtener().auto_aprobar_importados is False
+
+
 def test_reimportar_mismo_worklog_actualiza_no_duplica():
     _preparar_proyecto_recurso_tarea()
     cliente = _cliente_mock([_worklog(timeSpentSeconds=14400)])  # 4 horas
