@@ -1,0 +1,108 @@
+<div class="flex flex-col gap-4">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-lg font-semibold text-neutro-800">Roles</h1>
+    <app-boton (clic)="abrirNuevo()">+ Nuevo rol</app-boton>
+  </div>
+
+  <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-white shadow-tarjeta">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-neutro-50 text-neutro-600">
+        <tr>
+          <th class="px-3 py-2">Código</th>
+          <th class="px-3 py-2">Descripción</th>
+          <th class="px-3 py-2">Orden</th>
+          <th class="px-3 py-2">Tipo</th>
+          <th class="px-3 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-neutro-100">
+        @if (cargando()) {
+          @for (indice of [0, 1, 2]; track indice) {
+            <tr>
+              <td class="px-3 py-3" colspan="5">
+                <div class="h-4 w-full animate-pulse rounded bg-neutro-100"></div>
+              </td>
+            </tr>
+          }
+        } @else if (roles().length === 0) {
+          <tr>
+            <td class="px-3 py-6" colspan="5">
+              <app-estado-vacio mensaje="No hay roles registrados." />
+            </td>
+          </tr>
+        } @else {
+          @for (rol of roles(); track rol.id) {
+            <tr class="hover:bg-neutro-50">
+              <td class="px-3 py-3 font-medium text-neutro-800">{{ rol.codigo }}</td>
+              <td class="px-3 py-3 text-neutro-700">{{ rol.descripcion }}</td>
+              <td class="px-3 py-3 text-neutro-600">{{ rol.orden }}</td>
+              <td class="px-3 py-3">
+                @if (rol.es_sistema) {
+                  <app-badge valor="SISTEMA" etiqueta="Del sistema" />
+                } @else {
+                  <app-badge valor="PERSONALIZADO" etiqueta="Personalizado" />
+                }
+              </td>
+              <td class="flex justify-end gap-3 px-3 py-3">
+                <button type="button" class="text-marca-600 hover:underline" (click)="abrirEditar(rol)">
+                  Editar
+                </button>
+                @if (!rol.es_sistema) {
+                  <button type="button" class="text-peligro hover:underline" (click)="eliminar(rol)">
+                    Desactivar
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-xs text-neutro-400">
+    Los cinco roles del sistema (ADMIN, PMO, LIDER, RECURSO, CONSULTA) traen fijos sus permisos
+    por pantalla y su alcance de datos; un rol nuevo no tiene ninguno asignado hasta que se
+    programe en el backend.
+  </p>
+</div>
+
+<app-modal
+  [abierto]="modalAbierto()"
+  [titulo]="idEnEdicion() ? 'Editar rol' : 'Nuevo rol'"
+  (cerrar)="cerrarModal()"
+>
+  <div class="flex flex-col gap-4">
+    <app-input
+      etiqueta="Código *"
+      ayuda="En mayúsculas, sin espacios (p. ej. AUDITOR)."
+      [ngModel]="codigo()"
+      (ngModelChange)="codigo.set($event)"
+      [error]="erroresPorCampo()['codigo']?.[0] ?? ''"
+      name="codigo"
+    />
+    <app-input
+      etiqueta="Descripción *"
+      [ngModel]="descripcion()"
+      (ngModelChange)="descripcion.set($event)"
+      [error]="erroresPorCampo()['descripcion']?.[0] ?? ''"
+      name="descripcion"
+    />
+    <app-numero
+      etiqueta="Orden"
+      [ngModel]="orden()"
+      (ngModelChange)="orden.set($event)"
+      name="orden"
+    />
+    @if (esSistemaEnEdicion()) {
+      <p class="text-xs text-alerta">
+        Es un rol del sistema: sus permisos y alcance están fijos en el backend. Cambiar su
+        código puede romperlos; solo se recomienda ajustar la descripción o el orden.
+      </p>
+    }
+  </div>
+  <div pie class="flex gap-2">
+    <app-boton variante="secundario" (clic)="cerrarModal()">Cancelar</app-boton>
+    <app-boton [cargando]="guardando()" (clic)="guardar()">Guardar</app-boton>
+  </div>
+</app-modal>

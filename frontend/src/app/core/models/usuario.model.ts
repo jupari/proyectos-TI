@@ -11,8 +11,25 @@ export interface Usuario {
   avatar_url: string | null;
   proveedor_auth: ProveedorAuth;
   debe_cambiar_clave: boolean;
+  is_active: boolean;
   roles: string[];
   permisos_ui: string[];
+}
+
+/** Cuerpo de `UsuarioAdminEscrituraSerializer`: `clave_temporal` solo viaja
+ * en la respuesta de creación (no hay envío de correo en esta versión). */
+export interface UsuarioEscritura {
+  email: string;
+  nombres: string;
+  apellidos: string;
+  cargo: string;
+  telefono: string;
+  is_active: boolean;
+  roles: string[];
+}
+
+export interface UsuarioCreado extends UsuarioEscritura {
+  clave_temporal: string;
 }
 
 /** GET /auth/yo/ añade `proyectos_liderados` a la forma de `Usuario`. */

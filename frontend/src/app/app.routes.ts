@@ -8,7 +8,6 @@ import { CambiarClave } from './features/auth/cambiar-clave';
 import { GoogleCallback } from './features/auth/google-callback';
 import { Login } from './features/auth/login';
 import { Perfil } from './features/auth/perfil';
-import { EnConstruccion } from './features/comun/en-construccion';
 import { Pagina403 } from './features/comun/pagina-403';
 import { Pagina404 } from './features/comun/pagina-404';
 import { Shell } from './layout/shell';
@@ -59,13 +58,13 @@ export const routes: Routes = [
       },
       {
         path: 'admin/usuarios',
-        component: EnConstruccion,
+        loadComponent: () => import('./features/admin/usuarios/usuarios').then((m) => m.Usuarios),
         canActivate: [permisoGuard('admin.usuarios')],
       },
       {
         path: 'admin/roles',
-        component: EnConstruccion,
-        canActivate: [permisoGuard('admin.usuarios')],
+        loadComponent: () => import('./features/admin/roles/roles').then((m) => m.Roles),
+        canActivate: [permisoGuard('admin.roles')],
       },
       {
         path: 'admin/catalogos',
