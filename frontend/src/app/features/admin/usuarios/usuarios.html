@@ -1,0 +1,159 @@
+<div class="flex flex-col gap-4">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-lg font-semibold text-neutro-800">Usuarios</h1>
+    <app-boton (clic)="abrirNuevo()">+ Nuevo usuario</app-boton>
+  </div>
+
+  <div class="max-w-sm">
+    <app-input
+      etiqueta="Buscar"
+      placeholder="Correo o nombre…"
+      [ngModel]="busqueda()"
+      (ngModelChange)="busqueda.set($event)"
+      (keydown.enter)="cargar()"
+    />
+  </div>
+
+  <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-white shadow-tarjeta">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-neutro-50 text-neutro-600">
+        <tr>
+          <th class="px-3 py-2">Nombre</th>
+          <th class="px-3 py-2">Correo</th>
+          <th class="px-3 py-2">Roles</th>
+          <th class="px-3 py-2">Proveedor</th>
+          <th class="px-3 py-2 text-center">Activo</th>
+          <th class="px-3 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-neutro-100">
+        @if (cargando()) {
+          @for (indice of [0, 1, 2]; track indice) {
+            <tr>
+              <td class="px-3 py-3" colspan="6">
+                <div class="h-4 w-full animate-pulse rounded bg-neutro-100"></div>
+              </td>
+            </tr>
+          }
+        } @else if (usuarios().length === 0) {
+          <tr>
+            <td class="px-3 py-6" colspan="6">
+              <app-estado-vacio mensaje="No hay usuarios que coincidan con la búsqueda." />
+            </td>
+          </tr>
+        } @else {
+          @for (usuario of usuarios(); track usuario.id) {
+            <tr class="hover:bg-neutro-50">
+              <td class="px-3 py-3 text-neutro-800">{{ usuario.nombres }} {{ usuario.apellidos }}</td>
+              <td class="px-3 py-3 text-neutro-600">{{ usuario.email }}</td>
+              <td class="px-3 py-3">
+                <div class="flex flex-wrap gap-1">
+                  @for (rol of usuario.roles; track rol) {
+                    <app-badge [valor]="rol" />
+                  } @empty {
+                    <span class="text-neutro-400">Sin roles</span>
+                  }
+                </div>
+              </td>
+              <td class="px-3 py-3 text-neutro-600">{{ usuario.proveedor_auth }}</td>
+              <td class="px-3 py-3 text-center">
+                <app-switch
+                  [ngModel]="usuario.is_active"
+                  (ngModelChange)="alternarActivo(usuario)"
+                />
+              </td>
+              <td class="px-3 py-3 text-right">
+                <button type="button" class="text-sm font-medium text-marca-600 hover:underline" (click)="abrirEditar(usuario)">
+                  Editar
+                </button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<app-modal
+  [abierto]="modalAbierto()"
+  [titulo]="idEnEdicion() ? 'Editar usuario' : 'Nuevo usuario'"
+  (cerrar)="cerrarModal()"
+>
+  <div class="flex flex-col gap-4">
+    <app-input
+      etiqueta="Correo *"
+      tipo="email"
+      [ngModel]="email()"
+      (ngModelChange)="email.set($event)"
+      [error]="erroresPorCampo()['email']?.[0] ?? ''"
+      name="email"
+    />
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <app-input
+        etiqueta="Nombres *"
+        [ngModel]="nombres()"
+        (ngModelChange)="nombres.set($event)"
+        [error]="erroresPorCampo()['nombres']?.[0] ?? ''"
+        name="nombres"
+      />
+      <app-input
+        etiqueta="Apellidos *"
+        [ngModel]="apellidos()"
+        (ngModelChange)="apellidos.set($event)"
+        [error]="erroresPorCampo()['apellidos']?.[0] ?? ''"
+        name="apellidos"
+      />
+    </div>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <app-input etiqueta="Cargo" [ngModel]="cargo()" (ngModelChange)="cargo.set($event)" name="cargo" />
+      <app-input etiqueta="Teléfono" [ngModel]="telefono()" (ngModelChange)="telefono.set($event)" name="telefono" />
+    </div>
+
+    <div>
+      <p class="mb-2 text-sm font-medium text-neutro-700">Roles</p>
+      <div class="flex flex-wrap gap-3">
+        @for (rol of roles(); track rol.id) {
+          <label class="inline-flex items-center gap-2 text-sm text-neutro-700">
+            <input
+              type="checkbox"
+              [checked]="tieneRol(rol.codigo)"
+              (change)="alternarRol(rol.codigo)"
+            />
+            {{ rol.descripcion }}
+          </label>
+        }
+      </div>
+    </div>
+
+    @if (idEnEdicion()) {
+      <app-switch etiqueta="Activo" [ngModel]="estaActivo()" (ngModelChange)="estaActivo.set($event)" />
+    } @else {
+      <p class="text-xs text-neutro-500">
+        Se genera una clave temporal al crear la cuenta; deberá cambiarla en el primer inicio de
+        sesión. No se envía correo: cópiela y compártala con la persona.
+      </p>
+    }
+  </div>
+  <div pie class="flex gap-2">
+    <app-boton variante="secundario" (clic)="cerrarModal()">Cancelar</app-boton>
+    <app-boton [cargando]="guardando()" (clic)="guardar()">Guardar</app-boton>
+  </div>
+</app-modal>
+
+<app-modal [abierto]="!!claveTemporalCreada()" titulo="Usuario creado" (cerrar)="cerrarClaveTemporal()">
+  <div class="flex flex-col gap-3">
+    <p class="text-sm text-neutro-700">
+      Se creó la cuenta de <strong>{{ correoClaveTemporal() }}</strong>. Esta es su clave temporal;
+      solo se muestra una vez, así que cópiela ahora y entréguesela de forma segura. Deberá
+      cambiarla al iniciar sesión por primera vez.
+    </p>
+    <div class="flex items-center gap-2 rounded-panel border border-neutro-200 bg-neutro-50 px-3 py-2">
+      <code class="flex-1 select-all break-all text-sm text-neutro-900">{{ claveTemporalCreada() }}</code>
+      <app-boton variante="secundario" tamano="sm" (clic)="copiarClaveTemporal()">Copiar</app-boton>
+    </div>
+  </div>
+  <div pie class="flex justify-end">
+    <app-boton (clic)="cerrarClaveTemporal()">Entendido</app-boton>
+  </div>
+</app-modal>

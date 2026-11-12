@@ -28,6 +28,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
             "avatar_url",
             "proveedor_auth",
             "debe_cambiar_clave",
+            "is_active",
             "roles",
             "permisos_ui",
         ]
@@ -66,10 +67,27 @@ class UsuarioActualizarSerializer(serializers.ModelSerializer):
 
 class UsuarioAdminEscrituraSerializer(serializers.ModelSerializer):
     roles = serializers.ListField(child=serializers.CharField(), write_only=True, required=False)
+    # No es un campo del modelo: solo viaja en la respuesta de creación (ver
+    # `create`), que es la única vez que existe en texto plano. No hay envío
+    # de correo en esta versión (PLAN.md §10), así que es la única forma de
+    # que quien crea la cuenta pueda comunicar la clave inicial.
+    clave_temporal = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
-        fields = ["email", "nombres", "apellidos", "cargo", "telefono", "is_active", "roles"]
+        fields = [
+            "email",
+            "nombres",
+            "apellidos",
+            "cargo",
+            "telefono",
+            "is_active",
+            "roles",
+            "clave_temporal",
+        ]
+
+    def get_clave_temporal(self, obj) -> str | None:
+        return getattr(obj, "_clave_temporal", None)
 
     def create(self, validated_data):
         codigos_roles = validated_data.pop("roles", [])
@@ -79,6 +97,7 @@ class UsuarioAdminEscrituraSerializer(serializers.ModelSerializer):
         usuario.debe_cambiar_clave = True
         usuario.save(update_fields=["password", "debe_cambiar_clave"])
         self._asignar_roles(usuario, codigos_roles)
+        usuario._clave_temporal = clave_temporal
         return usuario
 
     def update(self, instance, validated_data):

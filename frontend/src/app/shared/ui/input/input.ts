@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, forwardRef, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, forwardRef, input, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { noop } from '../../utils/noop';
 
@@ -29,6 +29,19 @@ export class Input implements ControlValueAccessor {
   protected readonly id = `app-input-${siguienteId++}`;
   protected readonly valor = signal('');
   protected readonly deshabilitado = signal(false);
+
+  // Para `tipo="password"`: alterna a texto plano para que se pueda
+  // verificar a simple vista lo que realmente quedó en el campo (un
+  // autocompletado del navegador puede reemplazar un valor pegado sin que
+  // los puntos lo delaten). No aplica a otros tipos.
+  protected readonly mostrarClave = signal(false);
+  protected readonly tipoEfectivo = computed(() =>
+    this.tipo() === 'password' && this.mostrarClave() ? 'text' : this.tipo(),
+  );
+
+  protected alternarMostrarClave(): void {
+    this.mostrarClave.update((valor) => !valor);
+  }
 
   private alCambiar: (valor: string) => void = noop;
   protected alTocar: () => void = noop;
