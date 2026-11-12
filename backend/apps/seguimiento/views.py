@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.db.models import Q
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import extend_schema
@@ -17,6 +19,7 @@ from apps.tareas.serializers import TareaListaSerializer
 from .filters import FiltroCompromisoSeguimiento, FiltroSeguimiento
 from .models import CompromisoSeguimiento, Seguimiento
 from .serializers import CompromisoSeguimientoSerializer, SeguimientoSerializer
+from .services import convertir_en_tarea
 from .services import precargar as precargar_datos
 from .services import publicar as publicar_seguimiento
 from .services import reabrir as reabrir_seguimiento
@@ -218,7 +221,73 @@ class CompromisoSeguimientoViewSet(MixinAlcancePorRol, ViewSetBase):
     ordering_fields = ["fecha_compromiso"]
 
     def get_queryset(self):
-        queryset = CompromisoSeguimiento.objects.select_related("seguimiento", "responsable")
+        queryset = CompromisoSeguimiento.objects.select_related(
+            "seguimiento", "responsable", "tarea"
+        )
         if self.request.query_params.get("activo") != "false":
             queryset = queryset.filter(activo=True)
         return self.filtrar_por_rol(queryset)
+
+    @extend_schema(
+        summary="Convierte el compromiso en una tarea medible, visible en el cronograma",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "horas_estimadas": {"type": "string"},
+                    "fecha_inicio_plan": {"type": "string", "format": "date"},
+                    "fecha_fin_plan": {"type": "string", "format": "date"},
+                    "responsable": {"type": "string", "format": "uuid"},
+                    "fase": {"type": "string", "format": "uuid"},
+                },
+                "required": ["horas_estimadas"],
+            }
+        },
+        responses={200: CompromisoSeguimientoSerializer},
+    )
+    @action(detail=True, methods=["post"], url_path="convertir-tarea")
+    def convertir_tarea(self, request, pk=None):
+        compromiso = self.get_object()
+
+        horas_estimadas_raw = request.data.get("horas_estimadas")
+        if not horas_estimadas_raw:
+            raise ValidationError({"horas_estimadas": ["Este campo es obligatorio."]})
+        try:
+            horas_estimadas = Decimal(str(horas_estimadas_raw))
+        except InvalidOperation as exc:
+            raise ValidationError({"horas_estimadas": ["Debe ser un número."]}) from exc
+
+        responsable = None
+        responsable_id = request.data.get("responsable")
+        if responsable_id:
+            from apps.recursos.models import Recurso
+
+            try:
+                responsable = Recurso.objects.get(pk=responsable_id)
+            except Recurso.DoesNotExist as exc:
+                raise NotFound("El recurso responsable no existe.") from exc
+
+        fase = None
+        fase_id = request.data.get("fase")
+        if fase_id:
+            from apps.proyectos.models import FaseProyecto
+
+            try:
+                fase = FaseProyecto.objects.get(pk=fase_id)
+            except FaseProyecto.DoesNotExist as exc:
+                raise NotFound("La fase no existe.") from exc
+
+        fecha_inicio_raw = request.data.get("fecha_inicio_plan")
+        fecha_fin_raw = request.data.get("fecha_fin_plan")
+
+        convertir_en_tarea(
+            compromiso,
+            request.user,
+            horas_estimadas=horas_estimadas,
+            fecha_inicio_plan=parse_date(fecha_inicio_raw) if fecha_inicio_raw else None,
+            fecha_fin_plan=parse_date(fecha_fin_raw) if fecha_fin_raw else None,
+            responsable=responsable,
+            fase=fase,
+        )
+        compromiso.refresh_from_db()
+        return Response(self.get_serializer(compromiso).data)

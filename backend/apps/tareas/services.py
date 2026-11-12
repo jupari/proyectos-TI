@@ -7,7 +7,13 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
-from apps.core.choices import EstadoProyecto, EstadoTarea, TipoDependencia, TipoEvento
+from apps.core.choices import (
+    EstadoCompromiso,
+    EstadoProyecto,
+    EstadoTarea,
+    TipoDependencia,
+    TipoEvento,
+)
 from apps.core.exceptions import ErrorConflicto
 from apps.core.services import registrar_evento
 
@@ -173,6 +179,14 @@ def cambiar_estado_tarea(
         tarea.fecha_fin_real = fecha_fin_real or tarea.fecha_fin_real or hoy
         tarea.avance = Decimal("100")
         campos += ["fecha_fin_real", "avance"]
+
+        compromiso = tarea.compromisos.filter(
+            activo=True, estado__in=[EstadoCompromiso.ABIERTO, EstadoCompromiso.VENCIDO]
+        ).first()
+        if compromiso is not None:
+            compromiso.estado = EstadoCompromiso.CUMPLIDO
+            compromiso.fecha_cumplimiento = tarea.fecha_fin_real
+            compromiso.save(update_fields=["estado", "fecha_cumplimiento", "actualizado_en"])
 
     if estado_nuevo == EstadoTarea.BLOQUEADA and not nota:
         raise ValidationError({"nota": ["Debe indicar el motivo del bloqueo."]})

@@ -16,9 +16,17 @@ from apps.core.choices import (
 from apps.core.exceptions import ErrorConflicto
 from apps.ejecucion.tests.factories import RegistroEjecucionFactory
 from apps.proyectos.tests.factories import HitoFactory, ProyectoFactory
+from apps.recursos.tests.factories import RecursoFactory
 from apps.seguimiento.models import CompromisoSeguimiento
-from apps.seguimiento.services import marcar_compromisos_vencidos, precargar, publicar, reabrir
+from apps.seguimiento.services import (
+    convertir_en_tarea,
+    marcar_compromisos_vencidos,
+    precargar,
+    publicar,
+    reabrir,
+)
 from apps.seguimiento.tests.factories import CompromisoSeguimientoFactory, SeguimientoFactory
+from apps.tareas.tests.factories import TareaFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -184,6 +192,70 @@ def test_reabrir_un_borrador_falla():
     seguimiento = SeguimientoFactory(estado=EstadoSeguimiento.BORRADOR)
     with pytest.raises(ErrorConflicto):
         reabrir(seguimiento, UsuarioFactory())
+
+
+# --- convertir_en_tarea -----------------------------------------------------------
+
+
+def test_convertir_en_tarea_crea_tarea_vinculada_medible_y_con_fecha_del_compromiso():
+    compromiso = CompromisoSeguimientoFactory(
+        descripcion="Entregar el manual de operación.",
+        fecha_compromiso=datetime.date(2026, 3, 10),
+    )
+    proyecto = compromiso.seguimiento.proyecto
+
+    tarea = convertir_en_tarea(compromiso, UsuarioFactory(), horas_estimadas=Decimal("8"))
+    compromiso.refresh_from_db()
+
+    assert compromiso.tarea_id == tarea.id
+    assert tarea.proyecto_id == proyecto.id
+    assert tarea.nombre == compromiso.descripcion
+    assert tarea.horas_estimadas == Decimal("8")
+    assert tarea.fecha_fin_plan == datetime.date(2026, 3, 10)
+
+
+def test_convertir_en_tarea_resuelve_el_responsable_del_recurso_vinculado_al_usuario():
+    usuario = UsuarioFactory()
+    recurso = RecursoFactory(usuario=usuario)
+    compromiso = CompromisoSeguimientoFactory(responsable=usuario)
+
+    tarea = convertir_en_tarea(compromiso, UsuarioFactory(), horas_estimadas=Decimal("4"))
+
+    assert tarea.responsable_id == recurso.id
+
+
+def test_convertir_en_tarea_ya_convertido_falla():
+    tarea_existente = TareaFactory()
+    compromiso = CompromisoSeguimientoFactory(tarea=tarea_existente)
+
+    with pytest.raises(ErrorConflicto):
+        convertir_en_tarea(compromiso, UsuarioFactory(), horas_estimadas=Decimal("4"))
+
+
+def test_convertir_en_tarea_compromiso_cumplido_falla():
+    compromiso = CompromisoSeguimientoFactory(estado=EstadoCompromiso.CUMPLIDO)
+
+    with pytest.raises(ErrorConflicto):
+        convertir_en_tarea(compromiso, UsuarioFactory(), horas_estimadas=Decimal("4"))
+
+
+def test_convertir_en_tarea_horas_estimadas_invalidas_falla():
+    compromiso = CompromisoSeguimientoFactory()
+
+    with pytest.raises(ValidationError):
+        convertir_en_tarea(compromiso, UsuarioFactory(), horas_estimadas=Decimal("0"))
+
+
+def test_convertir_en_tarea_fecha_fin_antes_de_inicio_falla():
+    compromiso = CompromisoSeguimientoFactory(fecha_compromiso=datetime.date(2026, 1, 1))
+
+    with pytest.raises(ValidationError):
+        convertir_en_tarea(
+            compromiso,
+            UsuarioFactory(),
+            horas_estimadas=Decimal("4"),
+            fecha_inicio_plan=datetime.date(2026, 6, 1),
+        )
 
 
 # --- marcar_compromisos_vencidos --------------------------------------------------

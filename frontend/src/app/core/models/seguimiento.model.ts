@@ -40,4 +40,14 @@ export interface CompromisoSeguimiento extends ModeloBase {
   estado: EstadoCompromiso;
   fecha_cumplimiento: string | null;
   esta_vencido: boolean;
+  tarea: string | null;
+  tarea_codigo: string | null;
+}
+
+export interface ConvertirCompromisoEnTarea {
+  horas_estimadas: number;
+  fecha_inicio_plan?: string;
+  fecha_fin_plan?: string;
+  responsable?: string;
+  fase?: string;
 }

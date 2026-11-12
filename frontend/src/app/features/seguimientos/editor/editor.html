@@ -150,7 +150,13 @@
                       (ngModelChange)="actualizarCompromiso($index, { fecha_compromiso: $event })"
                     />
                   </td>
-                  <td class="py-2">{{ fila.id ? 'Guardado' : 'Sin guardar' }}</td>
+                  <td class="py-2">
+                    @if (fila.id) {
+                      <app-badge [valor]="fila.estado" [etiqueta]="etiquetaEstadoCompromiso(fila.estado)" />
+                    } @else {
+                      <span class="text-neutro-400">Sin guardar</span>
+                    }
+                  </td>
                   <td class="py-2 text-right">
                     <app-boton tamano="sm" [cargando]="fila.guardando" (clic)="guardarCompromiso($index)">
                       Guardar
@@ -158,6 +164,19 @@
                     <button type="button" class="ml-2 text-xs text-peligro" (click)="eliminarCompromiso($index)">
                       Quitar
                     </button>
+                    @if (fila.tarea_codigo) {
+                      <a [routerLink]="['/tareas', fila.tarea]" class="ml-2 text-xs text-marca-600 hover:underline">
+                        Ver tarea {{ fila.tarea_codigo }}
+                      </a>
+                    } @else if (fila.id && (fila.estado === 'ABIERTO' || fila.estado === 'VENCIDO')) {
+                      <button
+                        type="button"
+                        class="ml-2 text-xs text-marca-600 hover:underline"
+                        (click)="abrirConversion($index)"
+                      >
+                        Convertir en tarea
+                      </button>
+                    }
                   </td>
                 </tr>
               } @empty {
@@ -235,4 +254,32 @@
       </aside>
     }
   </div>
+
+  <app-modal
+    [abierto]="modalConvertirAbierto()"
+    titulo="Convertir compromiso en tarea"
+    (cerrar)="cerrarConversion()"
+  >
+    <div class="flex flex-col gap-3">
+      <p class="text-sm text-neutro-600">
+        Se creará una tarea en el cronograma del proyecto con la descripción del compromiso.
+        Al completarla, el compromiso se cerrará automáticamente.
+      </p>
+      <app-numero
+        etiqueta="Horas estimadas *"
+        modo="horas"
+        [ngModel]="horasEstimadasConvertir()"
+        (ngModelChange)="horasEstimadasConvertir.set($event)"
+      />
+      <app-datepicker
+        etiqueta="Fecha límite (fin plan)"
+        [ngModel]="fechaFinConvertir()"
+        (ngModelChange)="fechaFinConvertir.set($event)"
+      />
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <app-boton variante="secundario" (clic)="cerrarConversion()">Cancelar</app-boton>
+      <app-boton [cargando]="convirtiendo()" (clic)="confirmarConversion()">Confirmar</app-boton>
+    </div>
+  </app-modal>
 }
