@@ -23,6 +23,8 @@ export interface Tarea extends ModeloBase {
   orden: number;
   creada_durante_ejecucion: boolean;
   motivo_creacion: string;
+  /** Clave del issue en Jira (p. ej. `PROY-123`); vacío si no está asociada (fase 12). */
+  clave_jira: string | null;
 }
 
 export interface DependenciaTarea extends ModeloBase {

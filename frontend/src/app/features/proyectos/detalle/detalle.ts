@@ -322,6 +322,7 @@ export class DetalleProyecto {
   protected readonly tarFechaFinPlan = signal<string | null>(null);
   protected readonly tarHorasEstimadas = signal<number | null>(null);
   protected readonly tarMotivoCreacion = signal('');
+  protected readonly tarClaveJira = signal('');
   protected readonly guardandoTarea = signal(false);
 
   protected readonly necesitaMotivoCreacion = computed(
@@ -415,6 +416,7 @@ export class DetalleProyecto {
     this.tarFechaFinPlan.set(null);
     this.tarHorasEstimadas.set(null);
     this.tarMotivoCreacion.set('');
+    this.tarClaveJira.set('');
     this.dependenciasEntrantes.set([]);
     this.dependenciasSalientes.set([]);
     this.drawerTareaAbierto.set(true);
@@ -430,6 +432,7 @@ export class DetalleProyecto {
         this.tarFechaInicioPlan.set(tarea.fecha_inicio_plan);
         this.tarFechaFinPlan.set(tarea.fecha_fin_plan);
         this.tarHorasEstimadas.set(Number(tarea.horas_estimadas));
+        this.tarClaveJira.set(tarea.clave_jira ?? '');
         this.dependenciasEntrantes.set(tarea.dependencias_entrantes);
         this.dependenciasSalientes.set(tarea.dependencias_salientes);
       });
@@ -473,6 +476,7 @@ export class DetalleProyecto {
       fecha_fin_real: null,
       horas_estimadas: this.tarHorasEstimadas()!,
       motivo_creacion: this.tarMotivoCreacion().trim(),
+      clave_jira: this.tarClaveJira().trim() || null,
     };
 
     this.guardandoTarea.set(true);

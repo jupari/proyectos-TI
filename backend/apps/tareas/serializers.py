@@ -124,6 +124,7 @@ class TareaListaSerializer(serializers.ModelSerializer):
             "orden",
             "creada_durante_ejecucion",
             "motivo_creacion",
+            "clave_jira",
             "dias_atraso",
             "tiene_subtareas",
             "numero_dependencias",
@@ -202,6 +203,7 @@ class TareaEscrituraSerializer(serializers.ModelSerializer):
             "orden",
             "creada_durante_ejecucion",
             "motivo_creacion",
+            "clave_jira",
         ]
         read_only_fields = ["id", "codigo", "horas_ejecutadas", "creada_durante_ejecucion"]
 

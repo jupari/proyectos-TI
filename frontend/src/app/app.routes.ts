@@ -72,6 +72,12 @@ export const routes: Routes = [
           import('./features/admin/catalogos/catalogos').then((m) => m.Catalogos),
         canActivate: [permisoGuard('catalogos.crear')],
       },
+      {
+        path: 'admin/integraciones',
+        loadComponent: () =>
+          import('./features/admin/integraciones/integraciones').then((m) => m.Integraciones),
+        canActivate: [permisoGuard('admin.integraciones')],
+      },
       { path: 'perfil', component: Perfil },
     ],
   },

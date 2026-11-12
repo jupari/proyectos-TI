@@ -152,6 +152,7 @@ class ProyectoDetalleSerializer(ProyectoListaSerializer):
             "presupuesto_horas",
             "presupuesto_dinero",
             "observaciones",
+            "clave_jira",
             "fases",
             "hitos",
             "rubros",
@@ -189,6 +190,7 @@ class ProyectoEscrituraSerializer(serializers.ModelSerializer):
             "presupuesto_dinero",
             "avance_reportado",
             "observaciones",
+            "clave_jira",
         ]
         read_only_fields = ["id", "codigo"]
 

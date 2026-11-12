@@ -25,6 +25,8 @@ export interface ProyectoDetalle extends Omit<ProyectoLista, 'resumen_ejecucion'
   fases: FaseProyecto[];
   hitos: Hito[];
   rubros: RubroPresupuesto[];
+  /** Clave del proyecto en Jira (p. ej. `PROY`); vacío si no está mapeado (fase 12). */
+  clave_jira: string;
 }
 
 /** Cuerpo aceptado por `ProyectoEscrituraSerializer`: sin `codigo` (lo
@@ -47,6 +49,7 @@ export interface ProyectoEscritura {
   presupuesto_dinero: number | string;
   avance_reportado: number | string;
   observaciones: string;
+  clave_jira?: string;
 }
 
 /** Fila de `comparativo_por_recurso`/`comparativo_por_mes`

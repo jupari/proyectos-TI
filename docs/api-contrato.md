@@ -112,7 +112,9 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
 
 **Ejecución**
 - `/registros-ejecucion/` — filtros `proyecto`, `tarea`, `recurso`, `periodicidad`,
-  `estado_aprobacion`, `periodo_inicio__gte`, `periodo_fin__lte`, `mis_registros=true`
+  `estado_aprobacion`, `periodo_inicio__gte`, `periodo_fin__lte`, `mis_registros=true`, `origen`
+  (`MANUAL`\|`JIRA`, fase 12); `origen` e `id_externo` son de solo lectura, los escribe solo la
+  importación (`python manage.py importar_horas_jira`, docs/modelo-datos.md §6)
 - `POST /registros-ejecucion/` · `PATCH` solo si está en `BORRADOR` o `RECHAZADO`
 - `POST /registros-ejecucion/lote/` — carga varios de una vez: `{registros: [...]}` →
   `{creados: n, errores: [{indice, detalle}]}`; **no es atómico por registro**, los válidos entran
@@ -122,6 +124,11 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
 - `POST /registros-ejecucion/{id}/reabrir/` — solo `PMO` y `ADMIN`
 - `GET /registros-ejecucion/resumen/?proyecto=&agrupar_por=recurso|tarea|mes` → agregados
 - `/gastos-ejecutados/` — mismo ciclo de aprobación
+- `GET /integraciones/jira/proyectos/` (fase 12, solo `ADMIN`/`PMO`) → lista en vivo
+  `[{clave, nombre}]` de los proyectos del Jira configurado, para elegir a mano cuál corresponde
+  a `Proyecto.clave_jira` en el formulario de proyecto (nunca se escribe esa clave a mano)
+- `/configuracion-importacion-jira/` (fase 12, solo `ADMIN`) — `GET`/`PATCH` sobre la única fila
+  de `ConfiguracionImportacionJira` (`{auto_aprobar_importados}`), sin `{id}` en la ruta
 
 **Seguimiento**
 - `/seguimientos/` — filtros `proyecto`, `periodicidad`, `estado`, `fecha_corte__gte`

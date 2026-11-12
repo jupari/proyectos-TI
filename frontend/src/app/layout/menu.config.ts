@@ -24,4 +24,10 @@ export const ITEMS_MENU: ItemMenu[] = [
   { etiqueta: 'Recursos', icono: '👥', ruta: '/recursos', permiso: 'recursos.ver' },
   { etiqueta: 'Administración', icono: '⚙️', ruta: '/admin/usuarios', permiso: 'admin.usuarios' },
   { etiqueta: 'Catálogos', icono: '🗂️', ruta: '/admin/catalogos', permiso: 'catalogos.crear' },
+  {
+    etiqueta: 'Integraciones',
+    icono: '🔌',
+    ruta: '/admin/integraciones',
+    permiso: 'admin.integraciones',
+  },
 ];

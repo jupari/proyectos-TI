@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
-from apps.core.choices import EstadoAprobacion, Periodicidad
+from apps.core.choices import EstadoAprobacion, OrigenRegistro, Periodicidad
 from apps.core.models import ModeloBase
 from apps.core.validators import validar_positivo
 from apps.proyectos.models import Proyecto, RubroPresupuesto
@@ -46,6 +46,10 @@ class RegistroEjecucion(ModeloBase):
         on_delete=models.SET_NULL,
         related_name="registros_ejecucion_registrados",
     )
+    origen = models.CharField(
+        max_length=10, choices=OrigenRegistro.choices, default=OrigenRegistro.MANUAL
+    )
+    id_externo = models.CharField(max_length=100, null=True, blank=True)  # noqa: DJ001
 
     class Meta:
         verbose_name = "registro de ejecución"
@@ -62,6 +66,11 @@ class RegistroEjecucion(ModeloBase):
             models.CheckConstraint(
                 condition=Q(periodo_fin__gte=models.F("periodo_inicio")),
                 name="registroejecucion_fin_despues_de_inicio",
+            ),
+            models.UniqueConstraint(
+                fields=["origen", "id_externo"],
+                condition=Q(id_externo__isnull=False),
+                name="registroejecucion_origen_id_externo_unico",
             ),
         ]
         indexes = [
@@ -109,3 +118,28 @@ class GastoEjecutado(ModeloBase):
 
     def __str__(self):
         return f"{self.proyecto.codigo} — {self.rubro.descripcion}: {self.monto}"
+
+
+class ConfiguracionImportacionJira(models.Model):
+    """Fila única (singleton, `pk=1`): interruptor global de la importación de
+    horas desde Jira/Tempo (docs/modelo-datos.md §6, fase 12). No hereda de
+    `ModeloBase`: no tiene dueño, ni borrado lógico, ni auditoría de quién la
+    creó; solo existe para guardar esta única bandera."""
+
+    auto_aprobar_importados = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "configuración de importación de Jira"
+        verbose_name_plural = "configuración de importación de Jira"
+
+    def __str__(self):
+        return "Configuración de importación de Jira/Tempo"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def obtener(cls):
+        instancia, _ = cls.objects.get_or_create(pk=1)
+        return instancia

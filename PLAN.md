@@ -28,6 +28,7 @@ Objetivos funcionales del usuario, trazados a las fases que los cubren:
 | 3 | Sistema de roles básico | 03 |
 | 4 | CRUDs e interfaces necesarias | 04 a 09 |
 | 5 | Panel administrativo: planeado vs. ejecutado | 08, 10 |
+| 6 | Horas reales importadas desde Jira/Tempo, además del registro manual | 12 |
 
 ---
 
@@ -74,7 +75,7 @@ Seguimiento-pry/
 │  ├─ modelo-datos.md           # entidades, campos, reglas de negocio
 │  ├─ api-contrato.md           # endpoints, payloads, permisos, errores
 │  ├─ STACK-LOCK.md             # versiones realmente instaladas (fase 00)
-│  └─ plan/fase-00..11-*.md     # una fase por archivo
+│  └─ plan/fase-00..12-*.md     # una fase por archivo
 ├─ infra/
 │  ├─ docker-compose.yml
 │  ├─ docker-compose.override.yml
@@ -219,6 +220,12 @@ EXTENSIONES_PERMITIDAS=pdf,docx,xlsx,pptx,png,jpg,jpeg,msg,txt,csv,zip
 
 # Frontend
 API_BASE_URL=http://localhost:8000/api/v1
+
+# Integración Jira + Tempo (fase 12; dejar vacío si no se usa)
+JIRA_BASE_URL=
+JIRA_EMAIL=
+JIRA_API_TOKEN=
+TEMPO_API_TOKEN=
 ```
 
 ---
@@ -239,9 +246,13 @@ API_BASE_URL=http://localhost:8000/api/v1
 | [09](docs/plan/fase-09-seguimiento-expediente.md) | Seguimientos y expediente digital | 08 | Seguimiento periódico publicable, adjuntos versionados, línea de tiempo |
 | [10](docs/plan/fase-10-tablero-control.md) | Tablero de control y reportes | 09 | KPIs, semáforos, gráficos de ejecución, exportación a CSV |
 | [11](docs/plan/fase-11-calidad-despliegue.md) | Calidad, pruebas y despliegue | 10 | Cobertura ≥70% en backend, e2e del flujo crítico, imagen de producción |
+| [12](docs/plan/fase-12-integracion-jira.md) | Importación de horas desde Jira/Tempo | 08 | `importar_horas_jira --desde --hasta` trae worklogs de Tempo como `RegistroEjecucion` pendientes de aprobación, sin duplicar en reimportaciones |
 
 Secuencia obligatoria: 00 → 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09 → 10 → 11.
 Las fases 05 a 10 son **cortes verticales**: cada una termina con backend y UI funcionando.
+La fase 12 es una adición posterior (agregada fuera del orden original, ver §10): solo depende
+de la fase 08 (necesita que exista `RegistroEjecucion`) y puede ejecutarse en cualquier momento
+después de ella, sin bloquear ni ser bloqueada por 09, 10 u 11.
 
 ---
 
@@ -278,7 +289,16 @@ rama fase-NN-<nombre>. Si algo falla dos veces, detente y repórtalo con el log 
 ## 10. Fuera de alcance (v1)
 
 No se construye en esta versión, aunque el modelo de datos lo deja posible: facturación a
-clientes, integración con Jira o Azure DevOps, flujos de aprobación con varios niveles,
-notificaciones por correo, multiempresa (tenancy), aplicación móvil, Gantt interactivo con
-arrastre (la fase 07 entrega un cronograma de solo lectura) e importación masiva desde Excel
-(la fase 10 solo exporta).
+clientes, integración con Azure DevOps, flujos de aprobación con varios niveles, notificaciones
+por correo, multiempresa (tenancy), aplicación móvil, Gantt interactivo con arrastre (la fase 07
+entrega un cronograma de solo lectura) e importación masiva desde Excel (la fase 10 solo
+exporta).
+
+> **Cambio de alcance (post-v1, fase 12):** la integración con Jira quedó excluida originalmente
+> junto con Azure DevOps. Se agregó como fase 12 porque el usuario necesita las horas reales que
+> ya se registran en Jira/Tempo sin duplicar la captura manual. El recorte sigue siendo mínimo:
+> **solo importación unidireccional de horas (worklogs de Tempo → `RegistroEjecucion`)**, disparada
+> a mano con un comando de gestión. Siguen fuera de alcance: cualquier sincronización en el otro
+> sentido, importar tareas/issues de Jira como `Tarea` automáticamente, Azure DevOps, y cualquier
+> disparo automático (programado o por webhook) — eso queda para una iteración posterior si hace
+> falta.

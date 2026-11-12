@@ -94,6 +94,7 @@ Reglas:
 | `avance_reportado` | Decimal % | lo declara el líder en el último seguimiento publicado |
 | `semaforo` | Char(10) | **C** `VERDE` \| `AMARILLO` \| `ROJO`; ver §10 |
 | `observaciones` | Text | |
+| `clave_jira` | Char(50) | vacío por defecto; clave del proyecto en Jira (p. ej. `PROY`), para la importación de horas desde Tempo (fase 12) |
 
 Reglas:
 - `fecha_fin_plan >= fecha_inicio_plan` (constraint de BD y validación en el serializer).
@@ -198,6 +199,7 @@ Reglas:
 | `orden` | Integer | para ordenar dentro de la fase |
 | `creada_durante_ejecucion` | Boolean | `True` si se creó con el proyecto ya en `EJECUCION` |
 | `motivo_creacion` | Text | obligatorio si `creada_durante_ejecucion=True` |
+| `clave_jira` | Char(30) | null, **U** global; clave del issue en Jira (p. ej. `PROY-123`), para asociarle las horas importadas desde Tempo (fase 12) |
 
 Reglas:
 - Una tarea no puede ser su propia ancestro (se valida la cadena de `tarea_padre`).
@@ -235,15 +237,20 @@ Reglas: `U(tarea_origen, tarea_destino)`; ambas tareas del mismo proyecto; se re
 | `motivo_rechazo` | Text | obligatorio si `RECHAZADO` |
 | `aprobado_por` | FK Usuario | null |
 | `aprobado_en` | DateTime | null |
-| `registrado_por` | FK Usuario | quien lo capturó |
+| `registrado_por` | FK Usuario | quien lo capturó; null si lo creó la importación de Jira/Tempo |
+| `origen` | Char(10) | `MANUAL` \| `JIRA`; default `MANUAL` (fase 12) |
+| `id_externo` | Char(100) | null; id del worklog de Tempo cuando `origen=JIRA` |
 
 Reglas:
 - Coherencia de periodo: `DIARIA` ⇒ `periodo_fin = periodo_inicio`; `SEMANAL` ⇒ lunes a
   domingo; `MENSUAL` ⇒ primer y último día del mes. Se normaliza en el serializer.
 - `U(recurso, proyecto, tarea, periodicidad, periodo_inicio)` — evita el doble registro.
+- `U(origen, id_externo)` cuando `id_externo` no es null — evita duplicar el mismo worklog de
+  Tempo si se reimporta (constraint parcial, `condition=Q(id_externo__isnull=False)`).
 - **No se permiten periodos solapados del mismo recurso con distinta periodicidad** en el mismo
   proyecto (un mensual y un diario del mismo mes se contarían dos veces). Error 400 con el
-  detalle de los registros en conflicto.
+  detalle de los registros en conflicto. Aplica igual a los registros `origen=JIRA`: si alguien
+  ya cargó manualmente ese periodo, la importación reporta el conflicto en vez de duplicar horas.
 - Topes: `DIARIA` ≤ 24 h; `SEMANAL` ≤ 60 h; `MENSUAL` ≤ `recurso.capacidad_horas_mes * 1.5`.
   Por encima del tope: advertencia, no bloqueo.
 - Solo cuenta para los KPIs lo que está en `APROBADO`. Los demás estados se muestran aparte
@@ -251,6 +258,47 @@ Reglas:
 - Una vez `APROBADO` el registro es inmutable; para corregirlo hay que reabrirlo
   (`POST .../reabrir/`, solo `PMO` o `ADMIN`), lo que deja entrada en bitácora.
 - La fecha del periodo debe caer dentro de las fechas del proyecto; fuera de rango, 400.
+- Un registro `origen=JIRA` nace en `ENVIADO` o en `APROBADO` según
+  `ConfiguracionImportacionJira.auto_aprobar_importados` (ver abajo); nunca en `BORRADOR`, porque
+  ya es un dato completo de una fuente externa, no el borrador de alguien. Si nace `ENVIADO`
+  sigue de ahí en más el mismo ciclo de aprobación que uno manual. `origen` e `id_externo` son
+  de solo lectura por la API; solo los escribe la importación.
+
+### `ConfiguracionImportacionJira` — interruptor global de aprobación automática (fase 12)
+
+Fila única (singleton): `auto_aprobar_importados` Boolean, default `False`.
+
+- `False` (por defecto): los registros que trae la importación nacen `ENVIADO`, como cualquier
+  registro manual enviado a revisión.
+- `True`: nacen directamente `APROBADO` (con `aprobado_por=null`, ya que no los aprobó una
+  persona) y cuentan de inmediato para los KPIs.
+- Edita este valor solo `ADMIN`, vía `GET`/`PATCH /configuracion-importacion-jira/` (siempre
+  sobre la única fila existente, sin `{id}` en la ruta).
+
+### Integración de horas con Jira/Tempo (fase 12)
+
+Importación **unidireccional** (Jira/Tempo → esta app, nunca al revés), por un comando de
+gestión que se corre manualmente (`importar_horas_jira --desde --hasta`):
+
+- Un worklog de Tempo se mapea a un `RegistroEjecucion` con `periodicidad=DIARIA`,
+  `periodo_inicio = periodo_fin = ` la fecha del worklog.
+- El **proyecto** se resuelve por el prefijo de la clave del issue de Jira (p. ej. `PROY` de
+  `PROY-123`) contra `Proyecto.clave_jira`. `Proyecto.clave_jira` **no se escribe a mano**: se
+  elige de una lista real de proyectos de Jira que trae
+  `GET /integraciones/jira/proyectos/` (ver `docs/api-contrato.md` §6), para no transcribir mal
+  una clave. Si un worklog no tiene proyecto mapeado, se omite y se reporta como "proyecto no
+  mapeado".
+- La **tarea** se resuelve por `Tarea.clave_jira == <clave del issue>`. Si no hay tarea
+  mapeada, el registro igual se crea (el modelo permite `tarea=null`), pero se reporta como
+  "sin tarea asociada" para revisión manual.
+- El **recurso** se resuelve por el correo del autor del worklog (vía la API de Jira, que
+  traduce `accountId` a correo) contra `Recurso.email`. Si no hay recurso con ese correo, el
+  worklog se omite y se reporta como "recurso no mapeado".
+- La reimportación de un mismo worklog (mismo `id_externo`) actualiza el registro existente
+  mientras siga `ENVIADO` o `RECHAZADO`; si ya está `APROBADO`, se deja intacto (inmutable) y se
+  reporta como "omitido, ya aprobado".
+- Cada corrida escribe un resumen (creados, actualizados, omitidos con motivo) y una
+  `EntradaBitacora` por proyecto afectado (`tipo_evento=IMPORTACION`).
 
 ### `GastoEjecutado` — ejecución presupuestal en dinero que no son horas
 `proyecto` FK · `rubro` FK RubroPresupuesto · `fecha` Date · `monto` Decimal dinero ·
@@ -345,7 +393,7 @@ Reglas:
 | Campo | Tipo | Notas |
 |-------|------|-------|
 | `proyecto` | FK | **I**; null solo para eventos no ligados a proyecto |
-| `tipo_evento` | Char(30) | `CREACION` \| `ACTUALIZACION` \| `CAMBIO_ESTADO` \| `APROBACION` \| `RECHAZO` \| `PUBLICACION` \| `CARGA_DOCUMENTO` \| `NUEVA_VERSION` \| `LOGIN` \| `ASIGNACION` |
+| `tipo_evento` | Char(30) | `CREACION` \| `ACTUALIZACION` \| `CAMBIO_ESTADO` \| `APROBACION` \| `RECHAZO` \| `PUBLICACION` \| `CARGA_DOCUMENTO` \| `NUEVA_VERSION` \| `LOGIN` \| `ASIGNACION` \| `IMPORTACION` |
 | `entidad` | Char(60) | nombre del modelo afectado |
 | `entidad_id` | UUID | |
 | `descripcion` | Char(500) | legible por humanos, en español |

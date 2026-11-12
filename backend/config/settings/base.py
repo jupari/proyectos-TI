@@ -165,3 +165,9 @@ GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
 GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET", default="")
 GOOGLE_REDIRECT_URI = env("GOOGLE_REDIRECT_URI", default="")
 GOOGLE_DOMINIOS_PERMITIDOS = env.list("GOOGLE_DOMINIOS_PERMITIDOS", default=[])
+
+# Integración Jira + Tempo (fase 12); vacío si no se usa.
+JIRA_BASE_URL = env("JIRA_BASE_URL", default="")
+JIRA_EMAIL = env("JIRA_EMAIL", default="")
+JIRA_API_TOKEN = env("JIRA_API_TOKEN", default="")
+TEMPO_API_TOKEN = env("TEMPO_API_TOKEN", default="")

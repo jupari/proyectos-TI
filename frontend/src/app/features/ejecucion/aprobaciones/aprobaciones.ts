@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { RegistroEjecucion, RespuestaPaginada } from '../../../core/models';
 import { ToastService } from '../../../core/ui/toast.service';
 import { FechaCortaPipe, HorasPipe, MonedaPipe } from '../../../shared/pipes';
+import { Badge } from '../../../shared/ui/badge/badge';
 import { Boton } from '../../../shared/ui/boton/boton';
 import { Modal } from '../../../shared/ui/modal/modal';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
@@ -19,7 +20,18 @@ import { RegistrosEjecucionService } from '../data/registros.service';
   selector: 'app-aprobaciones',
   templateUrl: './aprobaciones.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Tabla, Boton, Modal, Select, Textarea, FechaCortaPipe, HorasPipe, MonedaPipe],
+  imports: [
+    FormsModule,
+    Tabla,
+    Badge,
+    Boton,
+    Modal,
+    Select,
+    Textarea,
+    FechaCortaPipe,
+    HorasPipe,
+    MonedaPipe,
+  ],
 })
 export class Aprobaciones {
   private readonly registrosService = inject(RegistrosEjecucionService);

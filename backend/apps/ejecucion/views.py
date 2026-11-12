@@ -1,10 +1,12 @@
 from django.db.models import Q, Sum
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.core.choices import EstadoAprobacion
 from apps.core.exceptions import ErrorConflicto
@@ -13,7 +15,8 @@ from apps.core.roles import codigos_roles_de, resolver_proyecto_de_instancia
 from apps.core.views import ViewSetBase
 
 from .filters import FiltroGastoEjecutado, FiltroRegistroEjecucion
-from .models import GastoEjecutado, RegistroEjecucion
+from .integraciones.jira_tempo import ClienteJiraTempo
+from .models import ConfiguracionImportacionJira, GastoEjecutado, RegistroEjecucion
 from .serializers import GastoEjecutadoSerializer, RegistroEjecucionSerializer
 from .services import aprobar as aprobar_registro
 from .services import aprobar_gasto, carga_lote, enviar_gasto, reabrir_gasto, rechazar_gasto
@@ -386,3 +389,50 @@ class GastoEjecutadoViewSet(MixinAlcancePorRol, ViewSetBase):
         gasto = self.get_object()
         reabrir_gasto(gasto, request.user)
         return Response(self.get_serializer(gasto).data)
+
+
+class PermisoSoloAdminPmoLectura(BasePermission):
+    """`ADMIN` y `PMO` pueden usarlo; el resto, no (fase 12: ni siquiera
+    lectura, porque expone datos crudos de un sistema externo)."""
+
+    def has_permission(self, request, view):
+        return bool(codigos_roles_de(request.user) & {"ADMIN", "PMO"})
+
+
+class PermisoSoloAdmin(BasePermission):
+    def has_permission(self, request, view):
+        return "ADMIN" in codigos_roles_de(request.user)
+
+
+class IntegracionJiraProyectosView(APIView):
+    """`GET /integraciones/jira/proyectos/`: lista en vivo de los proyectos
+    de Jira visibles para el token configurado, para elegir a mano cuál
+    corresponde a `Proyecto.clave_jira` (fase 12; nunca se escribe a mano)."""
+
+    permission_classes = [PermisoSoloAdminPmoLectura]
+
+    @extend_schema(
+        summary="Lista en vivo los proyectos de Jira (fase 12)",
+        responses={200: {"type": "array", "items": {"type": "object"}}},
+    )
+    def get(self, request):
+        proyectos = ClienteJiraTempo().listar_proyectos()
+        return Response(proyectos)
+
+
+class ConfiguracionImportacionJiraSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfiguracionImportacionJira
+        fields = ["auto_aprobar_importados"]
+
+
+class ConfiguracionImportacionJiraView(RetrieveUpdateAPIView):
+    """`GET`/`PATCH /configuracion-importacion-jira/`: la única fila de
+    `ConfiguracionImportacionJira`, sin `{id}` en la ruta (fase 12)."""
+
+    serializer_class = ConfiguracionImportacionJiraSerializer
+    permission_classes = [PermisoSoloAdmin]
+    http_method_names = ["get", "patch", "options"]
+
+    def get_object(self):
+        return ConfiguracionImportacionJira.obtener()

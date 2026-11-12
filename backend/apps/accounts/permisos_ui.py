@@ -7,6 +7,7 @@ PERMISOS_POR_ROL = {
     "ADMIN": [
         "admin.usuarios",
         "admin.roles",
+        "admin.integraciones",
         "catalogos.crear",
         "catalogos.editar",
         "catalogos.borrar",

@@ -60,6 +60,7 @@ export interface TareaEscritura {
   avance?: number | string;
   orden?: number;
   motivo_creacion?: string;
+  clave_jira?: string | null;
 }
 
 export interface FiltrosTarea {

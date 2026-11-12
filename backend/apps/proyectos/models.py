@@ -58,6 +58,7 @@ class Proyecto(ModeloBase):
         max_length=10, choices=Semaforo.choices, default=Semaforo.VERDE, editable=False
     )
     observaciones = models.TextField(blank=True)
+    clave_jira = models.CharField(max_length=50, blank=True, default="")
 
     class Meta:
         verbose_name = "proyecto"
