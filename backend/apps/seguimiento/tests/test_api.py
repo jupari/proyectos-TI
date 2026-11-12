@@ -192,6 +192,20 @@ def test_compromiso_hereda_permiso_del_proyecto_del_seguimiento(roles, cliente):
     assert respuesta.status_code == 403
 
 
+def test_filtro_por_seguimiento_de_compromisos_no_trae_los_de_otro_seguimiento(roles, cliente):
+    seguimiento_a = SeguimientoFactory()
+    seguimiento_b = SeguimientoFactory()
+    de_a = CompromisoSeguimientoFactory(seguimiento=seguimiento_a, descripcion="del proyecto A")
+    CompromisoSeguimientoFactory(seguimiento=seguimiento_b, descripcion="del proyecto B")
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.get(f"/api/v1/compromisos-seguimiento/?seguimiento={seguimiento_a.id}")
+
+    ids = {c["id"] for c in respuesta.data["results"]}
+    assert ids == {str(de_a.id)}
+
+
 def test_filtro_vencidos_de_compromisos(roles, cliente):
     ayer = datetime.date.today() - datetime.timedelta(days=1)
     manana = datetime.date.today() + datetime.timedelta(days=1)

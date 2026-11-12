@@ -21,7 +21,7 @@ class FiltroCompromisoSeguimiento(django_filters.FilterSet):
 
     class Meta:
         model = CompromisoSeguimiento
-        fields = ["estado", "responsable"]
+        fields = ["seguimiento", "estado", "responsable"]
 
     def filtrar_vencidos(self, queryset, name, value):
         if not value:
