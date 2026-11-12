@@ -16,6 +16,7 @@ class SeguimientoSerializer(serializers.ModelSerializer):
     estos campos."""
 
     proyecto_codigo = serializers.CharField(source="proyecto.codigo", read_only=True)
+    proyecto_nombre = serializers.CharField(source="proyecto.nombre", read_only=True)
     publicado_por_nombre = serializers.SerializerMethodField()
     # Si no se envía, `create()` la calcula como min(periodo_fin, hoy).
     fecha_corte = serializers.DateField(required=False)
@@ -26,6 +27,7 @@ class SeguimientoSerializer(serializers.ModelSerializer):
             "id",
             "proyecto",
             "proyecto_codigo",
+            "proyecto_nombre",
             "periodicidad",
             "periodo_inicio",
             "periodo_fin",

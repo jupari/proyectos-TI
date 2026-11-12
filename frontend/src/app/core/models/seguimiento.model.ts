@@ -4,6 +4,7 @@ import { EstadoCompromiso, EstadoSeguimiento, Periodicidad, Semaforo } from './e
 export interface Seguimiento extends ModeloBase {
   proyecto: string;
   proyecto_codigo: string;
+  proyecto_nombre: string;
   periodicidad: Periodicidad;
   periodo_inicio: string;
   periodo_fin: string;

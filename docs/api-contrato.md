@@ -128,7 +128,7 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
 - `POST /seguimientos/precargar/` — `{proyecto, periodicidad, periodo_inicio}` → devuelve un
   borrador con los cálculos del periodo ya resueltos, **sin guardar**
 - `POST /seguimientos/{id}/publicar/` — congela los calculados y escribe en bitácora
-- `/compromisos-seguimiento/` — CRUD, filtro `estado`, `responsable`, `vencidos=true`
+- `/compromisos-seguimiento/` — CRUD, filtro `seguimiento`, `estado`, `responsable`, `vencidos=true`
 
 **Expediente**
 - `GET /proyectos/{id}/expediente/` → `{documentos_por_categoria, linea_tiempo, totales}`
