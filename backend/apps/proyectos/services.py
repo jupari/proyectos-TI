@@ -20,8 +20,9 @@ TRANSICIONES = {
         EstadoProyecto.CANCELADO,
     },
     EstadoProyecto.SUSPENDIDO: {EstadoProyecto.EJECUCION, EstadoProyecto.CANCELADO},
-    EstadoProyecto.CERRADO: set(),
+    EstadoProyecto.CERRADO: {EstadoProyecto.PRODUCCION_SOPORTE},
     EstadoProyecto.CANCELADO: set(),
+    EstadoProyecto.PRODUCCION_SOPORTE: set(),
 }
 
 

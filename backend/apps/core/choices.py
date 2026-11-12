@@ -8,6 +8,7 @@ class EstadoProyecto(models.TextChoices):
     SUSPENDIDO = "SUSPENDIDO", "Suspendido"
     CERRADO = "CERRADO", "Cerrado"
     CANCELADO = "CANCELADO", "Cancelado"
+    PRODUCCION_SOPORTE = "PRODUCCION_SOPORTE", "Producción y soporte"
 
 
 class Prioridad(models.TextChoices):

@@ -82,7 +82,7 @@ Reglas:
 | `area_solicitante` | FK Area | |
 | `gerente` | FK Usuario | related_name `proyectos_como_gerente` |
 | `lider_tecnico` | FK Usuario | null, related_name `proyectos_como_lider` |
-| `estado` | Char(20) | `BORRADOR` \| `PLANEACION` \| `EJECUCION` \| `SUSPENDIDO` \| `CERRADO` \| `CANCELADO` |
+| `estado` | Char(20) | `BORRADOR` \| `PLANEACION` \| `EJECUCION` \| `SUSPENDIDO` \| `CERRADO` \| `CANCELADO` \| `PRODUCCION_SOPORTE` |
 | `prioridad` | Char(10) | `BAJA` \| `MEDIA` \| `ALTA` \| `CRITICA` |
 | `fecha_inicio_plan` | Date | |
 | `fecha_fin_plan` | Date | |
@@ -100,7 +100,9 @@ Reglas:
 - Pasar a `EJECUCION` exige `fecha_inicio_real` y al menos una `AsignacionRecurso`.
 - Pasar a `CERRADO` exige `fecha_fin_real` y que no queden tareas en `EN_PROGRESO`.
 - Transiciones permitidas: `BORRADOR→PLANEACION→EJECUCION→{SUSPENDIDO,CERRADO}`,
-  `SUSPENDIDO→EJECUCION`, cualquiera `→CANCELADO`. Otra transición devuelve 400.
+  `SUSPENDIDO→EJECUCION`, `CERRADO→PRODUCCION_SOPORTE`, cualquiera `→CANCELADO`.
+  `PRODUCCION_SOPORTE` es, como `CANCELADO`, un estado terminal (sin transiciones de salida).
+  Otra transición devuelve 409 con el código `CONFLICTO` y la lista de transiciones válidas.
 - `presupuesto_dinero` debe ser ≥ la suma de `RubroPresupuesto.monto_planeado`; si no, 400.
 
 ### `FaseProyecto` — etapa del proyecto, sirve para el avance ponderado

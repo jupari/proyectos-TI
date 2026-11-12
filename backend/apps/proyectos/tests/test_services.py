@@ -95,6 +95,24 @@ def test_cerrar_sin_tareas_en_progreso_funciona():
     assert proyecto.estado == EstadoProyecto.CERRADO
 
 
+def test_cerrado_puede_pasar_a_produccion_soporte():
+    proyecto = ProyectoFactory(estado=EstadoProyecto.CERRADO)
+
+    cambiar_estado(proyecto, EstadoProyecto.PRODUCCION_SOPORTE, "Pasa a soporte", usuario=None)
+
+    proyecto.refresh_from_db()
+    assert proyecto.estado == EstadoProyecto.PRODUCCION_SOPORTE
+
+
+def test_produccion_soporte_es_terminal():
+    proyecto = ProyectoFactory(estado=EstadoProyecto.PRODUCCION_SOPORTE)
+
+    with pytest.raises(ErrorConflicto) as excinfo:
+        validar_transicion(proyecto, EstadoProyecto.CANCELADO)
+
+    assert excinfo.value.detail["transiciones_validas"] == []
+
+
 # --- validar_pesos_fases -----------------------------------------------------
 
 
