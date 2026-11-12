@@ -26,9 +26,19 @@ export interface OmisionImportacion {
   detalle?: string;
 }
 
+export interface FilaDetalleImportacion {
+  fecha: string;
+  recurso_nombre: string;
+  proyecto_codigo: string;
+  proyecto_nombre: string;
+  horas: string;
+  accion: 'creado' | 'actualizado';
+}
+
 export interface ResumenImportacionJira {
   creados: number;
   actualizados: number;
+  detalle: FilaDetalleImportacion[];
   omitidos: OmisionImportacion[];
   errores: OmisionImportacion[];
 }

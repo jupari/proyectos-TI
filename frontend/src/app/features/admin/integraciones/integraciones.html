@@ -43,6 +43,35 @@
           <span class="font-medium text-peligro">Errores: {{ r.errores.length }}</span>
         </div>
 
+        @if (r.detalle.length > 0) {
+          <div class="overflow-x-auto rounded-panel border border-neutro-200">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-neutro-50 text-neutro-500">
+                <tr>
+                  <th class="px-3 py-2">Fecha</th>
+                  <th class="px-3 py-2">Persona</th>
+                  <th class="px-3 py-2">Proyecto</th>
+                  <th class="px-3 py-2 text-right">Horas</th>
+                  <th class="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-neutro-100">
+                @for (fila of r.detalle; track $index) {
+                  <tr>
+                    <td class="px-3 py-2">{{ fila.fecha | fechaCorta }}</td>
+                    <td class="px-3 py-2">{{ fila.recurso_nombre }}</td>
+                    <td class="px-3 py-2">{{ fila.proyecto_codigo }} — {{ fila.proyecto_nombre }}</td>
+                    <td class="px-3 py-2 text-right">{{ fila.horas | horas }}</td>
+                    <td class="px-3 py-2 text-xs text-neutro-400">
+                      {{ fila.accion === 'creado' ? 'Nuevo' : 'Actualizado' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
         @if (r.omitidos.length > 0) {
           <details class="text-sm">
             <summary class="cursor-pointer text-neutro-600">Ver omitidos</summary>

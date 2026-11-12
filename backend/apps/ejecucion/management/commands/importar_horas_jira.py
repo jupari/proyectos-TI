@@ -1,6 +1,6 @@
 """Importa horas reales desde Jira/Tempo como `RegistroEjecucion`
-(docs/plan/fase-12-integracion-jira.md). Se corre a mano; no hay disparo
-automático ni botón en el frontend en esta fase."""
+(docs/plan/fase-12-integracion-jira.md). Se corre a mano; también se puede
+disparar sin terminal desde /admin/integraciones (adenda de la fase)."""
 
 import datetime
 
@@ -50,6 +50,11 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Creados: {resumen['creados']}")
         self.stdout.write(f"Actualizados: {resumen['actualizados']}")
+        for fila in resumen["detalle"]:
+            self.stdout.write(
+                f"  [{fila['accion']}] {fila['fecha']} — {fila['recurso_nombre']} — "
+                f"{fila['proyecto_codigo']} ({fila['horas']} h)"
+            )
         self.stdout.write(f"Omitidos: {len(resumen['omitidos'])}")
         for omitido in resumen["omitidos"]:
             self.stdout.write(f"  - {omitido}")

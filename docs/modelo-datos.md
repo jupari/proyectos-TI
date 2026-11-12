@@ -297,12 +297,15 @@ la terminal:
   mapeada, el registro igual se crea (el modelo permite `tarea=null`), pero se reporta como
   "sin tarea asociada" para revisión manual.
 - El **recurso** se resuelve por el correo del autor del worklog (vía la API de Jira, que
-  traduce `accountId` a correo) contra `Recurso.email`. Si no hay recurso con ese correo, el
-  worklog se omite y se reporta como "recurso no mapeado".
+  traduce `accountId` a correo y de paso trae su nombre) contra `Recurso.email`. Si no hay
+  recurso con ese correo, el worklog se omite identificando a la persona por **nombre y
+  correo** (p. ej. "no hay un recurso con el correo de «Ana Pérez <ana@empresa.com>»"), para que
+  quien administra sepa a cuál `Recurso` corregirle el campo `email`, no solo un id de worklog.
 - La reimportación de un mismo worklog (mismo `id_externo`) actualiza el registro existente
   mientras siga `ENVIADO` o `RECHAZADO`; si ya está `APROBADO`, se deja intacto (inmutable) y se
   reporta como "omitido, ya aprobado".
-- Cada corrida escribe un resumen (creados, actualizados, omitidos con motivo) y una
+- Cada corrida escribe un resumen (creados, actualizados, un **detalle** con una fila por
+  registro creado/actualizado —fecha, recurso, proyecto, horas—, y omitidos con motivo) y una
   `EntradaBitacora` por proyecto afectado (`tipo_evento=IMPORTACION`).
 
 ### `GastoEjecutado` — ejecución presupuestal en dinero que no son horas

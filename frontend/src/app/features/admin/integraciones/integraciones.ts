@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 
 import { ErrorApi } from '../../../core/models';
 import { ToastService } from '../../../core/ui/toast.service';
+import { FechaCortaPipe, HorasPipe } from '../../../shared/pipes';
 import { Boton } from '../../../shared/ui/boton/boton';
 import { Card } from '../../../shared/ui/card/card';
 import { Datepicker } from '../../../shared/ui/datepicker/datepicker';
@@ -18,7 +19,7 @@ import {
   selector: 'app-integraciones',
   templateUrl: './integraciones.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Boton, Card, Datepicker, Select, Switch],
+  imports: [FormsModule, Boton, Card, Datepicker, Select, Switch, FechaCortaPipe, HorasPipe],
 })
 export class Integraciones {
   private readonly integracionesJiraService = inject(IntegracionesJiraService);

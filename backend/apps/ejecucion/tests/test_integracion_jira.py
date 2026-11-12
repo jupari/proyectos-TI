@@ -128,7 +128,7 @@ def test_resolver_correo_usuario_cachea_en_memoria():
     responses.add(
         responses.GET,
         "https://empresa.atlassian.net/rest/api/3/user",
-        json={"accountId": "abc", "emailAddress": "ana@empresa.com"},
+        json={"accountId": "abc", "emailAddress": "ana@empresa.com", "displayName": "Ana Ríos"},
         status=200,
     )
 
@@ -136,7 +136,8 @@ def test_resolver_correo_usuario_cachea_en_memoria():
     primero = cliente.resolver_correo_usuario("abc")
     segundo = cliente.resolver_correo_usuario("abc")
 
-    assert primero == segundo == "ana@empresa.com"
+    esperado = {"correo": "ana@empresa.com", "nombre": "Ana Ríos"}
+    assert primero == segundo == esperado
     assert len(responses.calls) == 1
 
 

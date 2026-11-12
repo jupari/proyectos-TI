@@ -351,3 +351,54 @@ All files pass linting.
 $ docker compose -f infra/docker-compose.yml exec frontend npx ng build
 Application bundle generation complete. [26.455 seconds]
 ```
+
+## Adenda 2: tabla de detalle y mejor identificación de omitidos
+
+Pedido por el usuario al ver el resultado del botón: quería ver la lista de horas importadas
+(fecha, persona, proyecto) como la que ya veía en los reportes de Jira/Tempo, y poder asociar los
+nombres de los recursos con sus correos cuando un worklog no encontraba `Recurso`.
+
+### Diseño
+
+- `ClienteJiraTempo.resolver_correo_usuario` ahora devuelve `{"correo", "nombre"}` (antes solo el
+  correo); `nombre` es el `displayName` de Jira, **nunca** se usa para resolver el `Recurso`
+  (eso sigue siendo siempre por correo), solo para que un omitido sea identificable por una
+  persona.
+- `importar_horas_jira` gana `detalle: [{fecha, recurso_nombre, proyecto_codigo,
+  proyecto_nombre, horas, accion}]` — una fila por cada registro creado o actualizado — sin
+  tocar `creados`/`actualizados` (siguen siendo los mismos contadores que ya usaba el comando).
+- El omitido por recurso ahora dice, por ejemplo, `no hay un recurso con el correo de «Ana Pérez
+  <ana@empresa.com>»` en vez del genérico "recurso no mapeado", para que el administrador sepa
+  exactamente a cuál `Recurso` corregirle el correo.
+- La bitácora (`EntradaBitacora`) ya no guarda el `detalle` completo (podría ser una lista larga):
+  solo los conteos, para no inflar el histórico del proyecto.
+- `/admin/integraciones` muestra el `detalle` como una tabla (Fecha, Persona, Proyecto, Horas),
+  con el mismo espíritu que el reporte de Jira/Tempo que el usuario ya conocía.
+
+### Evidencia
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/ejecucion -q
+........................................................................ [ 66%]
+.....................................                                    [100%]
+109 passed in 62.95s
+
+$ docker compose -f infra/docker-compose.yml exec backend pytest -q
+........................................................................ [ 16%]
+........................................................................ [ 32%]
+........................................................................ [ 48%]
+........................................................................ [ 64%]
+........................................................................ [ 80%]
+........................................................................ [ 97%]
+.............                                                            [100%]
+445 passed in 278.48s
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm run lint
+All files pass linting.
+
+$ docker compose -f infra/docker-compose.yml exec frontend npx ng build
+Application bundle generation complete. [22.193 seconds]
+```
