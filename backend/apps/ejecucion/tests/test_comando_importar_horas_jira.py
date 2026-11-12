@@ -37,7 +37,7 @@ def _cliente_con_un_worklog():
         }
     ]
     cliente.resolver_claves_issue.return_value = {"10001": "PROY-1"}
-    cliente.resolver_correo_usuario.return_value = "ana@empresa.com"
+    cliente.resolver_correo_usuario.return_value = {"correo": "ana@empresa.com", "nombre": "Ana"}
     return cliente
 
 

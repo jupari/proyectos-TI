@@ -133,7 +133,8 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
   auto_aprobar?}` → dispara `importar_horas_jira` sin pasar por la terminal; `auto_aprobar`, si se
   envía, decide la aprobación **solo para esa corrida** sin tocar `ConfiguracionImportacionJira`;
   si se omite, usa el valor global. Devuelve el mismo resumen que el comando
-  (`{creados, actualizados, omitidos, errores}`)
+  (`{creados, actualizados, detalle: [{fecha, recurso_nombre, proyecto_codigo,
+  proyecto_nombre, horas, accion}], omitidos, errores}`)
 
 **Seguimiento**
 - `/seguimientos/` — filtros `proyecto`, `periodicidad`, `estado`, `fecha_corte__gte`

@@ -450,20 +450,26 @@ def comparativo_por_recurso(proyecto):
 
 
 def _resolver_recurso_por_worklog(cliente, worklog, resumen):
+    """Devuelve `(recurso, info_jira)`: `recurso` es `None` si no hubo forma
+    de encontrarlo, pero `info_jira` (`{"correo", "nombre"}`, cuando Jira
+    los pudo resolver) siempre se devuelve para que el omitido sea
+    identificable por una persona, no solo por un id de worklog."""
     account_id = worklog["author"]["accountId"]
     try:
-        correo = cliente.resolver_correo_usuario(account_id)
+        info_jira = cliente.resolver_correo_usuario(account_id)
     except Exception as exc:  # noqa: BLE001 - se reporta, no se interrumpe el lote
         resumen["errores"].append(
             {"motivo": f"no se pudo resolver el usuario {account_id}", "detalle": str(exc)}
         )
-        return None
+        return None, None
+
+    correo = info_jira.get("correo") if info_jira else None
     if not correo:
-        return None
+        return None, info_jira
 
     from apps.recursos.models import Recurso
 
-    return Recurso.objects.filter(email__iexact=correo).first()
+    return Recurso.objects.filter(email__iexact=correo).first(), info_jira
 
 
 @transaction.atomic
@@ -476,12 +482,15 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
     aprobación solo para esta corrida, sin tocar el interruptor global; si
     se omite (`None`, el caso del comando de gestión), se usa
     `ConfiguracionImportacionJira.auto_aprobar_importados`.
-    Devuelve `{creados, actualizados, omitidos: [...], errores: [...]}`."""
+    Devuelve `{creados, actualizados, detalle: [...], omitidos: [...],
+    errores: [...]}`; `detalle` trae una fila por cada registro creado o
+    actualizado (`fecha`, `recurso_nombre`, `proyecto_codigo`,
+    `proyecto_nombre`, `horas`, `accion`), para mostrarla en una tabla."""
     from apps.proyectos.models import Proyecto
 
     from .integraciones.jira_tempo import ClienteJiraTempo, ErrorIntegracionJira
 
-    resumen = {"creados": 0, "actualizados": 0, "omitidos": [], "errores": []}
+    resumen = {"creados": 0, "actualizados": 0, "detalle": [], "omitidos": [], "errores": []}
     cliente = ClienteJiraTempo()
 
     try:
@@ -529,11 +538,16 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
             )
             continue
 
-        recurso = _resolver_recurso_por_worklog(cliente, worklog, resumen)
+        recurso, info_jira = _resolver_recurso_por_worklog(cliente, worklog, resumen)
         if recurso is None:
-            resumen["omitidos"].append(
-                {"id_externo": id_externo, "motivo": "no se encontró un recurso con ese correo"}
-            )
+            if info_jira and info_jira.get("correo"):
+                quien = f"{info_jira.get('nombre') or ''} <{info_jira['correo']}>".strip()
+                motivo = f"no hay un recurso con el correo de «{quien}»"
+            elif info_jira and info_jira.get("nombre"):
+                motivo = f"«{info_jira['nombre']}» no tiene correo visible en Jira"
+            else:
+                motivo = "no se pudo identificar a la persona en Jira"
+            resumen["omitidos"].append({"id_externo": id_externo, "motivo": motivo})
             continue
 
         es_creacion = True
@@ -592,8 +606,24 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
             resumen["creados"] += 1
         else:
             resumen["actualizados"] += 1
+        resumen["detalle"].append(
+            {
+                "fecha": registro.periodo_inicio.isoformat(),
+                "recurso_nombre": recurso.nombre,
+                "proyecto_codigo": proyecto.codigo,
+                "proyecto_nombre": proyecto.nombre,
+                "horas": registro.horas,
+                "accion": "creado" if es_creacion else "actualizado",
+            }
+        )
         proyectos_afectados[proyecto.id] = proyecto
 
+    resumen_bitacora = {
+        "creados": resumen["creados"],
+        "actualizados": resumen["actualizados"],
+        "omitidos": len(resumen["omitidos"]),
+        "errores": len(resumen["errores"]),
+    }
     for proyecto in proyectos_afectados.values():
         registrar_evento(
             tipo_evento=TipoEvento.IMPORTACION,
@@ -604,7 +634,7 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
                 f"({desde} a {hasta})."
             ),
             proyecto=proyecto,
-            despues=resumen,
+            despues=resumen_bitacora,
         )
 
     if dry_run:

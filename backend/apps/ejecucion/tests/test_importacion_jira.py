@@ -30,11 +30,11 @@ def _worklog(**overrides):
     return base
 
 
-def _cliente_mock(worklogs, *, claves=None, correo="ana@empresa.com"):
+def _cliente_mock(worklogs, *, claves=None, correo="ana@empresa.com", nombre="Ana Pérez"):
     cliente = MagicMock()
     cliente.obtener_worklogs.return_value = worklogs
     cliente.resolver_claves_issue.return_value = claves or {"10001": "PROY-1"}
-    cliente.resolver_correo_usuario.return_value = correo
+    cliente.resolver_correo_usuario.return_value = {"correo": correo, "nombre": nombre}
     return cliente
 
 
@@ -62,6 +62,30 @@ def test_worklog_nuevo_crea_registro_enviado_con_tarifa_congelada():
     assert registro.horas == Decimal("8")
     assert registro.valor_hora_aplicado == Decimal("70000.00")
     assert registro.periodo_inicio == datetime.date(2026, 3, 10)
+    assert resumen["detalle"] == [
+        {
+            "fecha": "2026-03-10",
+            "recurso_nombre": recurso.nombre,
+            "proyecto_codigo": proyecto.codigo,
+            "proyecto_nombre": proyecto.nombre,
+            "horas": Decimal("8"),
+            "accion": "creado",
+        }
+    ]
+
+
+def test_omitido_por_recurso_identifica_a_la_persona_por_nombre_y_correo():
+    ProyectoFactory(clave_jira="PROY")
+    cliente = _cliente_mock(
+        [_worklog()], correo="nadie@empresa.com", nombre="Pedro Pérez"
+    )
+
+    with patch(RUTA_CLIENTE, return_value=cliente):
+        resumen = importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+
+    motivo = resumen["omitidos"][0]["motivo"]
+    assert "Pedro Pérez" in motivo
+    assert "nadie@empresa.com" in motivo
 
 
 def test_con_auto_aprobar_activado_crea_directo_aprobado():

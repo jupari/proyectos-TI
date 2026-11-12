@@ -175,12 +175,16 @@ class ClienteJiraTempo:
         return resultado
 
     def resolver_correo_usuario(self, account_id):
-        """Correo del `accountId` dado, cacheado en memoria durante la vida
-        de esta instancia (una corrida del comando). `None` si Jira no
-        devuelve correo (cuenta sin permiso de verla, o inexistente)."""
+        """`{"correo": ..., "nombre": ...}` del `accountId` dado, cacheado en
+        memoria durante la vida de esta instancia (una corrida del comando).
+        Cualquiera de los dos puede venir en `None` si Jira no lo devuelve
+        (cuenta sin permiso de verlo, o inexistente); `nombre` (el
+        `displayName` de Jira) es solo para que un omitido por correo sea
+        identificable por una persona, nunca se usa para resolver el
+        `Recurso` (eso es siempre por correo)."""
         if account_id in self._cache_correos:
             return self._cache_correos[account_id]
         datos = self._get_jira("/rest/api/3/user", accountId=account_id)
-        correo = datos.get("emailAddress")
-        self._cache_correos[account_id] = correo
-        return correo
+        resultado = {"correo": datos.get("emailAddress"), "nombre": datos.get("displayName")}
+        self._cache_correos[account_id] = resultado
+        return resultado
