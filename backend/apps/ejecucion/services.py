@@ -4,6 +4,7 @@ más importante del proyecto porque es lo único que impide contar las mismas
 horas dos veces entre periodicidades distintas."""
 
 import datetime
+import logging
 from decimal import Decimal
 
 from django.db import transaction
@@ -29,6 +30,25 @@ from apps.tareas.models import Tarea
 from .models import ConfiguracionImportacionJira, RegistroEjecucion
 
 CERO = Decimal("0")
+logger = logging.getLogger("apps.ejecucion.importacion_jira")
+
+
+def _detalle_legible(exc):
+    """`exc.detail` de un `ValidationError`/`ErrorReglaNegocio`/`ErrorConflicto`
+    es un dict o una lista de `ErrorDetail` (no un string): mostrarlo tal
+    cual en el frontend se ve como `[object Object]`. Lo aplana a texto
+    legible; si `exc` no tiene `.detail` (una excepción cualquiera), usa
+    `str(exc)`."""
+    detalle = getattr(exc, "detail", None)
+    if detalle is None:
+        return str(exc)
+    if isinstance(detalle, dict):
+        return "; ".join(
+            f"{campo}: {', '.join(str(m) for m in mensajes)}" for campo, mensajes in detalle.items()
+        )
+    if isinstance(detalle, list):
+        return ", ".join(str(m) for m in detalle)
+    return str(detalle)
 
 
 def preparar_registro(registro):
@@ -517,6 +537,7 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
     estado_inicial = EstadoAprobacion.APROBADO if auto_aprobar else EstadoAprobacion.ENVIADO
     proyectos_afectados = {}
 
+    grupos = {}
     for worklog in worklogs:
         id_externo = str(worklog["tempoWorklogId"])
         issue_id = str(worklog["issue"]["id"])
@@ -550,12 +571,61 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
             resumen["omitidos"].append({"id_externo": id_externo, "motivo": motivo})
             continue
 
+        tarea = Tarea.objects.filter(clave_jira=clave_issue).first()
+        clave_grupo = (recurso.id, proyecto.id, tarea.id if tarea else None, worklog["startDate"])
+        grupo = grupos.setdefault(
+            clave_grupo,
+            {
+                "recurso": recurso,
+                "proyecto": proyecto,
+                "tarea": tarea,
+                "fecha": worklog["startDate"],
+                "ids_externos": [],
+                "horas": CERO,
+                "descripciones": [],
+            },
+        )
+        grupo["ids_externos"].append(id_externo)
+        grupo["horas"] += Decimal(str(worklog["timeSpentSeconds"])) / Decimal(3600)
+        descripcion = worklog.get("description") or ""
+        if descripcion:
+            grupo["descripciones"].append(descripcion)
+
+    # Varios worklogs de Jira pueden caer el mismo día en la misma tarea (p.
+    # ej. una entrada en la mañana y otra en la tarde): acá se agrupan y
+    # suman en un solo `RegistroEjecucion`, porque el modelo guarda un
+    # registro por día/tarea/recurso, no uno por worklog. El `id_externo`
+    # del registro queda como la lista ordenada de los worklogs que lo
+    # componen, así que una corrida posterior que vea exactamente el mismo
+    # grupo lo reconoce como "existente" por sus datos (recurso/proyecto/
+    # tarea/fecha), no por ese id_externo, y recalcula las horas desde cero
+    # en vez de sumarlas de nuevo (evita contar doble si se reimporta).
+    for grupo in grupos.values():
+        recurso = grupo["recurso"]
+        proyecto = grupo["proyecto"]
+        tarea = grupo["tarea"]
+        ids_externos = sorted(grupo["ids_externos"], key=int)
+        id_externo = ",".join(ids_externos)
+
         es_creacion = True
         try:
             with transaction.atomic():
                 existente = RegistroEjecucion.objects.filter(
-                    origen=OrigenRegistro.JIRA, id_externo=id_externo
+                    recurso=recurso,
+                    proyecto=proyecto,
+                    tarea=tarea,
+                    periodicidad=Periodicidad.DIARIA,
+                    periodo_inicio=grupo["fecha"],
                 ).first()
+                if existente is not None and existente.origen != OrigenRegistro.JIRA:
+                    raise ValidationError(
+                        {
+                            "periodo_inicio": [
+                                "Ya existe un registro de otro origen para este recurso, "
+                                "proyecto, tarea y día."
+                            ]
+                        }
+                    )
                 if (
                     existente is not None
                     and existente.estado_aprobacion == EstadoAprobacion.APROBADO
@@ -566,17 +636,16 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
                     continue
 
                 es_creacion = existente is None
-                registro = existente or RegistroEjecucion(
-                    origen=OrigenRegistro.JIRA, id_externo=id_externo
-                )
+                registro = existente or RegistroEjecucion(origen=OrigenRegistro.JIRA)
+                registro.id_externo = id_externo
                 registro.proyecto = proyecto
-                registro.tarea = Tarea.objects.filter(clave_jira=clave_issue).first()
+                registro.tarea = tarea
                 registro.recurso = recurso
                 registro.periodicidad = Periodicidad.DIARIA
-                registro.periodo_inicio = datetime.date.fromisoformat(worklog["startDate"])
+                registro.periodo_inicio = datetime.date.fromisoformat(grupo["fecha"])
                 registro.periodo_fin = registro.periodo_inicio
-                registro.horas = Decimal(str(worklog["timeSpentSeconds"])) / Decimal(3600)
-                registro.descripcion = worklog.get("description") or ""
+                registro.horas = grupo["horas"]
+                registro.descripcion = "; ".join(grupo["descripciones"])
                 if es_creacion:
                     registro.estado_aprobacion = estado_inicial
                     if estado_inicial == EstadoAprobacion.APROBADO:
@@ -593,11 +662,12 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
                 if registro.estado_aprobacion == EstadoAprobacion.APROBADO:
                     recalcular_tarea(registro)
         except Exception as exc:  # noqa: BLE001 - se reporta, no se interrumpe el lote
+            logger.exception("Error guardando RegistroEjecucion de Jira id_externo=%s", id_externo)
             resumen["errores"].append(
                 {
                     "id_externo": id_externo,
                     "motivo": "no se pudo guardar el registro",
-                    "detalle": getattr(exc, "detail", str(exc)),
+                    "detalle": _detalle_legible(exc),
                 }
             )
             continue

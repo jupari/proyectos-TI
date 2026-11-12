@@ -402,3 +402,67 @@ All files pass linting.
 $ docker compose -f infra/docker-compose.yml exec frontend npx ng build
 Application bundle generation complete. [22.193 seconds]
 ```
+
+## Adenda 3: errores ilegibles y duplicados por entradas múltiples el mismo día
+
+Al correr la importación real, el usuario vio varios errores mostrados como
+`"[object Object]"` en `/admin/integraciones`, y preguntó por qué fallaban esos registros.
+
+### Diagnóstico
+
+Dos problemas distintos:
+
+1. **Visualización.** `exc.detail` de un `ValidationError`/`ErrorReglaNegocio`/`ErrorConflicto` es
+   un `dict` o una lista de `ErrorDetail`, no un string. Al guardarlo tal cual en
+   `resumen["errores"]` y mostrarlo en la plantilla de Angular (`{{ e.detalle }}`), JS lo
+   convertía con su `toString()` por defecto → `"[object Object]"`. Se agregó
+   `_detalle_legible(exc)` en `services.py` que aplana el `dict`/lista a texto, y
+   `logger.exception(...)` antes de reportar el error, para que el traceback completo quede en
+   `docker compose logs backend` (antes se perdía en silencio).
+2. **Causa real de los errores** (una vez legibles, con el fix anterior): la mayoría decía *"Ya
+   existe un registro idéntico (mismo recurso, proyecto, tarea, periodicidad y periodo)"*. Tempo
+   permite que una persona registre **varias entradas de tiempo el mismo día sobre la misma
+   tarea** (p. ej. una en la mañana y otra en la tarde), pero `RegistroEjecucion` guarda **un
+   registro por día/tarea/recurso** (`registroejecucion_unico`). El importador trataba cada
+   *worklog* de Jira como su propio registro (buscaba "existente" solo por `id_externo`), así que
+   la primera entrada del día se guardaba y la segunda chocaba contra la primera y se reportaba
+   como error en vez de sumarse.
+
+### Diseño
+
+- `importar_horas_jira` ahora agrupa los worklogs resueltos por `(recurso, proyecto, tarea,
+  fecha)` **antes** de guardar, y guarda un solo `RegistroEjecucion` por grupo con la suma de
+  horas de todos los worklogs de ese grupo.
+- El `id_externo` del registro pasa a ser la lista ordenada de los `tempoWorklogId` que lo
+  componen (p. ej. `"35303,35304"`), solo para trazabilidad — ya **no** se usa para decidir si el
+  registro es nuevo o existente.
+- Para decidir "existente" ahora se busca por los mismos campos que `registroejecucion_unico`
+  (recurso, proyecto, tarea, periodicidad, periodo_inicio), no por `id_externo`: así una corrida
+  posterior que traiga el mismo grupo (con los mismos worklogs, o con uno nuevo agregado
+  retroactivamente en Jira) **recalcula la suma desde cero** en vez de acumularla sobre lo ya
+  guardado — necesario para que reimportar el mismo rango de fechas no duplique horas.
+- Si el registro encontrado por esos campos es de otro origen (`MANUAL`), se sigue reportando como
+  error — eso sí es un conflicto real que no se debe sobrescribir.
+- Quedan como error legítimo (no un bug) los worklogs cuya fecha cae fuera del rango
+  planeado/real del proyecto (`validar_rango_proyecto`) — eso sigue bloqueando, correctamente,
+  datos fuera de rango.
+
+### Evidencia
+
+Contra el Jira/Tempo real del usuario, en modo simulación (`--dry-run`), para el rango
+2026-01-01 a 2026-11-12: antes del fix, ~80 errores "ya existe un registro idéntico"; después,
+0 — los grupos se consolidan y los que ya estaban aprobados de una corrida previa salen como
+"ya aprobado, no se modifica" en vez de error. Solo quedan 7 errores, todos por fecha fuera del
+rango del proyecto (un problema de datos, no del importador).
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/ejecucion -q
+.............
+13 passed
+
+$ docker compose -f infra/docker-compose.yml exec backend pytest -q
+447 passed in 272.74s
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+```

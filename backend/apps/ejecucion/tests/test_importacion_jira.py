@@ -141,6 +141,59 @@ def test_reimportar_mismo_worklog_actualiza_no_duplica():
     assert registro.horas == Decimal("8")
 
 
+def test_dos_worklogs_mismo_dia_y_tarea_suman_horas_en_un_registro():
+    """Tempo permite varias entradas de tiempo el mismo día sobre la misma
+    tarea (p. ej. mañana y tarde); el modelo guarda un registro por día/
+    tarea/recurso, así que deben sumarse en uno solo en vez de chocar contra
+    `registroejecucion_unico`."""
+    _preparar_proyecto_recurso_tarea()
+    cliente = _cliente_mock(
+        [
+            _worklog(tempoWorklogId=555, timeSpentSeconds=14400),  # 4 horas
+            _worklog(tempoWorklogId=556, timeSpentSeconds=10800),  # 3 horas
+        ]
+    )
+
+    with patch(RUTA_CLIENTE, return_value=cliente):
+        resumen = importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+
+    assert resumen["creados"] == 1
+    assert resumen["errores"] == []
+    registro = RegistroEjecucion.objects.get(origen=OrigenRegistro.JIRA, id_externo="555,556")
+    assert registro.horas == Decimal("7")
+    assert resumen["detalle"] == [
+        {
+            "fecha": "2026-03-10",
+            "recurso_nombre": registro.recurso.nombre,
+            "proyecto_codigo": registro.proyecto.codigo,
+            "proyecto_nombre": registro.proyecto.nombre,
+            "horas": Decimal("7"),
+            "accion": "creado",
+        }
+    ]
+
+
+def test_reimportar_grupo_de_dos_worklogs_no_duplica_horas():
+    """Una segunda corrida sobre el mismo par de worklogs recalcula la suma
+    desde cero (no la acumula de nuevo) y actualiza el registro existente en
+    vez de duplicarlo."""
+    _preparar_proyecto_recurso_tarea()
+    worklogs = [
+        _worklog(tempoWorklogId=555, timeSpentSeconds=14400),  # 4 horas
+        _worklog(tempoWorklogId=556, timeSpentSeconds=10800),  # 3 horas
+    ]
+
+    with patch(RUTA_CLIENTE, return_value=_cliente_mock(worklogs)):
+        importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+    with patch(RUTA_CLIENTE, return_value=_cliente_mock(worklogs)):
+        resumen = importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+
+    assert resumen["actualizados"] == 1
+    assert RegistroEjecucion.objects.filter(origen=OrigenRegistro.JIRA).count() == 1
+    registro = RegistroEjecucion.objects.get(origen=OrigenRegistro.JIRA)
+    assert registro.horas == Decimal("7")
+
+
 def test_reimportar_worklog_ya_aprobado_no_lo_modifica():
     proyecto, recurso, tarea = _preparar_proyecto_recurso_tarea()
     RegistroEjecucionFactory(
