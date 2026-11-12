@@ -7,7 +7,7 @@ type CategoriaBadge = 'exito' | 'alerta' | 'peligro' | 'info' | 'neutro';
  * enumerados del backend sin repetir la lógica por cada uno. */
 const CATEGORIA_POR_VALOR: Record<string, CategoriaBadge> = {
   COMPLETADA: 'exito', COMPLETADO: 'exito', APROBADO: 'exito', CUMPLIDO: 'exito',
-  PUBLICADO: 'exito', VERDE: 'exito', ACTIVO: 'exito',
+  PUBLICADO: 'exito', VERDE: 'exito', ACTIVO: 'exito', PRODUCCION_SOPORTE: 'exito',
   EJECUCION: 'info', EN_PROGRESO: 'info', PLANEACION: 'info', LOCAL: 'info', GOOGLE: 'info',
   ENVIADO: 'alerta', PENDIENTE: 'alerta', AMARILLO: 'alerta', REPROGRAMADO: 'alerta',
   EN_REVISION: 'alerta', ABIERTO: 'alerta', ALTA: 'alerta', CRITICA: 'peligro',

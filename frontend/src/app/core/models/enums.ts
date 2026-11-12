@@ -4,7 +4,8 @@ export type EstadoProyecto =
   | 'EJECUCION'
   | 'SUSPENDIDO'
   | 'CERRADO'
-  | 'CANCELADO';
+  | 'CANCELADO'
+  | 'PRODUCCION_SOPORTE';
 
 export const ETIQUETAS_ESTADO_PROYECTO: Record<EstadoProyecto, string> = {
   BORRADOR: 'Borrador',
@@ -13,6 +14,7 @@ export const ETIQUETAS_ESTADO_PROYECTO: Record<EstadoProyecto, string> = {
   SUSPENDIDO: 'Suspendido',
   CERRADO: 'Cerrado',
   CANCELADO: 'Cancelado',
+  PRODUCCION_SOPORTE: 'Producción y soporte',
 };
 
 /** Mismo grafo que `apps/proyectos/services.py::TRANSICIONES` (docs/modelo-datos.md §3).
@@ -23,8 +25,9 @@ export const TRANSICIONES_PROYECTO: Record<EstadoProyecto, EstadoProyecto[]> = {
   PLANEACION: ['EJECUCION', 'CANCELADO'],
   EJECUCION: ['SUSPENDIDO', 'CERRADO', 'CANCELADO'],
   SUSPENDIDO: ['EJECUCION', 'CANCELADO'],
-  CERRADO: [],
+  CERRADO: ['PRODUCCION_SOPORTE'],
   CANCELADO: [],
+  PRODUCCION_SOPORTE: [],
 };
 
 export type Prioridad = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
