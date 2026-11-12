@@ -19,6 +19,7 @@ from apps.core.choices import (
     Periodicidad,
     Semaforo,
 )
+from apps.ejecucion.services import recalcular_rubro
 from apps.ejecucion.tests.factories import GastoEjecutadoFactory, RegistroEjecucionFactory
 from apps.expediente.tests.factories import DocumentoExpedienteFactory, EntradaBitacoraFactory
 from apps.proyectos.models import Proyecto
@@ -288,7 +289,7 @@ class Command(BaseCommand):
         # Sobrecosto deliberado en el primer proyecto para que su GastoEjecutado
         # supere el rubro planeado y el semáforo rojo quede justificado.
         rubro_sobrecosto = proyectos[0]._rubro_personal
-        GastoEjecutadoFactory(
+        gasto_sobrecosto = GastoEjecutadoFactory(
             proyecto=proyectos[0],
             rubro=rubro_sobrecosto,
             fecha=hoy - datetime.timedelta(days=10),
@@ -297,6 +298,11 @@ class Command(BaseCommand):
             numero_documento="FAC-SOBRECOSTO-01",
             estado_aprobacion=EstadoAprobacion.APROBADO,
         )
+        # El factory crea el `GastoEjecutado` ya `APROBADO` directamente (no
+        # pasa por `aprobar_gasto`), así que `RubroPresupuesto.monto_ejecutado`
+        # se recalcula aquí a mano; de lo contrario queda en 0 y
+        # `verificar_consistencia` lo reporta como diferencia.
+        recalcular_rubro(gasto_sobrecosto)
 
         return proyectos
 
@@ -347,7 +353,7 @@ class Command(BaseCommand):
             rubro = proyecto.rubros.first()
             if rubro is None:
                 continue
-            GastoEjecutadoFactory(
+            gasto = GastoEjecutadoFactory(
                 proyecto=proyecto,
                 rubro=rubro,
                 fecha=datetime.date.today() - datetime.timedelta(days=20),
@@ -356,6 +362,7 @@ class Command(BaseCommand):
                 numero_documento=f"FAC-{proyecto.codigo}-01",
                 estado_aprobacion=EstadoAprobacion.APROBADO,
             )
+            recalcular_rubro(gasto)
             total += 1
         return total
 

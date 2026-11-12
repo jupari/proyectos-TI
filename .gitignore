@@ -12,3 +12,6 @@ staticfiles/
 .vscode/
 coverage/
 htmlcov/
+backups/
+.claude/
+.coverage

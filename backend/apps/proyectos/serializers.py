@@ -1,10 +1,21 @@
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from apps.tablero.services import resumen_ejecucion as calcular_resumen_ejecucion
 
 from .models import FaseProyecto, Hito, Proyecto, RubroPresupuesto
 from .services import generar_codigo_proyecto, validar_pesos_fases, validar_presupuesto
+
+# `generar_codigo_proyecto` bloquea la última fila con ese prefijo —si existe
+# alguna—, pero no protege contra una fila *nueva* insertada por otra
+# transacción mientras la primera esperaba el candado (el `SELECT ... FOR
+# UPDATE ... ORDER BY ... LIMIT 1` de Postgres no vuelve a evaluar el filtro
+# tras desbloquearse; solo revalida la fila que ya había elegido). Bajo
+# creación concurrente eso puede hacer que dos transacciones calculen el
+# mismo código; la restricción `UniqueConstraint` de `codigo` lo detecta al
+# insertar y aquí se reintenta con un código nuevo en vez de devolver un 500
+# (fase 11 §11.1.3: confirmado con una prueba de concurrencia real).
+INTENTOS_CODIGO_PROYECTO = 5
 
 
 def _validar_fin_despues_de_inicio(attrs, instance, campo_inicio, campo_fin):
@@ -189,8 +200,15 @@ class ProyectoEscrituraSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        validated_data["codigo"] = generar_codigo_proyecto()
-        instancia = super().create(validated_data)
+        for intento in range(INTENTOS_CODIGO_PROYECTO):
+            try:
+                with transaction.atomic():
+                    validated_data["codigo"] = generar_codigo_proyecto()
+                    instancia = super().create(validated_data)
+                break
+            except IntegrityError:
+                if intento == INTENTOS_CODIGO_PROYECTO - 1:
+                    raise
         validar_presupuesto(instancia)
         return instancia
 

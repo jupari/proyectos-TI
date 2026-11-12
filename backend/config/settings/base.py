@@ -157,6 +157,7 @@ SPECTACULAR_SETTINGS = {
         "EstadoTareaEnum": "apps.core.choices.EstadoTarea",
         "TipoTareaEnum": "apps.core.choices.TipoTarea",
         "TipoDependenciaEnum": "apps.core.choices.TipoDependencia",
+        "SemaforoCalculadoEnum": "apps.core.choices.Semaforo",
     },
 }
 

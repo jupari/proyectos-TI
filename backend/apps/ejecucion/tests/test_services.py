@@ -9,20 +9,24 @@ from apps.core.choices import EstadoAprobacion, EstadoTarea, Periodicidad
 from apps.core.exceptions import ErrorConflicto, ErrorReglaNegocio
 from apps.ejecucion.services import (
     aprobar,
+    aprobar_gasto,
     comparativo_por_mes,
     comparativo_por_recurso,
     enviar,
+    enviar_gasto,
     preparar_registro,
     reabrir,
+    reabrir_gasto,
     recalcular_tarea,
     rechazar,
+    rechazar_gasto,
     validar_rango_proyecto,
     validar_solapamiento,
     validar_tarea,
     validar_topes,
 )
-from apps.ejecucion.tests.factories import RegistroEjecucionFactory
-from apps.proyectos.tests.factories import ProyectoFactory
+from apps.ejecucion.tests.factories import GastoEjecutadoFactory, RegistroEjecucionFactory
+from apps.proyectos.tests.factories import ProyectoFactory, RubroPresupuestoFactory
 from apps.recursos.tests.factories import (
     AsignacionRecursoFactory,
     RecursoFactory,
@@ -181,6 +185,16 @@ def test_validar_topes_mensual_por_encima_de_1_5_veces_la_capacidad_advierte():
     assert validar_topes(registro)  # 250 > 160 * 1.5 = 240
 
 
+def test_validar_topes_semanal_excedida_da_advertencia():
+    registro = RegistroEjecucionFactory.build(periodicidad=Periodicidad.SEMANAL, horas=65)
+    assert validar_topes(registro)  # 65 > 60
+
+
+def test_validar_topes_semanal_dentro_del_limite_no_advierte():
+    registro = RegistroEjecucionFactory.build(periodicidad=Periodicidad.SEMANAL, horas=40)
+    assert validar_topes(registro) == []
+
+
 # --- validar_rango_proyecto ------------------------------------------------------
 
 
@@ -281,6 +295,24 @@ def test_rechazar_sin_motivo_falla():
     registro = RegistroEjecucionFactory(estado_aprobacion=EstadoAprobacion.ENVIADO)
     with pytest.raises(ValidationError):
         rechazar(registro, "", UsuarioFactory())
+
+
+def test_aprobar_un_registro_no_enviado_falla():
+    registro = RegistroEjecucionFactory(estado_aprobacion=EstadoAprobacion.BORRADOR)
+    with pytest.raises(ErrorConflicto):
+        aprobar(registro, UsuarioFactory())
+
+
+def test_rechazar_un_registro_no_enviado_falla():
+    registro = RegistroEjecucionFactory(estado_aprobacion=EstadoAprobacion.BORRADOR)
+    with pytest.raises(ErrorConflicto):
+        rechazar(registro, "No corresponde.", UsuarioFactory())
+
+
+def test_reabrir_un_registro_no_aprobado_falla():
+    registro = RegistroEjecucionFactory(estado_aprobacion=EstadoAprobacion.ENVIADO)
+    with pytest.raises(ErrorConflicto):
+        reabrir(registro, UsuarioFactory())
 
 
 def test_reabrir_resta_de_tarea_horas_ejecutadas():
@@ -433,3 +465,88 @@ def test_comparativo_por_mes_prorratea_el_plan_y_asigna_lo_ejecutado_a_su_mes():
     assert febrero["horas_ejec"] == Decimal("8.00")
     marzo = resultado[1]
     assert marzo["horas_ejec"] == Decimal("0")
+
+
+def test_comparativo_por_mes_sin_asignaciones_ni_ejecucion_devuelve_vacio():
+    proyecto = ProyectoFactory()
+    assert comparativo_por_mes(proyecto) == []
+
+
+# --- ciclo de aprobación de GastoEjecutado (mismo ciclo que RegistroEjecucion,
+# sin autor ni autoaprobación) -----------------------------------------------
+
+
+def test_enviar_gasto_desde_borrador():
+    gasto = GastoEjecutadoFactory(estado_aprobacion=EstadoAprobacion.BORRADOR)
+    enviar_gasto(gasto, UsuarioFactory())
+    gasto.refresh_from_db()
+    assert gasto.estado_aprobacion == EstadoAprobacion.ENVIADO
+
+
+def test_enviar_gasto_desde_aprobado_falla():
+    gasto = GastoEjecutadoFactory(estado_aprobacion=EstadoAprobacion.APROBADO)
+    with pytest.raises(ErrorConflicto):
+        enviar_gasto(gasto, UsuarioFactory())
+
+
+def test_aprobar_gasto_suma_a_monto_ejecutado_del_rubro():
+    rubro = RubroPresupuestoFactory(monto_planeado=1_000_000)
+    gasto = GastoEjecutadoFactory(
+        rubro=rubro,
+        proyecto=rubro.proyecto,
+        monto=400_000,
+        estado_aprobacion=EstadoAprobacion.ENVIADO,
+    )
+    aprobar_gasto(gasto, UsuarioFactory())
+    rubro.refresh_from_db()
+    assert rubro.monto_ejecutado == Decimal("400000.00")
+
+
+def test_aprobar_gasto_no_enviado_falla():
+    gasto = GastoEjecutadoFactory(estado_aprobacion=EstadoAprobacion.BORRADOR)
+    with pytest.raises(ErrorConflicto):
+        aprobar_gasto(gasto, UsuarioFactory())
+
+
+def test_rechazar_gasto_sin_motivo_falla():
+    gasto = GastoEjecutadoFactory(estado_aprobacion=EstadoAprobacion.ENVIADO)
+    with pytest.raises(ValidationError):
+        rechazar_gasto(gasto, "", UsuarioFactory())
+
+
+def test_rechazar_gasto_no_enviado_falla():
+    gasto = GastoEjecutadoFactory(estado_aprobacion=EstadoAprobacion.BORRADOR)
+    with pytest.raises(ErrorConflicto):
+        rechazar_gasto(gasto, "No corresponde.", UsuarioFactory())
+
+
+def test_rechazar_gasto_enviado_lo_marca_rechazado():
+    gasto = GastoEjecutadoFactory(estado_aprobacion=EstadoAprobacion.ENVIADO)
+    rechazar_gasto(gasto, "Factura ilegible.", UsuarioFactory())
+    gasto.refresh_from_db()
+    assert gasto.estado_aprobacion == EstadoAprobacion.RECHAZADO
+
+
+def test_reabrir_gasto_resta_del_monto_ejecutado_del_rubro():
+    rubro = RubroPresupuestoFactory(monto_planeado=1_000_000)
+    gasto = GastoEjecutadoFactory(
+        rubro=rubro,
+        proyecto=rubro.proyecto,
+        monto=400_000,
+        estado_aprobacion=EstadoAprobacion.APROBADO,
+    )
+    rubro.monto_ejecutado = Decimal("400000.00")
+    rubro.save(update_fields=["monto_ejecutado"])
+
+    reabrir_gasto(gasto, UsuarioFactory())
+
+    gasto.refresh_from_db()
+    rubro.refresh_from_db()
+    assert gasto.estado_aprobacion == EstadoAprobacion.ENVIADO
+    assert rubro.monto_ejecutado == Decimal("0.00")
+
+
+def test_reabrir_gasto_no_aprobado_falla():
+    gasto = GastoEjecutadoFactory(estado_aprobacion=EstadoAprobacion.ENVIADO)
+    with pytest.raises(ErrorConflicto):
+        reabrir_gasto(gasto, UsuarioFactory())
