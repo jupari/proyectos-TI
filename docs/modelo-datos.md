@@ -239,7 +239,7 @@ Reglas: `U(tarea_origen, tarea_destino)`; ambas tareas del mismo proyecto; se re
 | `aprobado_en` | DateTime | null |
 | `registrado_por` | FK Usuario | quien lo capturó; null si lo creó la importación de Jira/Tempo |
 | `origen` | Char(10) | `MANUAL` \| `JIRA`; default `MANUAL` (fase 12) |
-| `id_externo` | Char(100) | null; id del worklog de Tempo cuando `origen=JIRA` |
+| `id_externo` | Char(100) | null; id(s) del/los worklog(s) de Tempo cuando `origen=JIRA` (ver abajo) |
 
 Reglas:
 - Coherencia de periodo: `DIARIA` ⇒ `periodo_fin = periodo_inicio`; `SEMANAL` ⇒ lunes a
@@ -301,9 +301,18 @@ la terminal:
   recurso con ese correo, el worklog se omite identificando a la persona por **nombre y
   correo** (p. ej. "no hay un recurso con el correo de «Ana Pérez <ana@empresa.com>»"), para que
   quien administra sepa a cuál `Recurso` corregirle el campo `email`, no solo un id de worklog.
-- La reimportación de un mismo worklog (mismo `id_externo`) actualiza el registro existente
-  mientras siga `ENVIADO` o `RECHAZADO`; si ya está `APROBADO`, se deja intacto (inmutable) y se
-  reporta como "omitido, ya aprobado".
+- Tempo permite varias entradas de tiempo el mismo día sobre la misma tarea (p. ej. mañana y
+  tarde), pero `RegistroEjecucion` guarda un solo registro por día/tarea/recurso
+  (`U(recurso, proyecto, tarea, periodicidad, periodo_inicio)`). Por eso la importación **agrupa**
+  los worklogs resueltos por `(recurso, proyecto, tarea, fecha)` antes de guardar y suma sus horas
+  en un único registro; `id_externo` guarda la lista ordenada de los `tempoWorklogId` del grupo
+  (p. ej. `"35303,35304"`), solo para trazabilidad.
+- La reimportación de un mismo grupo (mismo recurso/proyecto/tarea/fecha, no necesariamente el
+  mismo `id_externo` si Jira suma o quita entradas de ese día) **recalcula la suma de horas desde
+  cero** y actualiza el registro existente, mientras siga `ENVIADO` o `RECHAZADO`; si ya está
+  `APROBADO`, se deja intacto (inmutable) y se reporta como "omitido, ya aprobado". Si el registro
+  de ese día/tarea ya existe pero es de otro `origen` (`MANUAL`), se reporta como error en vez de
+  sobrescribirlo.
 - Cada corrida escribe un resumen (creados, actualizados, un **detalle** con una fila por
   registro creado/actualizado —fecha, recurso, proyecto, horas—, y omitidos con motivo) y una
   `EntradaBitacora` por proyecto afectado (`tipo_evento=IMPORTACION`).
