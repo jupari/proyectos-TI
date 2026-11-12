@@ -191,7 +191,7 @@ export class PanelTablero {
   protected readonly graficoHoras = computed<ChartData>(() => {
     const top = this.top10PorPresupuesto();
     return {
-      labels: top.map((fila) => fila.codigo),
+      labels: top.map((fila) => fila.nombre),
       datasets: [
         {
           label: 'Horas planeadas',
@@ -213,7 +213,7 @@ export class PanelTablero {
 
   protected readonly filasTablaHoras = computed(() =>
     this.top10PorPresupuesto().map((fila) => [
-      fila.codigo,
+      fila.nombre,
       fila.resumen_ejecucion.horas_planeadas,
       fila.resumen_ejecucion.horas_ejecutadas,
     ]),
