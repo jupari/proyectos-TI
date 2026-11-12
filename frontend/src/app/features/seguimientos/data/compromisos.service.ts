@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
 
 import { ApiService } from '../../../core/api/api.service';
-import { CompromisoSeguimiento } from '../../../core/models';
+import { CompromisoSeguimiento, ConvertirCompromisoEnTarea } from '../../../core/models';
 
 export interface CompromisoEscritura {
   seguimiento: string;
@@ -23,4 +24,8 @@ export interface FiltrosCompromiso {
 @Injectable({ providedIn: 'root' })
 export class CompromisosService extends ApiService<CompromisoSeguimiento> {
   protected readonly recurso = 'compromisos-seguimiento';
+
+  convertirEnTarea(id: string, cuerpo: ConvertirCompromisoEnTarea): Observable<CompromisoSeguimiento> {
+    return this.accion<CompromisoSeguimiento>(id, 'convertir-tarea', cuerpo);
+  }
 }

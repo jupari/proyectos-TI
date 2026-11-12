@@ -214,6 +214,24 @@ def test_cambiar_estado_a_completada_sin_fecha_la_pone_hoy_y_fija_avance_100():
     assert tarea.avance == Decimal("100.00")
 
 
+def test_cambiar_estado_a_completada_cierra_el_compromiso_vinculado():
+    from apps.core.choices import EstadoCompromiso
+    from apps.seguimiento.tests.factories import CompromisoSeguimientoFactory
+
+    tarea = TareaFactory(estado=EstadoTarea.EN_PROGRESO, fecha_fin_real=None)
+    compromiso = CompromisoSeguimientoFactory(
+        tarea=tarea, estado=EstadoCompromiso.ABIERTO
+    )
+    usuario = UsuarioFactory()
+
+    cambiar_estado_tarea(tarea, EstadoTarea.COMPLETADA, usuario)
+    tarea.refresh_from_db()
+    compromiso.refresh_from_db()
+
+    assert compromiso.estado == EstadoCompromiso.CUMPLIDO
+    assert compromiso.fecha_cumplimiento == tarea.fecha_fin_real
+
+
 def test_cambiar_estado_a_completada_con_subtarea_abierta_da_409():
     padre = TareaFactory(estado=EstadoTarea.EN_PROGRESO)
     TareaFactory(tarea_padre=padre, proyecto=padre.proyecto, estado=EstadoTarea.EN_PROGRESO)

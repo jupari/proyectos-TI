@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { ErrorApi, Seguimiento, Usuario } from '../../../core/models';
+import { ETIQUETAS_ESTADO_COMPROMISO, ErrorApi, Seguimiento, Usuario } from '../../../core/models';
 import { ConfirmacionService } from '../../../core/ui/confirmacion.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { HorasPipe, MonedaPipe } from '../../../shared/pipes';
@@ -11,6 +11,7 @@ import { Badge } from '../../../shared/ui/badge/badge';
 import { Boton } from '../../../shared/ui/boton/boton';
 import { Card } from '../../../shared/ui/card/card';
 import { Datepicker } from '../../../shared/ui/datepicker/datepicker';
+import { Modal } from '../../../shared/ui/modal/modal';
 import { Numero } from '../../../shared/ui/numero/numero';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { Semaforo, ValorSemaforo } from '../../../shared/ui/semaforo/semaforo';
@@ -27,6 +28,9 @@ interface FilaCompromiso {
   descripcion: string;
   responsable: string | null;
   fecha_compromiso: string | null;
+  estado: string;
+  tarea: string | null;
+  tarea_codigo: string | null;
   guardando: boolean;
 }
 
@@ -43,6 +47,7 @@ interface FilaCompromiso {
     Boton,
     Select,
     Datepicker,
+    Modal,
     Numero,
     Textarea,
     HorasPipe,
@@ -110,6 +115,16 @@ export class EditorSeguimiento {
   // --- compromisos ------------------------------------------------------------
 
   protected readonly compromisos = signal<FilaCompromiso[]>([]);
+
+  protected etiquetaEstadoCompromiso(estado: string): string {
+    return (ETIQUETAS_ESTADO_COMPROMISO as Record<string, string>)[estado] ?? estado;
+  }
+
+  protected readonly modalConvertirAbierto = signal(false);
+  protected readonly indiceCompromisoConvertir = signal<number | null>(null);
+  protected readonly horasEstimadasConvertir = signal<number | null>(null);
+  protected readonly fechaFinConvertir = signal<string | null>(null);
+  protected readonly convirtiendo = signal(false);
   protected readonly opcionesResponsables = signal<OpcionSelect[]>([]);
 
   // --- adjuntos -----------------------------------------------------------------
@@ -201,6 +216,9 @@ export class EditorSeguimiento {
             descripcion: c.descripcion,
             responsable: c.responsable,
             fecha_compromiso: c.fecha_compromiso,
+            estado: c.estado,
+            tarea: c.tarea,
+            tarea_codigo: c.tarea_codigo,
             guardando: false,
           })),
         ),
@@ -356,7 +374,16 @@ export class EditorSeguimiento {
   protected agregarCompromiso(): void {
     this.compromisos.update((filas) => [
       ...filas,
-      { id: null, descripcion: '', responsable: null, fecha_compromiso: null, guardando: false },
+      {
+        id: null,
+        descripcion: '',
+        responsable: null,
+        fecha_compromiso: null,
+        estado: 'ABIERTO',
+        tarea: null,
+        tarea_codigo: null,
+        guardando: false,
+      },
     ]);
   }
 
@@ -404,6 +431,58 @@ export class EditorSeguimiento {
     this.compromisosService.eliminar(fila.id).subscribe(() => {
       this.compromisos.update((filas) => filas.filter((_, i) => i !== indice));
     });
+  }
+
+  protected abrirConversion(indice: number): void {
+    const fila = this.compromisos()[indice];
+    this.indiceCompromisoConvertir.set(indice);
+    this.horasEstimadasConvertir.set(null);
+    this.fechaFinConvertir.set(fila.fecha_compromiso);
+    this.modalConvertirAbierto.set(true);
+  }
+
+  protected cerrarConversion(): void {
+    this.modalConvertirAbierto.set(false);
+  }
+
+  protected confirmarConversion(): void {
+    const indice = this.indiceCompromisoConvertir();
+    const horas = this.horasEstimadasConvertir();
+    if (indice === null) return;
+    const fila = this.compromisos()[indice];
+    if (!fila.id || !horas || horas <= 0) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Indique las horas estimadas (mayor que cero).' });
+      return;
+    }
+
+    this.convirtiendo.set(true);
+    this.compromisosService
+      .convertirEnTarea(fila.id, {
+        horas_estimadas: horas,
+        fecha_fin_plan: this.fechaFinConvertir() ?? undefined,
+      })
+      .subscribe({
+        next: (actualizado) => {
+          this.convirtiendo.set(false);
+          this.modalConvertirAbierto.set(false);
+          this.actualizarCompromiso(indice, {
+            estado: actualizado.estado,
+            tarea: actualizado.tarea,
+            tarea_codigo: actualizado.tarea_codigo,
+          });
+          this.toast.mostrar({
+            tipo: 'exito',
+            mensaje: `Tarea ${actualizado.tarea_codigo} creada en el cronograma del proyecto.`,
+          });
+        },
+        error: (error: unknown) => {
+          this.convirtiendo.set(false);
+          this.toast.mostrar({
+            tipo: 'error',
+            mensaje: this.mensajeError(error, 'No se pudo convertir el compromiso.'),
+          });
+        },
+      });
   }
 
   // --- adjuntos ----------------------------------------------------------------

@@ -85,6 +85,7 @@ class SeguimientoSerializer(serializers.ModelSerializer):
 class CompromisoSeguimientoSerializer(serializers.ModelSerializer):
     responsable_nombre = serializers.CharField(source="responsable.nombre_completo", read_only=True)
     esta_vencido = serializers.BooleanField(read_only=True)
+    tarea_codigo = serializers.SerializerMethodField()
 
     class Meta:
         model = CompromisoSeguimiento
@@ -98,5 +99,11 @@ class CompromisoSeguimientoSerializer(serializers.ModelSerializer):
             "estado",
             "fecha_cumplimiento",
             "esta_vencido",
+            "tarea",
+            "tarea_codigo",
             "activo",
         ]
+        read_only_fields = ["tarea"]
+
+    def get_tarea_codigo(self, obj) -> str | None:
+        return obj.tarea.codigo if obj.tarea_id else None

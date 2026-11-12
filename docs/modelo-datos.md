@@ -296,9 +296,20 @@ Reglas:
 
 ### `CompromisoSeguimiento`
 `seguimiento` FK · `descripcion` Text · `responsable` FK Usuario · `fecha_compromiso` Date ·
-`estado` Char(15) (`ABIERTO` \| `CUMPLIDO` \| `VENCIDO` \| `CANCELADO`) · `fecha_cumplimiento` Date null
+`estado` Char(15) (`ABIERTO` \| `CUMPLIDO` \| `VENCIDO` \| `CANCELADO`) · `fecha_cumplimiento` Date null ·
+`tarea` FK Tarea null (`on_delete=SET_NULL`); la enlaza con la tarea en que se convirtió, si se convirtió
 
-Regla: un job o un `property` marca `VENCIDO` cuando `fecha_compromiso < hoy` y sigue `ABIERTO`.
+Reglas:
+- Un job o un `property` marca `VENCIDO` cuando `fecha_compromiso < hoy` y sigue `ABIERTO`.
+- `POST .../convertir-tarea/` (`{horas_estimadas, fecha_inicio_plan?, fecha_fin_plan?,
+  responsable?, fase?}`): crea una `Tarea` en el proyecto del seguimiento con la descripción del
+  compromiso, la enlaza en `tarea` y queda visible en `GET /proyectos/{id}/cronograma/`. Si no se
+  envía `responsable`, se resuelve del `Recurso` vinculado al usuario responsable del compromiso
+  (si existe). `fecha_fin_plan` por defecto es `fecha_compromiso`; `fecha_inicio_plan` por defecto
+  es `min(hoy, fecha_fin_plan)` (evita fechas inconsistentes si el compromiso ya venció). Falla con
+  409 si el compromiso ya tiene `tarea` o si está `CUMPLIDO`/`CANCELADO`. Cuando esa tarea pasa a
+  `COMPLETADA` (`apps.tareas.services.cambiar_estado_tarea`), el compromiso se marca `CUMPLIDO`
+  automáticamente con `fecha_cumplimiento = tarea.fecha_fin_real`.
 
 ---
 

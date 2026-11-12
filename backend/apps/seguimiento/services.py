@@ -188,6 +188,77 @@ def reabrir(seguimiento, usuario):
     return seguimiento
 
 
+@transaction.atomic
+def convertir_en_tarea(
+    compromiso,
+    usuario,
+    *,
+    horas_estimadas,
+    fecha_inicio_plan=None,
+    fecha_fin_plan=None,
+    responsable=None,
+    fase=None,
+):
+    """Crea una `Tarea` a partir de `compromiso` y la enlaza (`compromiso.tarea`):
+    así queda en el cronograma del proyecto y es medible en horas. Al
+    completarse esa tarea, `cambiar_estado_tarea` cierra el compromiso
+    automáticamente (ver `apps.tareas.services`)."""
+    from apps.tareas.models import Tarea
+    from apps.tareas.services import generar_codigo_tarea, marcar_creacion_durante_ejecucion
+
+    if compromiso.tarea_id is not None:
+        raise ErrorConflicto(
+            f"Este compromiso ya fue convertido en la tarea {compromiso.tarea.codigo}."
+        )
+    if compromiso.estado in (EstadoCompromiso.CUMPLIDO, EstadoCompromiso.CANCELADO):
+        raise ErrorConflicto("No se puede convertir un compromiso cumplido o cancelado.")
+    if horas_estimadas is None or horas_estimadas <= 0:
+        raise ValidationError({"horas_estimadas": ["Debe ser mayor que cero."]})
+
+    proyecto = compromiso.seguimiento.proyecto
+    fin = fecha_fin_plan or compromiso.fecha_compromiso
+    # Si el compromiso ya venció, iniciar "hoy" dejaría fin < inicio; en ese
+    # caso la ventana colapsa al día del vencimiento, lo cual es correcto:
+    # la tarea nace ya atrasada, no con fechas inconsistentes.
+    inicio = fecha_inicio_plan or min(datetime.date.today(), fin)
+    if fin < inicio:
+        raise ValidationError(
+            {"fecha_fin_plan": ["Debe ser igual o posterior a la fecha de inicio."]}
+        )
+    if fase is not None and fase.proyecto_id != proyecto.id:
+        raise ValidationError({"fase": ["La fase debe ser del mismo proyecto."]})
+    if responsable is None:
+        responsable = getattr(compromiso.responsable, "recurso", None)
+
+    tarea = Tarea(
+        proyecto=proyecto,
+        fase=fase,
+        nombre=compromiso.descripcion[:250],
+        descripcion=compromiso.descripcion,
+        responsable=responsable,
+        fecha_inicio_plan=inicio,
+        fecha_fin_plan=fin,
+        horas_estimadas=horas_estimadas,
+        motivo_creacion="Convertida desde un compromiso de seguimiento.",
+    )
+    marcar_creacion_durante_ejecucion(tarea)
+    tarea.codigo = generar_codigo_tarea(proyecto)
+    tarea.save()
+
+    compromiso.tarea = tarea
+    compromiso.save(update_fields=["tarea", "actualizado_en"])
+
+    registrar_evento(
+        tipo_evento=TipoEvento.CREACION,
+        entidad="Tarea",
+        entidad_id=tarea.id,
+        descripcion=f"Tarea {tarea.codigo} creada a partir de un compromiso de seguimiento.",
+        proyecto=proyecto,
+        usuario=usuario,
+    )
+    return tarea
+
+
 def marcar_compromisos_vencidos():
     """`VENCIDO` para los `ABIERTO` cuya `fecha_compromiso` ya pasó. En v1
     se corre a mano o por tarea programada del sistema operativo (sin

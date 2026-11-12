@@ -129,6 +129,9 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
   borrador con los cálculos del periodo ya resueltos, **sin guardar**
 - `POST /seguimientos/{id}/publicar/` — congela los calculados y escribe en bitácora
 - `/compromisos-seguimiento/` — CRUD, filtro `estado`, `responsable`, `vencidos=true`
+- `POST /compromisos-seguimiento/{id}/convertir-tarea/` — `{horas_estimadas, fecha_inicio_plan?,
+  fecha_fin_plan?, responsable?, fase?}` → crea una tarea en el cronograma del proyecto y la
+  enlaza; al completarla, el compromiso se cierra solo (docs/modelo-datos.md §7)
 
 **Expediente**
 - `GET /proyectos/{id}/expediente/` → `{documentos_por_categoria, linea_tiempo, totales}`

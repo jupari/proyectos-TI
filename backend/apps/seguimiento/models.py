@@ -76,6 +76,13 @@ class CompromisoSeguimiento(ModeloBase):
         max_length=15, choices=EstadoCompromiso.choices, default=EstadoCompromiso.ABIERTO
     )
     fecha_cumplimiento = models.DateField(null=True, blank=True)
+    tarea = models.ForeignKey(
+        "tareas.Tarea",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="compromisos",
+    )
 
     class Meta:
         verbose_name = "compromiso de seguimiento"
