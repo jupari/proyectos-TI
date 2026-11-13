@@ -261,3 +261,67 @@ documentan esto igual que lo hizo fase 03.
   `apps/proyectos/services.py::TRANSICIONES`, tal como permite el plan ("se derivan del mismo
   grafo expuesto en `GET /proyectos/{id}/`"); el backend sigue siendo quien valida la
   transición real.
+
+## Adenda: faltaba el CRUD de Fases, Hitos y Presupuesto en el frontend
+
+El punto 15 de este plan describía las pestañas *Fases* (**"tabla editable en línea o por
+modal"**), *Hitos* y *Presupuesto* del detalle de proyecto — el backend siempre tuvo CRUD
+completo (`FaseProyectoViewSet`, `HitoViewSet`, `RubroPresupuestoViewSet`, con permisos y
+validaciones ya listos, y hasta el servicio del frontend `FasesProyectoService`/
+`HitosService`/`RubrosPresupuestoService` ya generados), pero esas tres pestañas quedaron
+como tablas de solo lectura: nunca se construyó el botón de crear ni las acciones de editar/
+eliminar. Reportado por el usuario como "no hay CRUD de Fases, Hitos y presupuestos".
+
+### El bloqueo real detrás de Fases
+
+Al ir a construirlo apareció la razón de que nunca se haya hecho: `validar_pesos_fases`
+(la suma de `peso` debe dar exactamente 100) se evaluaba en **cada guardado individual**. Con
+una regla de "==" exigida en cada fila, es matemáticamente imposible redistribuir el peso
+entre dos fases ya existentes guardándolas una por una — cualquier paso intermedio dadas sus
+limitaciones (PATCH de una fila a la vez) deja la suma en más o menos de 100 y el servidor lo
+rechaza. La única forma de llegar a un estado válido de más de una fase habría sido manipular
+la base de datos directamente (como hacían los *fixtures* de las pruebas), nunca a través de
+la API.
+
+### Diseño
+
+- `FaseProyectoSerializer.create`/`.update` dejan de llamar `validar_pesos_fases` (se movió);
+  `FaseProyectoViewSet.perform_create`/`.perform_update` la aplican ahora, en una
+  transacción, preservando el comportamiento exacto de antes para quien use
+  `POST /fases-proyecto/` fila por fila.
+- Nuevo `POST /proyectos/{id}/fases/guardar-lote/` (`ProyectoViewSet.guardar_fases_lote`):
+  recibe la lista completa de fases activas deseadas, crea/actualiza/da de baja según traigan
+  o no `id`, y valida la suma de `peso` **una sola vez al final** (lista vacía = borra todas,
+  sin exigir 100). Antes de guardar, despeja los `orden` actuales sumándoles un valor alto
+  (`F('orden') + 100000`): si dos fases intercambian su orden, actualizarlas una por una
+  chocaría contra `faseproyecto_orden_unico` porque una todavía tendría el valor que la otra
+  está por tomar.
+- La pantalla de Fases pasa a ser una tabla editable en línea (como pedía el punto 15 del
+  plan original) con "+ Agregar fase" y un solo botón "Guardar fases" que manda la lista
+  completa; el indicador de "Suma de pesos" ahora se calcula sobre esa lista en edición, no
+  sobre lo ya guardado.
+- Hitos y Presupuesto sí se pudieron resolver con el patrón normal de esta app (drawer +
+  botones Editar/Eliminar por fila, como "Recursos planeados"), porque no tienen el problema
+  de "==" de las fases.
+- De paso, `RubroPresupuestoSerializer.create`/`.update` ganan la validación simétrica que ya
+  existía al revés (`ProyectoEscrituraSerializer` ya rechazaba bajar `presupuesto_dinero` por
+  debajo de la suma de rubros): ahora crear o editar un rubro que haga superar el presupuesto
+  aprobado también se rechaza. Esto sí se puede hacer fila por fila porque es un `>=`, no un
+  `==` — nunca hay un paso intermedio inválido que dependa de otra fila.
+
+### Evidencia
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/proyectos -q
+.............................................
+45 passed
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm run lint
+All files pass linting.
+
+$ docker compose -f infra/docker-compose.yml exec frontend npx ng build
+Application bundle generation complete.
+```

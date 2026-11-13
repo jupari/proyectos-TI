@@ -49,6 +49,14 @@ export class ProyectosService extends ApiService<Proyecto> {
     return this.accionGet<FaseProyecto[]>(id, 'fases');
   }
 
+  /** Reemplaza toda la lista de fases activas en una sola transacción: la
+   * suma de `peso` se valida una sola vez al final, no en cada fila (ver
+   * docs/plan/fase-05-proyectos-presupuesto.md, adenda) — por eso no hay
+   * un `crear`/`actualizar` fila por fila para fases desde esta pantalla. */
+  guardarFasesLote(id: string, fases: unknown[]): Observable<FaseProyecto[]> {
+    return this.accion<FaseProyecto[]>(id, 'fases/guardar-lote', { fases });
+  }
+
   hitos(id: string): Observable<Hito[]> {
     return this.accionGet<Hito[]>(id, 'hitos');
   }

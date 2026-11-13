@@ -4,7 +4,7 @@ from rest_framework import serializers
 from apps.tablero.services import resumen_ejecucion as calcular_resumen_ejecucion
 
 from .models import FaseProyecto, Hito, Proyecto, RubroPresupuesto
-from .services import generar_codigo_proyecto, validar_pesos_fases, validar_presupuesto
+from .services import generar_codigo_proyecto, validar_presupuesto
 
 # `generar_codigo_proyecto` bloquea la última fila con ese prefijo —si existe
 # alguna—, pero no protege contra una fila *nueva* insertada por otra
@@ -50,17 +50,14 @@ class FaseProyectoSerializer(serializers.ModelSerializer):
         )
         return attrs
 
-    @transaction.atomic
-    def create(self, validated_data):
-        instancia = super().create(validated_data)
-        validar_pesos_fases(instancia.proyecto)
-        return instancia
-
-    @transaction.atomic
-    def update(self, instance, validated_data):
-        instancia = super().update(instance, validated_data)
-        validar_pesos_fases(instancia.proyecto)
-        return instancia
+    # `validar_pesos_fases` (suma de `peso` == 100) NO se valida acá: una
+    # regla que exige "==" en cada guardado individual hace imposible
+    # redistribuir el peso entre dos fases ya existentes (cualquier paso
+    # intermedio de una edición fila por fila deja la suma en más o menos
+    # de 100). `FaseProyectoViewSet.perform_create`/`perform_update` sí la
+    # aplica (mismo comportamiento de antes para quien use ese endpoint
+    # fila por fila); `ProyectoViewSet.guardar_fases_lote` la aplica una
+    # sola vez al final de guardar todas las fases juntas (fase-05 adenda).
 
 
 class HitoSerializer(serializers.ModelSerializer):
@@ -81,6 +78,12 @@ class HitoSerializer(serializers.ModelSerializer):
 
 
 class RubroPresupuestoSerializer(serializers.ModelSerializer):
+    """A diferencia de `FaseProyectoSerializer`, `validar_presupuesto`
+    (`presupuesto_dinero >= suma de rubros`) sí se valida en cada guardado:
+    no tiene el problema de "==" de los pesos de fase, porque es un `>=`
+    — agregar o editar un rubro de a uno nunca deja un estado intermedio
+    inválido que haga falta corregir con otro rubro a la vez."""
+
     class Meta:
         model = RubroPresupuesto
         fields = [
@@ -93,6 +96,18 @@ class RubroPresupuestoSerializer(serializers.ModelSerializer):
             "activo",
         ]
         read_only_fields = ["monto_ejecutado"]
+
+    @transaction.atomic
+    def create(self, validated_data):
+        instancia = super().create(validated_data)
+        validar_presupuesto(instancia.proyecto)
+        return instancia
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        instancia = super().update(instance, validated_data)
+        validar_presupuesto(instancia.proyecto)
+        return instancia
 
 
 class ProyectoListaSerializer(serializers.ModelSerializer):
