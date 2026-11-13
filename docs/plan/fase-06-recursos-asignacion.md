@@ -180,6 +180,23 @@ Test Files  7 passed (7)
      Tests  31 passed (31)
 ```
 
+## Adenda: faltaba editar una asignación ya creada
+
+La API y el drawer de `/proyectos/{id}` (pestaña "Recursos planeados") ya soportaban actualizar
+una `AsignacionRecurso` (`idAsignacionEnEdicion` existía y `guardarAsignacion()` ya llamaba a
+`actualizar(id, ...)` cuando tenía un id), pero la tabla nunca ofrecía la forma de llegar a ese
+modo: solo había un botón "+ Nueva asignación", sin acción "Editar" por fila. En la práctica, una
+vez creada una asignación, sus fechas quedaban fijas para siempre desde la UI — por ejemplo, no
+había forma de extender el `fecha_hasta` de un recurso cuando se extendía la fecha de fin del
+proyecto, así que "Plan vs. ejecutado por mes" (`docs/plan/fase-10-tablero-control.md`, que
+prorratea a partir de estas fechas) tampoco podía reflejar ese cambio.
+
+Se agregó `abrirEditarAsignacion(asignacion)` y un botón "Editar" por fila (mismo criterio de
+`puedeEditar()` que ya regía el botón de crear), y el título del drawer ahora distingue "Nueva
+asignación" de "Editar asignación". De paso, `guardarAsignacion()` ahora también refresca la
+pestaña Ejecución (antes solo refrescaba la lista de asignaciones), porque esos datos quedaban en
+caché con el valor viejo hasta recargar la página completa.
+
 ### Verificación manual contra el backend real (`seed_demo`)
 
 ```
