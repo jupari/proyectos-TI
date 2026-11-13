@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { ErrorApi, RegistroEjecucion } from '../../../core/models';
@@ -11,6 +12,7 @@ import { AsignacionesService } from '../../recursos/data/asignaciones.service';
 import { RecursosService } from '../../recursos/data/recursos.service';
 import { TareasService } from '../../tareas/data/tareas.service';
 import { ProyectosService } from '../../proyectos/data/proyectos.service';
+import { ContadorAprobacionesService } from '../data/contador-aprobaciones.service';
 import { RegistroEjecucionEscritura, RegistrosEjecucionService } from '../data/registros.service';
 
 type Periodicidad = 'DIARIA' | 'SEMANAL' | 'MENSUAL';
@@ -57,7 +59,7 @@ function inicioDeSemana(fecha: Date): Date {
   selector: 'app-mi-registro',
   templateUrl: './mi-registro.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Boton, Select],
+  imports: [FormsModule, Boton, Select, RouterLink, RouterLinkActive],
 })
 export class MiRegistro {
   private readonly auth = inject(AuthService);
@@ -67,6 +69,9 @@ export class MiRegistro {
   private readonly proyectosService = inject(ProyectosService);
   private readonly registrosService = inject(RegistrosEjecucionService);
   private readonly toast = inject(ToastService);
+  protected readonly contadorAprobaciones = inject(ContadorAprobacionesService);
+
+  protected readonly puedeAprobar = computed(() => this.auth.tienePermiso('ejecucion.aprobar'));
 
   protected readonly cargando = signal(true);
   protected readonly guardandoTodo = signal(false);
