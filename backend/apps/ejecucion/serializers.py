@@ -17,6 +17,7 @@ class RegistroEjecucionSerializer(serializers.ModelSerializer):
     `costo` los resuelve `preparar_registro` (servicio), no el cliente."""
 
     proyecto_codigo = serializers.CharField(source="proyecto.codigo", read_only=True)
+    proyecto_nombre = serializers.CharField(source="proyecto.nombre", read_only=True)
     tarea_codigo = serializers.CharField(source="tarea.codigo", read_only=True, default=None)
     recurso_nombre = serializers.CharField(source="recurso.nombre", read_only=True)
     registrado_por_nombre = serializers.SerializerMethodField()
@@ -28,6 +29,7 @@ class RegistroEjecucionSerializer(serializers.ModelSerializer):
             "id",
             "proyecto",
             "proyecto_codigo",
+            "proyecto_nombre",
             "tarea",
             "tarea_codigo",
             "recurso",
