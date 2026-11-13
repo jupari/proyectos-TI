@@ -23,6 +23,7 @@ from .services import (
     resumen_global,
     resumen_tareas,
     tabla_proyectos,
+    tabla_proyectos_por_periodo,
 )
 
 PARAMETROS_FILTRO_PROYECTO = [
@@ -130,6 +131,33 @@ class EjecucionMensualView(APIView):
             request, "ejecucion-mensual", lambda: ejecucion_mensual(proyectos, desde, hasta)
         )
         return Response({"serie": serie, "calculado_en": calculado_en.isoformat()})
+
+
+class TablaProyectosPorPeriodoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Horas plan vs. ejecutadas por proyecto en un periodo",
+        description="docs/api-contrato.md §7: una fila por proyecto con sus horas "
+        "planeadas y ejecutadas dentro de `desde`/`hasta` (p. ej. una semana o un mes "
+        "elegidos a mano), más una fila de `totales` para ese mismo rango.",
+        parameters=[
+            *PARAMETROS_FILTRO_PROYECTO,
+            OpenApiParameter("desde", str, required=True),
+            OpenApiParameter("hasta", str, required=True),
+        ],
+        responses={200: {"type": "object"}},
+    )
+    def get(self, request):
+        proyectos = proyectos_del_tablero(request)
+        desde, hasta = _rango_fechas(request, requerido=True)
+
+        datos, calculado_en = desde_cache_o_calcular(
+            request,
+            "proyectos-por-periodo",
+            lambda: tabla_proyectos_por_periodo(proyectos, desde, hasta),
+        )
+        return Response({**datos, "calculado_en": calculado_en.isoformat()})
 
 
 class RecursosOcupacionView(APIView):
@@ -250,6 +278,33 @@ def _filas_csv_recursos(proyectos, request):
     return encabezados, filas
 
 
+def _filas_csv_proyectos_por_periodo(proyectos, request):
+    desde, hasta = _rango_fechas(request, requerido=True)
+    encabezados = ["Código", "Proyecto", "Horas plan", "Horas ejecutadas", "% consumo"]
+    datos = tabla_proyectos_por_periodo(proyectos, desde, hasta)
+    filas = [
+        [
+            fila["codigo"],
+            fila["nombre"],
+            _texto(fila["horas_plan"]),
+            _texto(fila["horas_ejec"]),
+            _texto(fila["pct_horas"]),
+        ]
+        for fila in datos["filas"]
+    ]
+    totales = datos["totales"]
+    filas.append(
+        [
+            "",
+            "Total",
+            _texto(totales["horas_plan"]),
+            _texto(totales["horas_ejec"]),
+            _texto(totales["pct_horas"]),
+        ]
+    )
+    return encabezados, filas
+
+
 def _filas_csv_ejecucion_mensual(proyectos, request):
     desde, hasta = _rango_fechas(request, requerido=False)
     encabezados = [
@@ -280,6 +335,7 @@ _CONSTRUCTORES_CSV = {
     "proyectos": lambda proyectos, request: _filas_csv_proyectos(proyectos),
     "recursos": _filas_csv_recursos,
     "ejecucion-mensual": _filas_csv_ejecucion_mensual,
+    "proyectos-por-periodo": _filas_csv_proyectos_por_periodo,
 }
 
 

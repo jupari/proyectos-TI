@@ -168,9 +168,10 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
 | `GET /tablero/resumen/` | tarjetas globales: proyectos por estado, por semáforo, totales de horas y dinero plan vs. ejecutado, número de proyectos en riesgo |
 | `GET /tablero/proyectos/` | una fila por proyecto con los KPIs de §10, filtrable igual que `/proyectos/` |
 | `GET /tablero/ejecucion-mensual/?proyecto=&desde=&hasta=` | serie mensual `[{mes, horas_plan, horas_ejec, costo_plan, costo_ejec}]` |
+| `GET /tablero/proyectos-por-periodo/?desde=&hasta=` (adenda) | una fila por proyecto con `{id, codigo, nombre, horas_plan, horas_ejec, pct_horas}` dentro de `[desde, hasta]` (una semana o un mes elegidos a mano, sin partir en meses calendario como `ejecucion-mensual`), más una fila `totales` con la suma; `desde`/`hasta` obligatorios |
 | `GET /tablero/recursos/?desde=&hasta=` | horas planeadas vs. ejecutadas por recurso y su % de ocupación |
 | `GET /tablero/tareas/?proyecto=` | conteo por estado, tareas vencidas, tareas creadas durante la ejecución |
-| `GET /tablero/exportar/?formato=csv&vista=proyectos` | descarga CSV de la vista indicada |
+| `GET /tablero/exportar/?formato=csv&vista=proyectos\|recursos\|ejecucion-mensual\|proyectos-por-periodo` | descarga CSV de la vista indicada |
 
 Bloque `resumen_ejecucion` que se reutiliza en varias respuestas:
 

@@ -291,3 +291,51 @@ Output location: /app/dist/frontend
     contra la API real de `seed_demo`, y `npm run build`/`npm run lint` confirman que el
     código compila y tipa correctamente, pero el renderizado real en pantalla (incluida la
     usabilidad a 400px) no se confirmó con una captura real.
+
+## Adenda: "Proyectos por periodo" — horas plan vs. ejecutadas por proyecto, filtrable por semana o mes
+
+Pedido por el usuario: una vista del Tablero con una fila por proyecto (horas plan vs.
+ejecutadas) donde se pueda elegir semana o mes y navegar entre periodos, con una fila de
+totales para ese periodo. No existía: `tabla_proyectos` da el histórico completo de cada
+proyecto (sin fecha) y `ejecucion_mensual` da una serie fechada pero agregada de todos los
+proyectos juntos (no una fila por proyecto).
+
+### Diseño
+
+- Nuevo `tabla_proyectos_por_periodo(proyectos, desde, hasta)` en `apps/tablero/services.py`:
+  una fila por proyecto con `horas_plan` (prorrateada por intersección de días calendario entre
+  cada `AsignacionRecurso` y `[desde, hasta]`) y `horas_ejec` (suma de `RegistroEjecucion`
+  `APROBADO` cuyo `periodo_inicio` cae en el rango), más `totales` con la suma de todas las
+  filas. Mismo alcance por rol que el resto del tablero (recibe `proyectos` ya acotado).
+- El prorrateo necesitaba generalizarse: `prorratear_por_mes` (fase 06) solo prorratea contra
+  un mes calendario completo, y una semana no es un mes — prorratear por mes sobrestimaría una
+  semana suelta. Se extrajo `prorratear_por_rango(fecha_desde, fecha_hasta, valor_total,
+  periodo_desde, periodo_hasta)` en `apps/core/calculos.py` con la intersección de días contra
+  un rango arbitrario, y `prorratear_por_mes` ahora es ese mismo cálculo con el mes como
+  periodo (refactor sin cambiar ningún resultado existente, con prueba que lo verifica).
+- Nuevo `GET /tablero/proyectos-por-periodo/?desde=&hasta=` (`TablaProyectosPorPeriodoView`),
+  mismo patrón de caché/alcance que los demás endpoints del tablero; `desde`/`hasta`
+  obligatorios (no tiene sentido un "periodo" sin elegir uno). Se sumó también a
+  `/tablero/exportar/?vista=proyectos-por-periodo`.
+- Pantalla nueva `/tablero/proyectos-por-periodo`, con el mismo patrón de navegación
+  Semanal/Mensual + «Anterior»/«Hoy»/«Siguiente» que ya usa "Mi registro de horas"
+  (`apps/features/ejecucion/mi-registro`), en vez de un simple rango de fechas libre como
+  `/tablero/recursos` — el pedido era explícitamente "seleccionar meses o semanas", no un
+  rango arbitrario. Enlazada desde el panel principal del tablero.
+
+### Evidencia
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/core apps/tablero -q
+.............................................................................
+126 passed
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm run lint
+All files pass linting.
+
+$ docker compose -f infra/docker-compose.yml exec frontend npx ng build
+Application bundle generation complete.
+```

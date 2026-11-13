@@ -30,23 +30,33 @@ def meses_entre(desde, hasta):
     return meses
 
 
-def prorratear_por_mes(fecha_desde, fecha_hasta, valor_total, anio, mes):
+def prorratear_por_rango(fecha_desde, fecha_hasta, valor_total, periodo_desde, periodo_hasta):
     """Porción de `valor_total` (repartido uniformemente entre
-    `fecha_desde` y `fecha_hasta`) que cae en el mes calendario `(anio,
-    mes)`, prorrateada por días de intersección (docs/plan/fase-06-recursos-
-    asignacion.md §6.1: una asignación del 01/02 al 31/03 con 200 horas
-    reparte esas 200 horas proporcional a los 28 días de febrero y los 31
-    de marzo que aporta cada uno al total de 59 días de la asignación).
-    Devuelve `0` (del mismo tipo que `valor_total`, típicamente `Decimal`)
-    si el mes no interseca el rango."""
+    `fecha_desde` y `fecha_hasta`) que cae dentro de `[periodo_desde,
+    periodo_hasta]`, prorrateada por días de intersección (docs/plan/
+    fase-06-recursos-asignacion.md §6.1: una asignación del 01/02 al 31/03
+    con 200 horas reparte esas 200 horas proporcional a los 28 días de
+    febrero y los 31 de marzo que aporta cada uno al total de 59 días de la
+    asignación). Generaliza `prorratear_por_mes` a cualquier periodo, no
+    solo un mes calendario (p. ej. una semana). Devuelve `0` (del mismo
+    tipo que `valor_total`, típicamente `Decimal`) si el periodo no
+    interseca el rango."""
     total_dias = (fecha_hasta - fecha_desde).days + 1
-    primer_dia_mes = datetime.date(anio, mes, 1)
-    ultimo_dia_mes = datetime.date(anio, mes, calendar.monthrange(anio, mes)[1])
-
-    inicio_interseccion = max(fecha_desde, primer_dia_mes)
-    fin_interseccion = min(fecha_hasta, ultimo_dia_mes)
+    inicio_interseccion = max(fecha_desde, periodo_desde)
+    fin_interseccion = min(fecha_hasta, periodo_hasta)
     if inicio_interseccion > fin_interseccion:
         return type(valor_total)(0)
 
     dias_interseccion = (fin_interseccion - inicio_interseccion).days + 1
     return valor_total * dias_interseccion / total_dias
+
+
+def prorratear_por_mes(fecha_desde, fecha_hasta, valor_total, anio, mes):
+    """Porción de `valor_total` que cae en el mes calendario `(anio, mes)`:
+    `prorratear_por_rango` con ese mes como periodo. Ver su docstring para
+    la convención de prorrateo."""
+    primer_dia_mes = datetime.date(anio, mes, 1)
+    ultimo_dia_mes = datetime.date(anio, mes, calendar.monthrange(anio, mes)[1])
+    return prorratear_por_rango(
+        fecha_desde, fecha_hasta, valor_total, primer_dia_mes, ultimo_dia_mes
+    )

@@ -20,7 +20,12 @@ from django.db.models import Count, DecimalField, IntegerField, OuterRef, Q, Sub
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
-from apps.core.calculos import division_segura, meses_entre, prorratear_por_mes
+from apps.core.calculos import (
+    division_segura,
+    meses_entre,
+    prorratear_por_mes,
+    prorratear_por_rango,
+)
 from apps.core.choices import (
     EstadoAprobacion,
     EstadoCompromiso,
@@ -432,6 +437,76 @@ def ejecucion_mensual(proyectos, desde=None, hasta=None):
             }
         )
     return resultado
+
+
+def tabla_proyectos_por_periodo(proyectos, desde, hasta):
+    """Una fila por proyecto con sus horas planeadas y ejecutadas dentro de
+    `[desde, hasta]` (típicamente una semana o un mes elegidos a mano,
+    fase 10 adenda), más una fila de totales. A diferencia de
+    `tabla_proyectos` (histórico completo del proyecto, sin fecha), esto
+    filtra por periodo: lo planeado se prorratea por intersección de días
+    calendario con cada asignación (`prorratear_por_rango`, igual
+    convención que `ejecucion_mensual`/`comparativo_por_mes` pero sin
+    partir el periodo en meses, para que una semana no se calcule de más
+    prorrateando el mes entero); lo ejecutado suma los `RegistroEjecucion`
+    `APROBADO` cuyo `periodo_inicio` cae en el rango."""
+    from apps.ejecucion.models import RegistroEjecucion
+    from apps.recursos.models import AsignacionRecurso
+
+    asignaciones_por_proyecto = {}
+    for asignacion in AsignacionRecurso.objects.filter(activo=True, proyecto__in=proyectos):
+        asignaciones_por_proyecto.setdefault(asignacion.proyecto_id, []).append(asignacion)
+
+    horas_ejec_por_proyecto = {
+        fila["proyecto"]: fila["total"] or CERO
+        for fila in RegistroEjecucion.objects.filter(
+            activo=True,
+            estado_aprobacion=EstadoAprobacion.APROBADO,
+            proyecto__in=proyectos,
+            periodo_inicio__gte=desde,
+            periodo_inicio__lte=hasta,
+        )
+        .values("proyecto")
+        .annotate(total=Sum("horas"))
+    }
+
+    filas = []
+    total_plan = CERO
+    total_ejec = CERO
+    for proyecto in proyectos:
+        horas_plan = CERO
+        for asignacion in asignaciones_por_proyecto.get(proyecto.id, []):
+            horas_plan += prorratear_por_rango(
+                asignacion.fecha_desde,
+                asignacion.fecha_hasta,
+                asignacion.horas_planeadas,
+                desde,
+                hasta,
+            )
+        horas_ejec = horas_ejec_por_proyecto.get(proyecto.id, CERO)
+        pct_horas = division_segura(horas_ejec, horas_plan)
+        filas.append(
+            {
+                "id": str(proyecto.id),
+                "codigo": proyecto.codigo,
+                "nombre": proyecto.nombre,
+                "horas_plan": horas_plan,
+                "horas_ejec": horas_ejec,
+                "pct_horas": float(pct_horas) * 100 if pct_horas is not None else None,
+            }
+        )
+        total_plan += horas_plan
+        total_ejec += horas_ejec
+
+    pct_total = division_segura(total_ejec, total_plan)
+    return {
+        "filas": sorted(filas, key=lambda f: f["nombre"]),
+        "totales": {
+            "horas_plan": total_plan,
+            "horas_ejec": total_ejec,
+            "pct_horas": float(pct_total) * 100 if pct_total is not None else None,
+        },
+    }
 
 
 def ocupacion_recursos(proyectos, desde, hasta, perfil=None):
