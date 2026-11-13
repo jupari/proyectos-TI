@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
 
+import { AuthService } from '../../../core/auth/auth.service';
 import { RegistroEjecucion, RespuestaPaginada } from '../../../core/models';
 import { ToastService } from '../../../core/ui/toast.service';
 import { FechaCortaPipe, HorasPipe, MonedaPipe } from '../../../shared/pipes';
@@ -13,6 +14,7 @@ import { CambioOrden, ColumnaTabla, Tabla } from '../../../shared/ui/tabla/tabla
 import { Textarea } from '../../../shared/ui/textarea/textarea';
 import { ProyectosService } from '../../proyectos/data/proyectos.service';
 import { RecursosService } from '../../recursos/data/recursos.service';
+import { ContadorAprobacionesService } from '../data/contador-aprobaciones.service';
 import { FiltrosRegistroEjecucion } from '../data/registros.service';
 import { RegistrosEjecucionService } from '../data/registros.service';
 
@@ -31,6 +33,8 @@ import { RegistrosEjecucionService } from '../data/registros.service';
     FechaCortaPipe,
     HorasPipe,
     MonedaPipe,
+    RouterLink,
+    RouterLinkActive,
   ],
 })
 export class Aprobaciones {
@@ -40,6 +44,10 @@ export class Aprobaciones {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
+  protected readonly contadorAprobaciones = inject(ContadorAprobacionesService);
+
+  protected readonly puedeRegistrar = computed(() => this.auth.tienePermiso('ejecucion.registrar'));
 
   protected readonly cargando = signal(false);
   protected readonly respuesta = signal<RespuestaPaginada<RegistroEjecucion> | null>(null);
@@ -219,5 +227,6 @@ export class Aprobaciones {
       mensaje: errores > 0 ? `Rechazados con ${errores} error(es).` : 'Registros rechazados.',
     });
     this.cargar();
+    this.contadorAprobaciones.actualizar();
   }
 }

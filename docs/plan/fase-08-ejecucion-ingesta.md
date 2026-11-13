@@ -284,3 +284,23 @@ consumen vía `curl`, no renderizados pixel a pixel en un navegador real.
    el `Recurso` del usuario autenticado sin traer la lista completa de recursos; es un cambio
    mínimo y acorde al modelo ya existente (`Recurso.usuario`), con su propia prueba en
    `apps/recursos/tests/test_api.py`.
+
+## Adenda: el contador del menú llevaba a una pantalla sin relación visible
+
+El contador rojo de "Ejecución" en el menú lateral (punto 7 arriba) cuenta los
+`RegistroEjecucion` en `ENVIADO` de **todo lo que el usuario puede aprobar** — para un `ADMIN`,
+de todos los proyectos. Pero el ítem del menú apunta a `/ejecucion/registros` ("Mi registro de
+horas", la agenda **personal** de quien entra, filtrada a sus propias tareas asignadas en la
+semana actual), no a `/ejecucion/aprobaciones` (la cola de aprobación donde viven esos
+pendientes). Si la persona no tiene tareas propias asignadas esa semana, aterriza en una pantalla
+vacía sin ninguna pista de a dónde ir a ver lo que el número anuncia — se reportó como "aparece
+un indicador de 179 y la vista no tiene nada".
+
+Se agregó una pestañita (`Mis registros` / `Aprobaciones`, con el mismo contador) arriba de
+ambas pantallas, visible solo si la persona tiene el otro permiso además del de la pantalla en la
+que está (`ejecucion.registrar` y/o `ejecucion.aprobar`), para poder moverse entre las dos sin
+adivinar la URL. De paso, `aprobarSeleccionados()`/`confirmarRechazoSeleccionados()` en
+`Aprobaciones` ahora llaman a `ContadorAprobacionesService.actualizar()` al terminar el lote, así
+que el número del menú baja de inmediato al aprobar/rechazar, no solo al recargar la aplicación
+(la limitación del punto 7 sigue siendo cierta entre pestañas/sesiones distintas, pero ya no
+dentro de la misma sesión después de actuar sobre la cola).
