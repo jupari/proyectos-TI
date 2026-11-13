@@ -63,7 +63,7 @@
     </app-boton>
   </div>
 
-  <ng-template #colProyecto let-fila>
+  <ng-template #colCodigo let-fila>
     <span class="flex items-center gap-2">
       {{ fila.proyecto_codigo }}
       @if (fila.origen === 'JIRA') {
@@ -77,13 +77,14 @@
 
   <app-tabla
     [columnas]="[
-      { clave: 'proyecto_codigo', titulo: 'Proyecto', plantilla: colProyecto },
+      { clave: 'proyecto_codigo', titulo: 'Código', plantilla: colCodigo },
       columnas[1],
       columnas[2],
+      columnas[3],
       { clave: 'periodo_inicio', titulo: 'Periodo', plantilla: colPeriodo },
       { clave: 'horas', titulo: 'Horas', alinear: 'derecha', plantilla: colHoras },
       { clave: 'costo', titulo: 'Costo', alinear: 'derecha', plantilla: colCosto },
-      columnas[6]
+      columnas[7]
     ]"
     [filas]="respuesta()?.results ?? []"
     [cargando]="cargando()"

@@ -4,6 +4,7 @@ import { EstadoAprobacion, Periodicidad } from './enums';
 export interface RegistroEjecucion extends ModeloBase {
   proyecto: string;
   proyecto_codigo: string;
+  proyecto_nombre: string;
   tarea: string | null;
   tarea_codigo: string | null;
   recurso: string;

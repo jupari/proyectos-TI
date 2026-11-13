@@ -68,7 +68,8 @@ export class Aprobaciones {
   protected readonly motivoRechazo = signal('');
 
   protected readonly columnas: ColumnaTabla<RegistroEjecucion>[] = [
-    { clave: 'proyecto_codigo', titulo: 'Proyecto' },
+    { clave: 'proyecto_codigo', titulo: 'Código' },
+    { clave: 'proyecto_nombre', titulo: 'Proyecto' },
     { clave: 'recurso_nombre', titulo: 'Recurso' },
     { clave: 'periodicidad', titulo: 'Periodicidad' },
     { clave: 'periodo_inicio', titulo: 'Periodo' },
