@@ -26,12 +26,20 @@ class Recurso(ModeloBase):
     capacidad_horas_mes = models.DecimalField(max_digits=10, decimal_places=2, default=160)
     fecha_ingreso = models.DateField(null=True, blank=True)
     fecha_retiro = models.DateField(null=True, blank=True)
+    jira_account_id = models.CharField(max_length=100, null=True, blank=True)  # noqa: DJ001
 
     class Meta:
         verbose_name = "recurso"
         verbose_name_plural = "recursos"
         ordering = ["nombre"]
         indexes = [models.Index(fields=["nombre"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["jira_account_id"],
+                condition=Q(jira_account_id__isnull=False),
+                name="recurso_jira_account_id_unico",
+            ),
+        ]
 
     def __str__(self):
         return self.nombre

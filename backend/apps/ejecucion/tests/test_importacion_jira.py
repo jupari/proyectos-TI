@@ -234,6 +234,25 @@ def test_worklog_de_proyecto_no_mapeado_se_omite():
     assert not RegistroEjecucion.objects.exists()
 
 
+def test_worklog_resuelve_por_jira_account_id_si_no_hay_correo_visible():
+    """La mayoría de las cuentas de Jira no expone `emailAddress` por la API
+    (visibilidad de cuenta de cada persona); para esos casos el admin deja
+    un mapeo manual en `Recurso.jira_account_id` desde /admin/integraciones,
+    y la importación debe usarlo como respaldo."""
+    proyecto = ProyectoFactory(clave_jira="PROY")
+    recurso = RecursoFactory(email=None, jira_account_id="acc-1")
+    TarifaRecursoFactory(recurso=recurso, valor_hora=70000, vigente_desde=datetime.date(2026, 1, 1))
+    TareaFactory(proyecto=proyecto, clave_jira="PROY-1")
+    cliente = _cliente_mock([_worklog()], correo=None, nombre="Alguien Oculto")
+
+    with patch(RUTA_CLIENTE, return_value=cliente):
+        resumen = importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+
+    assert resumen["creados"] == 1
+    registro = RegistroEjecucion.objects.get(origen=OrigenRegistro.JIRA)
+    assert registro.recurso_id == recurso.id
+
+
 def test_worklog_de_recurso_sin_correo_coincidente_se_omite():
     ProyectoFactory(clave_jira="PROY")
     cliente = _cliente_mock([_worklog()], correo="nadie@empresa.com")

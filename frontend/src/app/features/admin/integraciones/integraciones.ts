@@ -10,8 +10,10 @@ import { Card } from '../../../shared/ui/card/card';
 import { Datepicker } from '../../../shared/ui/datepicker/datepicker';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { Switch } from '../../../shared/ui/switch/switch';
+import { RecursosService } from '../../recursos/data/recursos.service';
 import {
   IntegracionesJiraService,
+  PersonaJiraSinMapear,
   ResumenImportacionJira,
 } from '../data/integraciones-jira.service';
 
@@ -23,6 +25,7 @@ import {
 })
 export class Integraciones {
   private readonly integracionesJiraService = inject(IntegracionesJiraService);
+  private readonly recursosService = inject(RecursosService);
   private readonly toast = inject(ToastService);
 
   protected readonly cargando = signal(true);
@@ -40,6 +43,12 @@ export class Integraciones {
     { valor: 'ENVIADO', etiqueta: 'Pendientes de aprobación' },
     { valor: 'APROBADO', etiqueta: 'Aprobadas automáticamente' },
   ];
+
+  protected readonly buscandoPersonas = signal(false);
+  protected readonly personasSinMapear = signal<PersonaJiraSinMapear[] | null>(null);
+  protected readonly opcionesRecursos = signal<OpcionSelect[]>([]);
+  protected readonly recursoElegidoPorCuenta = signal<Record<string, string>>({});
+  protected readonly asociandoCuenta = signal<string | null>(null);
 
   constructor() {
     this.integracionesJiraService.obtenerConfiguracion().subscribe({
@@ -107,6 +116,84 @@ export class Integraciones {
         error: (error: unknown) => {
           this.importando.set(false);
           let mensaje = 'No se pudo completar la importación.';
+          if (error instanceof HttpErrorResponse) {
+            const cuerpoError = error.error as Partial<ErrorApi> | null;
+            mensaje = cuerpoError?.error?.mensaje ?? mensaje;
+          }
+          this.toast.mostrar({ tipo: 'error', mensaje });
+        },
+      });
+  }
+
+  protected buscarPersonasSinMapear(): void {
+    const desde = this.fechaDesde();
+    const hasta = this.fechaHasta();
+    if (!desde || !hasta) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Elija la fecha desde y hasta.' });
+      return;
+    }
+    if (hasta < desde) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'La fecha hasta debe ser igual o posterior a desde.' });
+      return;
+    }
+
+    if (this.opcionesRecursos().length === 0) {
+      this.recursosService
+        .listarRecursos({ page_size: 200 })
+        .subscribe((r) =>
+          this.opcionesRecursos.set(r.results.map((x) => ({ valor: x.id, etiqueta: x.nombre }))),
+        );
+    }
+
+    this.buscandoPersonas.set(true);
+    this.personasSinMapear.set(null);
+    this.integracionesJiraService.listarPersonasSinMapear(desde, hasta).subscribe({
+      next: (personas) => {
+        this.buscandoPersonas.set(false);
+        this.personasSinMapear.set(personas);
+      },
+      error: (error: unknown) => {
+        this.buscandoPersonas.set(false);
+        let mensaje = 'No se pudo buscar las personas sin asociar.';
+        if (error instanceof HttpErrorResponse) {
+          const cuerpoError = error.error as Partial<ErrorApi> | null;
+          mensaje = cuerpoError?.error?.mensaje ?? mensaje;
+        }
+        this.toast.mostrar({ tipo: 'error', mensaje });
+      },
+    });
+  }
+
+  protected elegirRecursoPara(cuentaJira: string, recursoId: string): void {
+    this.recursoElegidoPorCuenta.update((actual) => ({ ...actual, [cuentaJira]: recursoId }));
+  }
+
+  protected asociar(persona: PersonaJiraSinMapear): void {
+    const recursoId = this.recursoElegidoPorCuenta()[persona.jira_account_id];
+    if (!recursoId) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Elija a qué recurso corresponde.' });
+      return;
+    }
+
+    this.asociandoCuenta.set(persona.jira_account_id);
+    this.recursosService
+      .actualizarRecurso(recursoId, { jira_account_id: persona.jira_account_id })
+      .subscribe({
+        next: () => {
+          this.asociandoCuenta.set(null);
+          this.personasSinMapear.set(
+            (this.personasSinMapear() ?? []).filter(
+              (p) => p.jira_account_id !== persona.jira_account_id,
+            ),
+          );
+          this.toast.mostrar({
+            tipo: 'exito',
+            mensaje: `«${persona.nombre}» quedó asociado. Vuelva a importar para traer sus horas.`,
+          });
+        },
+        error: (error: unknown) => {
+          this.asociandoCuenta.set(null);
+          let mensaje = 'No se pudo guardar la asociación.';
           if (error instanceof HttpErrorResponse) {
             const cuerpoError = error.error as Partial<ErrorApi> | null;
             mensaje = cuerpoError?.error?.mensaje ?? mensaje;

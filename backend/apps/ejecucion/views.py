@@ -27,6 +27,7 @@ from .services import (
     carga_lote,
     enviar_gasto,
     importar_horas_jira,
+    personas_jira_sin_mapear,
     reabrir_gasto,
     rechazar_gasto,
 )
@@ -430,6 +431,46 @@ class IntegracionJiraProyectosView(APIView):
     def get(self, request):
         proyectos = ClienteJiraTempo().listar_proyectos()
         return Response(proyectos)
+
+
+class PersonasJiraSinMapearView(APIView):
+    """`GET /integraciones/jira/personas-sin-mapear/?desde=&hasta=`: cuentas
+    de Jira con worklogs en el rango que no resuelven a ningún `Recurso`
+    (fase 12, adenda), para que el admin las asocie a mano desde
+    `/admin/integraciones` cuando el correo no está disponible por la API."""
+
+    permission_classes = [PermisoSoloAdminPmoLectura]
+
+    @extend_schema(
+        summary="Lista las personas de Jira sin Recurso asociado (fase 12)",
+        parameters=[
+            OpenApiParameter("desde", str, description="YYYY-MM-DD", required=True),
+            OpenApiParameter("hasta", str, description="YYYY-MM-DD", required=True),
+        ],
+        responses={200: {"type": "array", "items": {"type": "object"}}},
+    )
+    def get(self, request):
+        faltantes = [
+            nombre for nombre in VARIABLES_JIRA_REQUERIDAS if not getattr(settings, nombre)
+        ]
+        if faltantes:
+            raise ValidationError(
+                {"__all__": [f"Faltan las variables de entorno: {', '.join(faltantes)}."]}
+            )
+
+        desde_raw = request.query_params.get("desde")
+        hasta_raw = request.query_params.get("hasta")
+        if not desde_raw or not hasta_raw:
+            raise ValidationError({"desde": ["Debe indicar ?desde= y ?hasta=."]})
+        try:
+            desde = datetime.date.fromisoformat(desde_raw)
+            hasta = datetime.date.fromisoformat(hasta_raw)
+        except ValueError as exc:
+            raise ValidationError({"desde": ["Fecha inválida, use YYYY-MM-DD."]}) from exc
+        if hasta < desde:
+            raise ValidationError({"hasta": ["Debe ser igual o posterior a desde."]})
+
+        return Response(personas_jira_sin_mapear(desde, hasta))
 
 
 class ConfiguracionImportacionJiraSerializer(serializers.ModelSerializer):

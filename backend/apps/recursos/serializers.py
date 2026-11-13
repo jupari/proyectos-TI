@@ -28,6 +28,7 @@ class RecursoSerializer(serializers.ModelSerializer):
             "capacidad_horas_mes",
             "fecha_ingreso",
             "fecha_retiro",
+            "jira_account_id",
             "tarifa_vigente",
             "proyectos_activos",
             "activo",
