@@ -210,6 +210,19 @@ export class DetalleProyecto {
     this.drawerAsignacionAbierto.set(true);
   }
 
+  protected abrirEditarAsignacion(asignacion: AsignacionRecurso): void {
+    this.idAsignacionEnEdicion.set(asignacion.id);
+    this.asigRecurso.set(asignacion.recurso);
+    this.asigRolEnProyecto.set(asignacion.rol_en_proyecto);
+    this.asigFechaDesde.set(asignacion.fecha_desde);
+    this.asigFechaHasta.set(asignacion.fecha_hasta);
+    this.asigPorcentajeDedicacion.set(Number(asignacion.porcentaje_dedicacion));
+    this.asigHorasPlaneadas.set(Number(asignacion.horas_planeadas));
+    this.asigValorHoraPlan.set(Number(asignacion.valor_hora_plan));
+    this.asigTarifaManual.set(true);
+    this.drawerAsignacionAbierto.set(true);
+  }
+
   protected cerrarDrawerAsignacion(): void {
     this.drawerAsignacionAbierto.set(false);
   }
@@ -270,6 +283,7 @@ export class DetalleProyecto {
         this.guardandoAsignacion.set(false);
         this.drawerAsignacionAbierto.set(false);
         this.cargarAsignaciones();
+        this.cargarEjecucion();
         for (const advertencia of respuesta.advertencias) {
           this.toast.mostrar({ tipo: 'alerta', mensaje: advertencia });
         }
