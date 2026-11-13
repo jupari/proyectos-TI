@@ -83,9 +83,19 @@ CRUD estándar (`GET` lista, `POST`, `GET {id}`, `PATCH {id}`, `DELETE {id}` ló
 | GET | `/proyectos/{id}/fases/` | lista anidada |
 | GET | `/proyectos/{id}/hitos/` | |
 | GET | `/proyectos/{id}/rubros/` | |
+| POST | `/proyectos/{id}/fases/guardar-lote/` | (adenda) `{fases: [...]}` — reemplaza toda la lista de fases activas en una transacción: crea las que no traen `id`, actualiza las que sí, y da de baja las que faltan; valida `peso` suma 100 una sola vez al final (lista vacía = borra todas, sin exigir 100). Es la única forma práctica de redistribuir pesos entre fases ya existentes — ver nota abajo |
 
 Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
 `/fases-proyecto/`, `/hitos/`, `/rubros-presupuesto/`.
+
+- `/fases-proyecto/`: crear/editar fila por fila exige que la suma de `peso` dé exactamente 100
+  **después de cada guardado individual** — por eso no sirve para repartir el peso entre dos
+  fases que ya existen (cualquier paso intermedio deja la suma mal); para eso está
+  `POST /proyectos/{id}/fases/guardar-lote/` de arriba, que lo valida una sola vez al final.
+- `/rubros-presupuesto/`: crear o editar un rubro valida que `Proyecto.presupuesto_dinero` siga
+  siendo `>=` la suma de `monto_planeado` de los rubros activos (422 si no); esto sí se puede
+  hacer fila por fila porque es una desigualdad, no una igualdad — nunca hay un paso intermedio
+  inválido que dependa de otra fila.
 
 ---
 

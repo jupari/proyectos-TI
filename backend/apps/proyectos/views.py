@@ -1,3 +1,5 @@
+from django.db import transaction
+from django.db.models import F
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -21,7 +23,7 @@ from .serializers import (
     ProyectoListaSerializer,
     RubroPresupuestoSerializer,
 )
-from .services import cambiar_estado
+from .services import cambiar_estado, validar_pesos_fases
 
 
 class PermisoProyecto(EsLiderDelProyectoOLectura):
@@ -124,6 +126,61 @@ class ProyectoViewSet(MixinAlcancePorRol, ViewSetBase):
         proyecto = self.get_object()
         serializer = FaseProyectoSerializer(proyecto.fases.filter(activo=True), many=True)
         return Response(serializer.data)
+
+    @extend_schema(
+        summary="Guarda todas las fases del proyecto en una sola transacción",
+        description="docs/plan/fase-05-proyectos-presupuesto.md (adenda): reemplaza la lista "
+        "completa de fases activas — crea las que no traen `id`, actualiza las que sí, y da "
+        "de baja (lógica) las que ya no vienen en la lista — y valida que la suma de `peso` "
+        "sea 100 una sola vez al final, en vez de en cada fila como exige "
+        "`POST /fases-proyecto/`: redistribuir pesos entre fases existentes es imposible "
+        "guardándolas una por una. Lista vacía = borra todas las fases, sin exigir 100.",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {"fases": {"type": "array", "items": {"type": "object"}}},
+                "required": ["fases"],
+            }
+        },
+        responses=FaseProyectoSerializer(many=True),
+    )
+    @action(detail=True, methods=["post"], url_path="fases/guardar-lote")
+    def guardar_fases_lote(self, request, pk=None):
+        proyecto = self.get_object()
+        datos = request.data.get("fases")
+        if not isinstance(datos, list):
+            raise ValidationError({"fases": ["Debe ser una lista de fases."]})
+
+        with transaction.atomic():
+            # Despeja los `orden` actuales antes de reasignarlos: si dos fases
+            # intercambian su orden, actualizarlas una por una chocaría contra
+            # `faseproyecto_orden_unico` (una todavía tendría el valor que la
+            # otra está por tomar).
+            proyecto.fases.filter(activo=True).update(orden=F("orden") + 100000)
+
+            fases_guardadas = []
+            ids_enviados = set()
+            for item in datos:
+                fase_id = item.get("id")
+                instancia = proyecto.fases.filter(id=fase_id).first() if fase_id else None
+                serializer = FaseProyectoSerializer(
+                    instancia, data={**item, "proyecto": str(proyecto.id)}
+                )
+                serializer.is_valid(raise_exception=True)
+                fase = serializer.save()
+                ids_enviados.add(fase.id)
+                fases_guardadas.append(fase)
+
+            for fase in proyecto.fases.filter(activo=True).exclude(id__in=ids_enviados):
+                fase.eliminar_logico(
+                    usuario=request.user if request.user.is_authenticated else None
+                )
+
+            if datos:
+                validar_pesos_fases(proyecto)
+
+        fases_guardadas.sort(key=lambda f: f.orden)
+        return Response(FaseProyectoSerializer(fases_guardadas, many=True).data)
 
     @extend_schema(summary="Hitos del proyecto", responses=HitoSerializer(many=True))
     @action(detail=True, methods=["get"])
@@ -309,12 +366,27 @@ class ProyectoViewSet(MixinAlcancePorRol, ViewSetBase):
 
 
 class FaseProyectoViewSet(ViewSetBase):
+    """Crear/editar una fase a la vez. Para repartir el peso entre varias
+    fases en un solo guardado (lo único que de verdad hace falta en la
+    pantalla de edición), usar `POST /proyectos/{id}/fases/guardar-lote/`
+    en su lugar."""
+
     queryset = FaseProyecto.objects.select_related("proyecto")
     serializer_lectura_class = FaseProyectoSerializer
     serializer_escritura_class = FaseProyectoSerializer
     permission_classes = [EsLiderDelProyectoOLectura]
     filterset_fields = ["proyecto", "estado"]
     ordering_fields = ["orden", "fecha_inicio_plan"]
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        validar_pesos_fases(serializer.instance.proyecto)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        validar_pesos_fases(serializer.instance.proyecto)
 
 
 class HitoViewSet(ViewSetBase):

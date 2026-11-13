@@ -7,17 +7,26 @@ import { ChartData, ChartOptions } from 'chart.js';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
   AsignacionRecurso,
+  CategoriaRubro,
+  ETIQUETAS_CATEGORIA_RUBRO,
+  ETIQUETAS_ESTADO_FASE,
+  ETIQUETAS_ESTADO_HITO,
   ETIQUETAS_ESTADO_PROYECTO,
   ETIQUETAS_ESTADO_TAREA,
   ETIQUETAS_PRIORIDAD,
   ETIQUETAS_TIPO_DEPENDENCIA,
   ETIQUETAS_TIPO_TAREA,
   ErrorApi,
+  EstadoFase,
+  EstadoHito,
   GastoEjecutado,
+  Hito,
+  RubroPresupuesto,
   ResumenTareasTablero,
   Seguimiento,
   TRANSICIONES_PROYECTO,
 } from '../../../core/models';
+import { ConfirmacionService } from '../../../core/ui/confirmacion.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { EtiquetaEnumPipe, FechaCortaPipe, HorasPipe, MonedaPipe, PorcentajePipe } from '../../../shared/pipes';
 import { Badge } from '../../../shared/ui/badge/badge';
@@ -45,9 +54,22 @@ import { DependenciaTareaEscritura, DependenciasService } from '../../tareas/dat
 import { FilaCronograma, NodoArbolTarea, TareaEscritura } from '../../tareas/data/tareas.model';
 import { TareasService } from '../../tareas/data/tareas.service';
 import { FilaComparativoEjecucion, ProyectoDetalle } from '../data/proyectos.model';
-import { ProyectosService } from '../data/proyectos.service';
+import { HitosService, ProyectosService, RubrosPresupuestoService } from '../data/proyectos.service';
 import { columnaDeFecha, construirPeriodosMes, construirPeriodosSemana, PeriodoCronograma, rangoFechasDe } from './cronograma.utils';
 import { NodoArbolTareaFila } from './nodo-arbol-tarea';
+
+interface FilaFaseEditable {
+  /** Identifica la fila en el array local; es el `id` real si ya existe,
+   * o una clave temporal mientras no se haya guardado. */
+  clave: string;
+  id: string | null;
+  nombre: string;
+  orden: number;
+  peso: number | null;
+  fecha_inicio_plan: string | null;
+  fecha_fin_plan: string | null;
+  estado: EstadoFase;
+}
 
 const PESTANAS: PestanaTab[] = [
   { id: 'resumen', etiqueta: 'Resumen' },
@@ -102,8 +124,11 @@ export class DetalleProyecto {
   private readonly gastosService = inject(GastosService);
   private readonly seguimientosService = inject(SeguimientosService);
   private readonly tableroService = inject(TableroService);
+  private readonly hitosService = inject(HitosService);
+  private readonly rubrosService = inject(RubrosPresupuestoService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly confirmacion = inject(ConfirmacionService);
   private readonly ruta = inject(ActivatedRoute);
 
   protected readonly ETIQUETAS_ESTADO_PROYECTO = ETIQUETAS_ESTADO_PROYECTO;
@@ -132,14 +157,6 @@ export class DetalleProyecto {
     }));
   });
 
-  protected readonly sumaPesosFases = computed(() => {
-    const proyecto = this.proyecto();
-    if (!proyecto) return 0;
-    return proyecto.fases
-      .filter((fase) => fase.activo)
-      .reduce((total, fase) => total + Number(fase.peso), 0);
-  });
-
   protected readonly totalRubrosPlaneado = computed(() => {
     const proyecto = this.proyecto();
     if (!proyecto) return 0;
@@ -151,6 +168,308 @@ export class DetalleProyecto {
     if (!proyecto) return 0;
     return proyecto.rubros.reduce((total, rubro) => total + Number(rubro.monto_ejecutado), 0);
   });
+
+  // --- pestaña Fases (fase 05, adenda: guardado en lote) -------------------
+
+  protected readonly fasesEditables = signal<FilaFaseEditable[]>([]);
+  protected readonly guardandoFases = signal(false);
+
+  protected readonly opcionesEstadoFase: OpcionSelect[] = Object.entries(ETIQUETAS_ESTADO_FASE).map(
+    ([valor, etiqueta]) => ({ valor, etiqueta }),
+  );
+
+  protected readonly sumaPesosFases = computed(() =>
+    this.fasesEditables().reduce((total, fase) => total + (fase.peso ?? 0), 0),
+  );
+
+  private aFasesEditables(fases: ProyectoDetalle['fases']): FilaFaseEditable[] {
+    return fases
+      .filter((fase) => fase.activo)
+      .slice()
+      .sort((a, b) => a.orden - b.orden)
+      .map((fase) => ({
+        clave: fase.id,
+        id: fase.id,
+        nombre: fase.nombre,
+        orden: fase.orden,
+        peso: Number(fase.peso),
+        fecha_inicio_plan: fase.fecha_inicio_plan,
+        fecha_fin_plan: fase.fecha_fin_plan,
+        estado: fase.estado,
+      }));
+  }
+
+  protected agregarFaseFila(): void {
+    const filas = this.fasesEditables();
+    const siguienteOrden = filas.length > 0 ? Math.max(...filas.map((f) => f.orden)) + 1 : 1;
+    const proyecto = this.proyecto();
+    this.fasesEditables.set([
+      ...filas,
+      {
+        clave: `nueva-${Date.now()}`,
+        id: null,
+        nombre: '',
+        orden: siguienteOrden,
+        peso: 0,
+        fecha_inicio_plan: proyecto?.fecha_inicio_plan ?? null,
+        fecha_fin_plan: proyecto?.fecha_fin_plan ?? null,
+        estado: 'PENDIENTE',
+      },
+    ]);
+  }
+
+  protected quitarFaseFila(clave: string): void {
+    this.fasesEditables.set(this.fasesEditables().filter((f) => f.clave !== clave));
+  }
+
+  protected actualizarFaseFila(clave: string, cambios: Partial<FilaFaseEditable>): void {
+    this.fasesEditables.set(
+      this.fasesEditables().map((f) => (f.clave === clave ? { ...f, ...cambios } : f)),
+    );
+  }
+
+  protected guardarFases(): void {
+    const incompleta = this.fasesEditables().find(
+      (f) => !f.nombre.trim() || !f.fecha_inicio_plan || !f.fecha_fin_plan,
+    );
+    if (incompleta) {
+      this.toast.mostrar({
+        tipo: 'error',
+        mensaje: 'Complete el nombre y las fechas plan de todas las fases.',
+      });
+      return;
+    }
+
+    this.guardandoFases.set(true);
+    const cuerpo = this.fasesEditables().map((f) => ({
+      ...(f.id ? { id: f.id } : {}),
+      nombre: f.nombre.trim(),
+      orden: f.orden,
+      peso: f.peso ?? 0,
+      fecha_inicio_plan: f.fecha_inicio_plan,
+      fecha_fin_plan: f.fecha_fin_plan,
+      estado: f.estado,
+    }));
+
+    this.proyectosService.guardarFasesLote(this.id, cuerpo).subscribe({
+      next: (fases) => {
+        this.guardandoFases.set(false);
+        this.proyecto.update((p) => (p ? { ...p, fases } : p));
+        this.fasesEditables.set(this.aFasesEditables(fases));
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Fases guardadas.' });
+      },
+      error: (error: unknown) => {
+        this.guardandoFases.set(false);
+        this.toast.mostrar({ tipo: 'error', mensaje: this.mensajeDeErrorFases(error) });
+      },
+    });
+  }
+
+  private mensajeDeErrorFases(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      const cuerpo = error.error as Partial<ErrorApi> | null;
+      const peso = cuerpo?.error?.detalles?.['peso'] as unknown as string[] | undefined;
+      if (peso?.length) return peso[0];
+      return cuerpo?.error?.mensaje ?? 'No se pudieron guardar las fases.';
+    }
+    return 'No se pudieron guardar las fases.';
+  }
+
+  // --- pestaña Hitos (fase 05) ----------------------------------------------
+
+  protected readonly drawerHitoAbierto = signal(false);
+  protected readonly idHitoEnEdicion = signal<string | null>(null);
+  protected readonly hitoNombre = signal('');
+  protected readonly hitoDescripcion = signal('');
+  protected readonly hitoFechaPlan = signal<string | null>(null);
+  protected readonly hitoFechaReal = signal<string | null>(null);
+  protected readonly hitoEstado = signal<EstadoHito>('PENDIENTE');
+  protected readonly hitoCriterioCumplimiento = signal('');
+  protected readonly hitoEsEntregable = signal(false);
+  protected readonly guardandoHito = signal(false);
+
+  protected readonly opcionesEstadoHito: OpcionSelect[] = Object.entries(ETIQUETAS_ESTADO_HITO).map(
+    ([valor, etiqueta]) => ({ valor, etiqueta }),
+  );
+
+  protected abrirNuevoHito(): void {
+    this.idHitoEnEdicion.set(null);
+    this.hitoNombre.set('');
+    this.hitoDescripcion.set('');
+    this.hitoFechaPlan.set(null);
+    this.hitoFechaReal.set(null);
+    this.hitoEstado.set('PENDIENTE');
+    this.hitoCriterioCumplimiento.set('');
+    this.hitoEsEntregable.set(false);
+    this.drawerHitoAbierto.set(true);
+  }
+
+  protected abrirEditarHito(hito: Hito): void {
+    this.idHitoEnEdicion.set(hito.id);
+    this.hitoNombre.set(hito.nombre);
+    this.hitoDescripcion.set(hito.descripcion);
+    this.hitoFechaPlan.set(hito.fecha_plan);
+    this.hitoFechaReal.set(hito.fecha_real);
+    this.hitoEstado.set(hito.estado);
+    this.hitoCriterioCumplimiento.set(hito.criterio_cumplimiento);
+    this.hitoEsEntregable.set(hito.es_entregable);
+    this.drawerHitoAbierto.set(true);
+  }
+
+  protected cerrarDrawerHito(): void {
+    this.drawerHitoAbierto.set(false);
+  }
+
+  protected guardarHito(): void {
+    if (!this.hitoNombre().trim() || !this.hitoFechaPlan()) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Complete el nombre y la fecha plan.' });
+      return;
+    }
+
+    const cuerpo = {
+      proyecto: this.id,
+      nombre: this.hitoNombre().trim(),
+      descripcion: this.hitoDescripcion(),
+      fecha_plan: this.hitoFechaPlan()!,
+      fecha_real: this.hitoFechaReal(),
+      estado: this.hitoEstado(),
+      criterio_cumplimiento: this.hitoCriterioCumplimiento(),
+      es_entregable: this.hitoEsEntregable(),
+    };
+
+    this.guardandoHito.set(true);
+    const id = this.idHitoEnEdicion();
+    const peticion = id ? this.hitosService.actualizar(id, cuerpo) : this.hitosService.crear(cuerpo);
+    peticion.subscribe({
+      next: () => {
+        this.guardandoHito.set(false);
+        this.drawerHitoAbierto.set(false);
+        this.cargar();
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Hito guardado.' });
+      },
+      error: (error: unknown) => {
+        this.guardandoHito.set(false);
+        this.toast.mostrar({
+          tipo: 'error',
+          mensaje: this.mensajeDeError(error, 'No se pudo guardar el hito.'),
+        });
+      },
+    });
+  }
+
+  protected async eliminarHito(hito: Hito): Promise<void> {
+    const confirmado = await this.confirmacion.confirmar({
+      titulo: 'Eliminar hito',
+      mensaje: `¿Eliminar el hito «${hito.nombre}»?`,
+      variante: 'peligro',
+      textoConfirmar: 'Eliminar',
+    });
+    if (!confirmado) return;
+
+    this.hitosService.eliminar(hito.id).subscribe({
+      next: () => {
+        this.cargar();
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Hito eliminado.' });
+      },
+      error: (error: unknown) => {
+        this.toast.mostrar({
+          tipo: 'error',
+          mensaje: this.mensajeDeError(error, 'No se pudo eliminar el hito.'),
+        });
+      },
+    });
+  }
+
+  // --- pestaña Presupuesto (fase 05) -----------------------------------------
+
+  protected readonly drawerRubroAbierto = signal(false);
+  protected readonly idRubroEnEdicion = signal<string | null>(null);
+  protected readonly rubroCategoria = signal<string | null>('OTROS');
+  protected readonly rubroDescripcion = signal('');
+  protected readonly rubroMontoPlaneado = signal<number | null>(null);
+  protected readonly guardandoRubro = signal(false);
+
+  protected readonly opcionesCategoriaRubro: OpcionSelect[] = Object.entries(
+    ETIQUETAS_CATEGORIA_RUBRO,
+  ).map(([valor, etiqueta]) => ({ valor, etiqueta }));
+
+  protected abrirNuevoRubro(): void {
+    this.idRubroEnEdicion.set(null);
+    this.rubroCategoria.set('OTROS');
+    this.rubroDescripcion.set('');
+    this.rubroMontoPlaneado.set(null);
+    this.drawerRubroAbierto.set(true);
+  }
+
+  protected abrirEditarRubro(rubro: RubroPresupuesto): void {
+    this.idRubroEnEdicion.set(rubro.id);
+    this.rubroCategoria.set(rubro.categoria);
+    this.rubroDescripcion.set(rubro.descripcion);
+    this.rubroMontoPlaneado.set(Number(rubro.monto_planeado));
+    this.drawerRubroAbierto.set(true);
+  }
+
+  protected cerrarDrawerRubro(): void {
+    this.drawerRubroAbierto.set(false);
+  }
+
+  protected guardarRubro(): void {
+    if (!this.rubroCategoria() || !this.rubroDescripcion().trim() || !this.rubroMontoPlaneado()) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Complete los campos obligatorios.' });
+      return;
+    }
+
+    const cuerpo: Partial<RubroPresupuesto> = {
+      proyecto: this.id,
+      categoria: this.rubroCategoria()! as CategoriaRubro,
+      descripcion: this.rubroDescripcion().trim(),
+      monto_planeado: this.rubroMontoPlaneado() as unknown as string,
+    };
+
+    this.guardandoRubro.set(true);
+    const id = this.idRubroEnEdicion();
+    const peticion = id
+      ? this.rubrosService.actualizar(id, cuerpo)
+      : this.rubrosService.crear(cuerpo);
+    peticion.subscribe({
+      next: () => {
+        this.guardandoRubro.set(false);
+        this.drawerRubroAbierto.set(false);
+        this.cargar();
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Rubro guardado.' });
+      },
+      error: (error: unknown) => {
+        this.guardandoRubro.set(false);
+        this.toast.mostrar({
+          tipo: 'error',
+          mensaje: this.mensajeDeError(error, 'No se pudo guardar el rubro.'),
+        });
+      },
+    });
+  }
+
+  protected async eliminarRubro(rubro: RubroPresupuesto): Promise<void> {
+    const confirmado = await this.confirmacion.confirmar({
+      titulo: 'Eliminar rubro',
+      mensaje: `¿Eliminar el rubro «${rubro.descripcion}»?`,
+      variante: 'peligro',
+      textoConfirmar: 'Eliminar',
+    });
+    if (!confirmado) return;
+
+    this.rubrosService.eliminar(rubro.id).subscribe({
+      next: () => {
+        this.cargar();
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Rubro eliminado.' });
+      },
+      error: (error: unknown) => {
+        this.toast.mostrar({
+          tipo: 'error',
+          mensaje: this.mensajeDeError(error, 'No se pudo eliminar el rubro.'),
+        });
+      },
+    });
+  }
 
   // --- pestaña Recursos (fase 06) ---------------------------------------
 
@@ -883,6 +1202,7 @@ export class DetalleProyecto {
     this.proyectosService.obtenerDetalle(this.id).subscribe({
       next: (proyecto) => {
         this.proyecto.set(proyecto);
+        this.fasesEditables.set(this.aFasesEditables(proyecto.fases));
         this.cargando.set(false);
       },
       error: () => {

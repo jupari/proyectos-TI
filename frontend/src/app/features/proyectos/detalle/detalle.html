@@ -143,7 +143,7 @@
           [class]="sumaPesosFases() === 100 ? 'bg-exito/10 text-exito' : 'bg-alerta/10 text-alerta'"
         >
           Suma de pesos: {{ sumaPesosFases() }}%
-          @if (sumaPesosFases() !== 100) {
+          @if (sumaPesosFases() !== 100 && fasesEditables().length > 0) {
             — debe sumar 100%
           }
         </div>
@@ -152,33 +152,95 @@
             <tr>
               <th class="py-1">#</th><th class="py-1">Nombre</th><th class="py-1">Peso</th>
               <th class="py-1">Inicio plan</th><th class="py-1">Fin plan</th><th class="py-1">Estado</th>
+              <th class="py-1"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-neutro-100">
-            @for (fase of proyecto()!.fases; track fase.id) {
+            @for (fase of fasesEditables(); track fase.clave) {
               <tr>
-                <td class="py-2">{{ fase.orden }}</td>
-                <td class="py-2">{{ fase.nombre }}</td>
-                <td class="py-2">{{ fase.peso }}%</td>
-                <td class="py-2">{{ fase.fecha_inicio_plan | fechaCorta }}</td>
-                <td class="py-2">{{ fase.fecha_fin_plan | fechaCorta }}</td>
-                <td class="py-2"><app-badge [valor]="fase.estado" /></td>
+                @if (puedeEditar()) {
+                  <td class="py-2 w-16">
+                    <app-numero
+                      [ngModel]="fase.orden"
+                      (ngModelChange)="actualizarFaseFila(fase.clave, { orden: $event })"
+                    />
+                  </td>
+                  <td class="py-2">
+                    <app-input
+                      [ngModel]="fase.nombre"
+                      (ngModelChange)="actualizarFaseFila(fase.clave, { nombre: $event })"
+                    />
+                  </td>
+                  <td class="py-2 w-24">
+                    <app-numero
+                      [ngModel]="fase.peso"
+                      (ngModelChange)="actualizarFaseFila(fase.clave, { peso: $event })"
+                    />
+                  </td>
+                  <td class="py-2">
+                    <app-datepicker
+                      [ngModel]="fase.fecha_inicio_plan"
+                      (ngModelChange)="actualizarFaseFila(fase.clave, { fecha_inicio_plan: $event })"
+                    />
+                  </td>
+                  <td class="py-2">
+                    <app-datepicker
+                      [ngModel]="fase.fecha_fin_plan"
+                      (ngModelChange)="actualizarFaseFila(fase.clave, { fecha_fin_plan: $event })"
+                    />
+                  </td>
+                  <td class="py-2">
+                    <app-select
+                      [opciones]="opcionesEstadoFase"
+                      [ngModel]="fase.estado"
+                      (ngModelChange)="actualizarFaseFila(fase.clave, { estado: $event })"
+                    />
+                  </td>
+                  <td class="py-2">
+                    <app-boton variante="fantasma" tamano="sm" (clic)="quitarFaseFila(fase.clave)">
+                      Quitar
+                    </app-boton>
+                  </td>
+                } @else {
+                  <td class="py-2">{{ fase.orden }}</td>
+                  <td class="py-2">{{ fase.nombre }}</td>
+                  <td class="py-2">{{ fase.peso }}%</td>
+                  <td class="py-2">{{ fase.fecha_inicio_plan | fechaCorta }}</td>
+                  <td class="py-2">{{ fase.fecha_fin_plan | fechaCorta }}</td>
+                  <td class="py-2"><app-badge [valor]="fase.estado" /></td>
+                  <td></td>
+                }
               </tr>
             } @empty {
-              <tr><td colspan="6" class="py-4 text-neutro-400">Sin fases registradas.</td></tr>
+              <tr><td colspan="7" class="py-4 text-neutro-400">Sin fases registradas.</td></tr>
             }
           </tbody>
         </table>
+        @if (puedeEditar()) {
+          <div class="mt-3 flex justify-between">
+            <app-boton variante="secundario" tamano="sm" (clic)="agregarFaseFila()">
+              + Agregar fase
+            </app-boton>
+            <app-boton tamano="sm" [cargando]="guardandoFases()" (clic)="guardarFases()">
+              Guardar fases
+            </app-boton>
+          </div>
+        }
       </app-card>
     }
 
     @if (pestanaActiva() === 'hitos') {
       <app-card titulo="Hitos">
+        <div class="mb-3 flex justify-end">
+          @if (puedeEditar()) {
+            <app-boton tamano="sm" (clic)="abrirNuevoHito()">+ Nuevo hito</app-boton>
+          }
+        </div>
         <table class="w-full text-left text-sm">
           <thead class="text-neutro-500">
             <tr>
               <th class="py-1">Nombre</th><th class="py-1">Fecha plan</th><th class="py-1">Fecha real</th>
-              <th class="py-1">Estado</th><th class="py-1">Entregable</th>
+              <th class="py-1">Estado</th><th class="py-1">Entregable</th><th class="py-1"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-neutro-100">
@@ -189,9 +251,21 @@
                 <td class="py-2">{{ hito.fecha_real | fechaCorta }}</td>
                 <td class="py-2"><app-badge [valor]="hito.estado" /></td>
                 <td class="py-2">{{ hito.es_entregable ? 'Sí' : 'No' }}</td>
+                <td class="py-2">
+                  @if (puedeEditar()) {
+                    <div class="flex gap-2">
+                      <app-boton variante="fantasma" tamano="sm" (clic)="abrirEditarHito(hito)">
+                        Editar
+                      </app-boton>
+                      <app-boton variante="fantasma" tamano="sm" (clic)="eliminarHito(hito)">
+                        Eliminar
+                      </app-boton>
+                    </div>
+                  }
+                </td>
               </tr>
             } @empty {
-              <tr><td colspan="5" class="py-4 text-neutro-400">Sin hitos registrados.</td></tr>
+              <tr><td colspan="6" class="py-4 text-neutro-400">Sin hitos registrados.</td></tr>
             }
           </tbody>
         </table>
@@ -200,11 +274,16 @@
 
     @if (pestanaActiva() === 'presupuesto') {
       <app-card titulo="Presupuesto">
+        <div class="mb-3 flex justify-end">
+          @if (puedeEditar()) {
+            <app-boton tamano="sm" (clic)="abrirNuevoRubro()">+ Nuevo rubro</app-boton>
+          }
+        </div>
         <table class="w-full text-left text-sm">
           <thead class="text-neutro-500">
             <tr>
               <th class="py-1">Categoría</th><th class="py-1">Descripción</th>
-              <th class="py-1">Planeado</th><th class="py-1">Ejecutado</th>
+              <th class="py-1">Planeado</th><th class="py-1">Ejecutado</th><th class="py-1"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-neutro-100">
@@ -214,9 +293,21 @@
                 <td class="py-2">{{ rubro.descripcion }}</td>
                 <td class="py-2">{{ rubro.monto_planeado | moneda }}</td>
                 <td class="py-2">{{ rubro.monto_ejecutado | moneda }}</td>
+                <td class="py-2">
+                  @if (puedeEditar()) {
+                    <div class="flex gap-2">
+                      <app-boton variante="fantasma" tamano="sm" (clic)="abrirEditarRubro(rubro)">
+                        Editar
+                      </app-boton>
+                      <app-boton variante="fantasma" tamano="sm" (clic)="eliminarRubro(rubro)">
+                        Eliminar
+                      </app-boton>
+                    </div>
+                  }
+                </td>
               </tr>
             } @empty {
-              <tr><td colspan="4" class="py-4 text-neutro-400">Sin rubros registrados.</td></tr>
+              <tr><td colspan="5" class="py-4 text-neutro-400">Sin rubros registrados.</td></tr>
             }
           </tbody>
           <tfoot>
@@ -224,10 +315,12 @@
               <td class="py-2" colspan="2">Total rubros</td>
               <td class="py-2">{{ totalRubrosPlaneado() | moneda }}</td>
               <td class="py-2">{{ totalRubrosEjecutado() | moneda }}</td>
+              <td></td>
             </tr>
             <tr class="text-neutro-500">
               <td class="py-2" colspan="2">Presupuesto aprobado</td>
               <td class="py-2">{{ proyecto()!.presupuesto_dinero | moneda }}</td>
+              <td></td>
               <td></td>
             </tr>
           </tfoot>
@@ -898,6 +991,100 @@
     <div pie class="flex gap-2">
       <app-boton variante="secundario" (clic)="cerrarDrawerGasto()">Cancelar</app-boton>
       <app-boton [cargando]="guardandoGasto()" (clic)="guardarGasto()">Guardar</app-boton>
+    </div>
+  </app-drawer>
+
+  <app-drawer
+    [abierto]="drawerHitoAbierto()"
+    [titulo]="idHitoEnEdicion() ? 'Editar hito' : 'Nuevo hito'"
+    (cerrar)="cerrarDrawerHito()"
+  >
+    <div class="flex flex-col gap-4">
+      <app-input
+        etiqueta="Nombre *"
+        [ngModel]="hitoNombre()"
+        (ngModelChange)="hitoNombre.set($event)"
+        name="hitoNombre"
+      />
+      <app-textarea
+        etiqueta="Descripción"
+        [ngModel]="hitoDescripcion()"
+        (ngModelChange)="hitoDescripcion.set($event)"
+        name="hitoDescripcion"
+      />
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <app-datepicker
+          etiqueta="Fecha plan *"
+          [ngModel]="hitoFechaPlan()"
+          (ngModelChange)="hitoFechaPlan.set($event)"
+          name="hitoFechaPlan"
+        />
+        <app-datepicker
+          etiqueta="Fecha real"
+          [ngModel]="hitoFechaReal()"
+          (ngModelChange)="hitoFechaReal.set($event)"
+          name="hitoFechaReal"
+        />
+      </div>
+      <app-select
+        etiqueta="Estado"
+        [opciones]="opcionesEstadoHito"
+        [ngModel]="hitoEstado()"
+        (ngModelChange)="hitoEstado.set($event)"
+        name="hitoEstado"
+      />
+      <app-textarea
+        etiqueta="Criterio de cumplimiento"
+        [ngModel]="hitoCriterioCumplimiento()"
+        (ngModelChange)="hitoCriterioCumplimiento.set($event)"
+        name="hitoCriterioCumplimiento"
+      />
+      <label class="flex items-center gap-2 text-sm text-neutro-700">
+        <input
+          type="checkbox"
+          [ngModel]="hitoEsEntregable()"
+          (ngModelChange)="hitoEsEntregable.set($event)"
+          name="hitoEsEntregable"
+        />
+        Es un entregable
+      </label>
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarDrawerHito()">Cancelar</app-boton>
+      <app-boton [cargando]="guardandoHito()" (clic)="guardarHito()">Guardar</app-boton>
+    </div>
+  </app-drawer>
+
+  <app-drawer
+    [abierto]="drawerRubroAbierto()"
+    [titulo]="idRubroEnEdicion() ? 'Editar rubro' : 'Nuevo rubro'"
+    (cerrar)="cerrarDrawerRubro()"
+  >
+    <div class="flex flex-col gap-4">
+      <app-select
+        etiqueta="Categoría *"
+        [opciones]="opcionesCategoriaRubro"
+        [ngModel]="rubroCategoria()"
+        (ngModelChange)="rubroCategoria.set($event)"
+        name="rubroCategoria"
+      />
+      <app-input
+        etiqueta="Descripción *"
+        [ngModel]="rubroDescripcion()"
+        (ngModelChange)="rubroDescripcion.set($event)"
+        name="rubroDescripcion"
+      />
+      <app-numero
+        etiqueta="Monto planeado *"
+        modo="moneda"
+        [ngModel]="rubroMontoPlaneado()"
+        (ngModelChange)="rubroMontoPlaneado.set($event)"
+        name="rubroMontoPlaneado"
+      />
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarDrawerRubro()">Cancelar</app-boton>
+      <app-boton [cargando]="guardandoRubro()" (clic)="guardarRubro()">Guardar</app-boton>
     </div>
   </app-drawer>
 }

@@ -221,6 +221,146 @@ def test_guardar_fase_que_deja_suma_en_90_falla_con_mensaje_de_cuanto_falta(role
     assert "faltan 10" in respuesta.data["error"]["detalles"]["peso"][0].lower()
 
 
+# --- POST /proyectos/{id}/fases/guardar-lote/ --------------------------------
+
+
+def _fase_payload(**overrides):
+    base = {
+        "nombre": "Fase",
+        "orden": 1,
+        "peso": "100.00",
+        "fecha_inicio_plan": "2026-01-01",
+        "fecha_fin_plan": "2026-02-01",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_guardar_fases_lote_redistribuye_el_peso_entre_dos_fases(roles, cliente):
+    """Esto es justo lo que `POST /fases-proyecto/` fila por fila no puede
+    hacer: repartir el 100% entre dos fases cuando antes había una sola."""
+    proyecto = ProyectoFactory()
+    fase_unica = FaseProyectoFactory(proyecto=proyecto, orden=1, peso=100)
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.post(
+        f"/api/v1/proyectos/{proyecto.id}/fases/guardar-lote/",
+        {
+            "fases": [
+                _fase_payload(id=str(fase_unica.id), nombre="Diseño", orden=1, peso="60.00"),
+                _fase_payload(nombre="Construcción", orden=2, peso="40.00"),
+            ]
+        },
+        format="json",
+    )
+
+    assert respuesta.status_code == 200
+    pesos = {f["nombre"]: f["peso"] for f in respuesta.data}
+    assert pesos == {"Diseño": "60.00", "Construcción": "40.00"}
+    assert proyecto.fases.filter(activo=True).count() == 2
+
+
+def test_guardar_fases_lote_que_no_suma_100_rechaza_y_no_persiste_nada(roles, cliente):
+    proyecto = ProyectoFactory()
+    fase_unica = FaseProyectoFactory(proyecto=proyecto, orden=1, peso=100)
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.post(
+        f"/api/v1/proyectos/{proyecto.id}/fases/guardar-lote/",
+        {
+            "fases": [
+                _fase_payload(id=str(fase_unica.id), orden=1, peso="60.00"),
+                _fase_payload(nombre="Otra", orden=2, peso="30.00"),
+            ]
+        },
+        format="json",
+    )
+
+    assert respuesta.status_code == 422
+    assert proyecto.fases.filter(activo=True).count() == 1
+    fase_unica.refresh_from_db()
+    assert fase_unica.peso == 100
+    assert fase_unica.orden == 1
+
+
+def test_guardar_fases_lote_intercambia_el_orden_sin_chocar_con_la_restriccion_unica(
+    roles, cliente
+):
+    proyecto = ProyectoFactory()
+    fase_1 = FaseProyectoFactory(proyecto=proyecto, orden=1, peso=60)
+    fase_2 = FaseProyectoFactory(proyecto=proyecto, orden=2, peso=40)
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.post(
+        f"/api/v1/proyectos/{proyecto.id}/fases/guardar-lote/",
+        {
+            "fases": [
+                _fase_payload(id=str(fase_1.id), nombre=fase_1.nombre, orden=2, peso="60.00"),
+                _fase_payload(id=str(fase_2.id), nombre=fase_2.nombre, orden=1, peso="40.00"),
+            ]
+        },
+        format="json",
+    )
+
+    assert respuesta.status_code == 200
+    fase_1.refresh_from_db()
+    fase_2.refresh_from_db()
+    assert fase_1.orden == 2
+    assert fase_2.orden == 1
+
+
+def test_guardar_fases_lote_omite_una_fase_existente_la_da_de_baja(roles, cliente):
+    proyecto = ProyectoFactory()
+    fase_1 = FaseProyectoFactory(proyecto=proyecto, orden=1, peso=60)
+    fase_2 = FaseProyectoFactory(proyecto=proyecto, orden=2, peso=40)
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.post(
+        f"/api/v1/proyectos/{proyecto.id}/fases/guardar-lote/",
+        {"fases": [_fase_payload(id=str(fase_1.id), nombre=fase_1.nombre, orden=1, peso="100.00")]},
+        format="json",
+    )
+
+    assert respuesta.status_code == 200
+    fase_2.refresh_from_db()
+    assert fase_2.activo is False
+
+
+def test_guardar_fases_lote_vacio_borra_todas_sin_exigir_100(roles, cliente):
+    proyecto = ProyectoFactory()
+    fase = FaseProyectoFactory(proyecto=proyecto, orden=1, peso=100)
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.post(
+        f"/api/v1/proyectos/{proyecto.id}/fases/guardar-lote/", {"fases": []}, format="json"
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.data == []
+    fase.refresh_from_db()
+    assert fase.activo is False
+
+
+def test_lider_ajeno_recibe_404_al_guardar_fases_en_lote(roles, cliente):
+    lider = crear_usuario_con_rol("LIDER")
+    otro_gerente = crear_usuario_con_rol("LIDER")
+    proyecto_ajeno = ProyectoFactory(gerente=otro_gerente)
+    cliente.force_authenticate(user=lider)
+
+    respuesta = cliente.post(
+        f"/api/v1/proyectos/{proyecto_ajeno.id}/fases/guardar-lote/",
+        {"fases": [_fase_payload()]},
+        format="json",
+    )
+
+    assert respuesta.status_code == 404
+
+
 # --- presupuesto vs rubros --------------------------------------------------
 
 
@@ -240,6 +380,66 @@ def test_presupuesto_menor_que_suma_de_rubros_se_rechaza(roles, cliente):
     assert "presupuesto_dinero" in respuesta.data["error"]["detalles"]
     proyecto.refresh_from_db()
     assert proyecto.presupuesto_dinero == 10_000_000
+
+
+def test_crear_rubro_que_excede_el_presupuesto_se_rechaza(roles, cliente):
+    proyecto = ProyectoFactory(presupuesto_dinero=10_000_000)
+    RubroPresupuestoFactory(proyecto=proyecto, monto_planeado=8_000_000)
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.post(
+        "/api/v1/rubros-presupuesto/",
+        {
+            "proyecto": str(proyecto.id),
+            "categoria": "OTROS",
+            "descripcion": "Imprevistos",
+            "monto_planeado": "3000000.00",
+        },
+        format="json",
+    )
+
+    assert respuesta.status_code == 422
+    assert "presupuesto_dinero" in respuesta.data["error"]["detalles"]
+    assert proyecto.rubros.filter(activo=True).count() == 1
+
+
+def test_editar_rubro_que_excede_el_presupuesto_se_rechaza(roles, cliente):
+    proyecto = ProyectoFactory(presupuesto_dinero=10_000_000)
+    rubro = RubroPresupuestoFactory(proyecto=proyecto, monto_planeado=8_000_000)
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.patch(
+        f"/api/v1/rubros-presupuesto/{rubro.id}/",
+        {"monto_planeado": "11000000.00"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 422
+    rubro.refresh_from_db()
+    assert rubro.monto_planeado == 8_000_000
+
+
+def test_crear_rubro_dentro_del_presupuesto_se_acepta(roles, cliente):
+    proyecto = ProyectoFactory(presupuesto_dinero=10_000_000)
+    RubroPresupuestoFactory(proyecto=proyecto, monto_planeado=8_000_000)
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.post(
+        "/api/v1/rubros-presupuesto/",
+        {
+            "proyecto": str(proyecto.id),
+            "categoria": "OTROS",
+            "descripcion": "Imprevistos",
+            "monto_planeado": "2000000.00",
+        },
+        format="json",
+    )
+
+    assert respuesta.status_code == 201
+    assert proyecto.rubros.filter(activo=True).count() == 2
 
 
 # --- mis_proyectos -----------------------------------------------------------
