@@ -3,7 +3,12 @@ from decimal import Decimal
 
 import pytest
 
-from apps.core.calculos import division_segura, meses_entre, prorratear_por_mes
+from apps.core.calculos import (
+    division_segura,
+    meses_entre,
+    prorratear_por_mes,
+    prorratear_por_rango,
+)
 
 
 @pytest.mark.parametrize(
@@ -56,3 +61,29 @@ def test_prorratear_por_mes_fuera_de_rango_devuelve_cero_del_mismo_tipo():
 def test_prorratear_por_mes_totalmente_dentro_de_un_mes_devuelve_el_total():
     desde, hasta = datetime.date(2026, 2, 5), datetime.date(2026, 2, 20)
     assert prorratear_por_mes(desde, hasta, Decimal("160"), 2026, 2) == Decimal("160")
+
+
+def test_prorratear_por_rango_reparte_proporcional_a_los_dias_de_una_semana():
+    # Asignación de 10 días (1-10 de marzo) con 100 horas; la semana 3-9 de
+    # marzo aporta 7 de esos 10 días.
+    desde, hasta = datetime.date(2026, 3, 1), datetime.date(2026, 3, 10)
+    semana = prorratear_por_rango(
+        desde, hasta, Decimal("100"), datetime.date(2026, 3, 3), datetime.date(2026, 3, 9)
+    )
+    assert semana == Decimal("70")
+
+
+def test_prorratear_por_rango_fuera_de_interseccion_devuelve_cero_del_mismo_tipo():
+    desde, hasta = datetime.date(2026, 3, 1), datetime.date(2026, 3, 10)
+    resultado = prorratear_por_rango(
+        desde, hasta, Decimal("100"), datetime.date(2026, 4, 1), datetime.date(2026, 4, 7)
+    )
+    assert resultado == Decimal("0")
+    assert isinstance(resultado, Decimal)
+
+
+def test_prorratear_por_mes_delega_en_prorratear_por_rango():
+    desde, hasta = datetime.date(2026, 2, 1), datetime.date(2026, 3, 31)
+    assert prorratear_por_mes(desde, hasta, Decimal("590"), 2026, 2) == prorratear_por_rango(
+        desde, hasta, Decimal("590"), datetime.date(2026, 2, 1), datetime.date(2026, 2, 28)
+    )

@@ -5,6 +5,7 @@ from .views import (
     ExportarTableroView,
     RecursosOcupacionView,
     ResumenGlobalView,
+    TablaProyectosPorPeriodoView,
     TablaProyectosView,
     TareasResumenView,
 )
@@ -12,6 +13,11 @@ from .views import (
 urlpatterns = [
     path("tablero/resumen/", ResumenGlobalView.as_view(), name="tablero-resumen"),
     path("tablero/proyectos/", TablaProyectosView.as_view(), name="tablero-proyectos"),
+    path(
+        "tablero/proyectos-por-periodo/",
+        TablaProyectosPorPeriodoView.as_view(),
+        name="tablero-proyectos-por-periodo",
+    ),
     path(
         "tablero/ejecucion-mensual/",
         EjecucionMensualView.as_view(),

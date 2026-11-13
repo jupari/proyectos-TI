@@ -9,4 +9,9 @@ export const tableroRoutes: Routes = [
     path: 'recursos',
     loadComponent: () => import('./recursos/recursos').then((m) => m.RecursosTablero),
   },
+  {
+    path: 'proyectos-por-periodo',
+    loadComponent: () =>
+      import('./proyectos-periodo/proyectos-periodo').then((m) => m.ProyectosPeriodoTablero),
+  },
 ];

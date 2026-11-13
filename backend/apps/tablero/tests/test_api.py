@@ -58,6 +58,65 @@ def test_recurso_sin_asignaciones_no_ve_ningun_proyecto_en_el_tablero(roles, cli
     assert resumen["pct_horas"] is None
 
 
+# --- /tablero/proyectos-por-periodo/ -------------------------------------
+
+
+def test_proyectos_por_periodo_trae_filas_y_totales(roles, cliente):
+    admin = crear_usuario_con_rol("ADMIN")
+    proyecto = ProyectoFactory()
+    AsignacionRecursoFactory(
+        proyecto=proyecto,
+        fecha_desde=datetime.date(2026, 3, 1),
+        fecha_hasta=datetime.date(2026, 3, 31),
+        horas_planeadas=310,
+        valor_hora_plan=50_000,
+    )
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.get(
+        "/api/v1/tablero/proyectos-por-periodo/",
+        {"desde": "2026-03-01", "hasta": "2026-03-31"},
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.data["filas"] == [
+        {
+            "id": str(proyecto.id),
+            "codigo": proyecto.codigo,
+            "nombre": proyecto.nombre,
+            "horas_plan": Decimal("310.00"),
+            "horas_ejec": Decimal("0"),
+            "pct_horas": 0.0,
+        }
+    ]
+    assert respuesta.data["totales"]["horas_plan"] == Decimal("310.00")
+    assert "calculado_en" in respuesta.data
+
+
+def test_proyectos_por_periodo_sin_fechas_da_400(roles, cliente):
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.get("/api/v1/tablero/proyectos-por-periodo/")
+
+    assert respuesta.status_code == 400
+
+
+def test_lider_en_proyectos_por_periodo_solo_ve_sus_proyectos(roles, cliente):
+    lider = crear_usuario_con_rol("LIDER")
+    otro_gerente = crear_usuario_con_rol("LIDER")
+    proyecto_propio = ProyectoFactory(gerente=lider)
+    ProyectoFactory(gerente=otro_gerente)
+    cliente.force_authenticate(user=lider)
+
+    respuesta = cliente.get(
+        "/api/v1/tablero/proyectos-por-periodo/",
+        {"desde": "2026-03-01", "hasta": "2026-03-31"},
+    )
+
+    assert [fila["codigo"] for fila in respuesta.data["filas"]] == [proyecto_propio.codigo]
+
+
 # --- Exportación CSV -----------------------------------------------------
 
 

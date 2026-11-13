@@ -9,10 +9,15 @@ import {
   RecursosTablero,
   ResumenGlobalTablero,
   ResumenTareasTablero,
+  TablaProyectosPorPeriodoTablero,
   TablaProyectosTablero,
 } from '../../../core/models';
 
-export type VistaExportarTablero = 'proyectos' | 'recursos' | 'ejecucion-mensual';
+export type VistaExportarTablero =
+  | 'proyectos'
+  | 'recursos'
+  | 'ejecucion-mensual'
+  | 'proyectos-por-periodo';
 
 /** Los seis endpoints de `docs/api-contrato.md §7` no son un CRUD de un
  * recurso (no hay modelo propio: todo es agregación de solo lectura), así
@@ -47,6 +52,12 @@ export class TableroService {
 
   ejecucionMensual(filtros?: FiltrosTablero): Observable<EjecucionMensualTablero> {
     return this.http.get<EjecucionMensualTablero>(`${this.base}/ejecucion-mensual/`, {
+      params: this.parametros(filtros),
+    });
+  }
+
+  proyectosPorPeriodo(filtros?: FiltrosTablero): Observable<TablaProyectosPorPeriodoTablero> {
+    return this.http.get<TablaProyectosPorPeriodoTablero>(`${this.base}/proyectos-por-periodo/`, {
       params: this.parametros(filtros),
     });
   }

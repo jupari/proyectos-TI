@@ -20,6 +20,7 @@ from ..services import (
     resumen_tareas,
     semaforo_calculado,
     tabla_proyectos,
+    tabla_proyectos_por_periodo,
 )
 
 pytestmark = pytest.mark.django_db
@@ -346,6 +347,109 @@ def test_ejecucion_mensual_suma_lo_ejecutado_al_mes_de_su_periodo_inicio():
 def test_ejecucion_mensual_sin_asignaciones_ni_ejecucion_devuelve_vacio():
     proyecto = ProyectoFactory()
     assert ejecucion_mensual(Proyecto.objects.filter(id=proyecto.id)) == []
+
+
+# --- tabla_proyectos_por_periodo ---------------------------------------------
+
+
+def test_tabla_proyectos_por_periodo_reparte_el_plan_por_dias_del_rango_elegido():
+    """A diferencia de `ejecucion_mensual`, el rango no se parte en meses
+    calendario: una semana dentro de un mes debe prorratear solo esos
+    días, no el mes completo."""
+    proyecto = ProyectoFactory(
+        fecha_inicio_plan=datetime.date(2026, 1, 1), fecha_fin_plan=datetime.date(2026, 12, 31)
+    )
+    AsignacionRecursoFactory(
+        proyecto=proyecto,
+        fecha_desde=datetime.date(2026, 3, 1),
+        fecha_hasta=datetime.date(2026, 3, 10),
+        horas_planeadas=100,
+    )
+
+    resultado = tabla_proyectos_por_periodo(
+        Proyecto.objects.filter(id=proyecto.id),
+        datetime.date(2026, 3, 3),
+        datetime.date(2026, 3, 9),
+    )
+
+    assert resultado["filas"] == [
+        {
+            "id": str(proyecto.id),
+            "codigo": proyecto.codigo,
+            "nombre": proyecto.nombre,
+            "horas_plan": Decimal("70"),
+            "horas_ejec": Decimal("0"),
+            "pct_horas": 0.0,
+        }
+    ]
+    assert resultado["totales"]["horas_plan"] == Decimal("70")
+
+
+def test_tabla_proyectos_por_periodo_solo_suma_lo_ejecutado_dentro_del_rango():
+    proyecto = ProyectoFactory()
+    RegistroEjecucionFactory(
+        proyecto=proyecto,
+        horas=8,
+        valor_hora_aplicado=50_000,
+        estado_aprobacion=EstadoAprobacion.APROBADO,
+        periodo_inicio=datetime.date(2026, 3, 5),
+        periodo_fin=datetime.date(2026, 3, 5),
+    )
+    RegistroEjecucionFactory(
+        proyecto=proyecto,
+        horas=5,
+        valor_hora_aplicado=50_000,
+        estado_aprobacion=EstadoAprobacion.APROBADO,
+        periodo_inicio=datetime.date(2026, 4, 1),
+        periodo_fin=datetime.date(2026, 4, 1),
+    )
+
+    resultado = tabla_proyectos_por_periodo(
+        Proyecto.objects.filter(id=proyecto.id),
+        datetime.date(2026, 3, 1),
+        datetime.date(2026, 3, 31),
+    )
+
+    assert resultado["filas"][0]["horas_ejec"] == Decimal("8.00")
+
+
+def test_tabla_proyectos_por_periodo_totales_coinciden_con_la_suma_de_las_filas():
+    proyecto_1 = ProyectoFactory()
+    proyecto_2 = ProyectoFactory()
+    AsignacionRecursoFactory(
+        proyecto=proyecto_1,
+        fecha_desde=datetime.date(2026, 3, 1),
+        fecha_hasta=datetime.date(2026, 3, 31),
+        horas_planeadas=100,
+    )
+    AsignacionRecursoFactory(
+        proyecto=proyecto_2,
+        fecha_desde=datetime.date(2026, 3, 1),
+        fecha_hasta=datetime.date(2026, 3, 31),
+        horas_planeadas=50,
+    )
+
+    resultado = tabla_proyectos_por_periodo(
+        Proyecto.objects.filter(id__in=[proyecto_1.id, proyecto_2.id]),
+        datetime.date(2026, 3, 1),
+        datetime.date(2026, 3, 31),
+    )
+
+    assert len(resultado["filas"]) == 2
+    assert resultado["totales"]["horas_plan"] == sum(
+        f["horas_plan"] for f in resultado["filas"]
+    )
+
+
+def test_tabla_proyectos_por_periodo_sin_plan_pct_horas_es_null():
+    proyecto = ProyectoFactory()
+    resultado = tabla_proyectos_por_periodo(
+        Proyecto.objects.filter(id=proyecto.id),
+        datetime.date(2026, 3, 1),
+        datetime.date(2026, 3, 31),
+    )
+    assert resultado["filas"][0]["pct_horas"] is None
+    assert resultado["totales"]["pct_horas"] is None
 
 
 # --- ocupacion_recursos -------------------------------------------------------

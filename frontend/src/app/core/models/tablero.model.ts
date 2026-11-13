@@ -50,6 +50,27 @@ export interface TablaProyectosTablero {
   calculado_en: string;
 }
 
+export interface FilaTableroProyectoPeriodo {
+  id: string;
+  codigo: string;
+  nombre: string;
+  horas_plan: number;
+  horas_ejec: number;
+  pct_horas: number | null;
+}
+
+export interface TotalesTableroProyectoPeriodo {
+  horas_plan: number;
+  horas_ejec: number;
+  pct_horas: number | null;
+}
+
+export interface TablaProyectosPorPeriodoTablero {
+  filas: FilaTableroProyectoPeriodo[];
+  totales: TotalesTableroProyectoPeriodo;
+  calculado_en: string;
+}
+
 export interface PuntoEjecucionMensual {
   mes: string;
   horas_plan: number;
