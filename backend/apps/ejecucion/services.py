@@ -473,7 +473,14 @@ def _resolver_recurso_por_worklog(cliente, worklog, resumen):
     """Devuelve `(recurso, info_jira)`: `recurso` es `None` si no hubo forma
     de encontrarlo, pero `info_jira` (`{"correo", "nombre"}`, cuando Jira
     los pudo resolver) siempre se devuelve para que el omitido sea
-    identificable por una persona, no solo por un id de worklog."""
+    identificable por una persona, no solo por un id de worklog.
+
+    Primero intenta por correo (`Recurso.email`); la mayoría de las cuentas
+    de Jira no expone el correo por la API (depende de la visibilidad de
+    cuenta de cada persona en Jira, no hay forma de forzarlo desde acá), así
+    que si no hay correo o no coincide con ningún `Recurso` se cae a
+    `Recurso.jira_account_id`, el mapeo manual que el admin deja en
+    `/admin/integraciones` para esos casos."""
     account_id = worklog["author"]["accountId"]
     try:
         info_jira = cliente.resolver_correo_usuario(account_id)
@@ -483,13 +490,63 @@ def _resolver_recurso_por_worklog(cliente, worklog, resumen):
         )
         return None, None
 
-    correo = info_jira.get("correo") if info_jira else None
-    if not correo:
-        return None, info_jira
-
     from apps.recursos.models import Recurso
 
-    return Recurso.objects.filter(email__iexact=correo).first(), info_jira
+    correo = info_jira.get("correo") if info_jira else None
+    if correo:
+        recurso = Recurso.objects.filter(email__iexact=correo).first()
+        if recurso is not None:
+            return recurso, info_jira
+
+    return Recurso.objects.filter(jira_account_id=account_id).first(), info_jira
+
+
+def personas_jira_sin_mapear(desde, hasta):
+    """Cuentas de Jira con worklogs entre `desde` y `hasta` que no resuelven
+    a ningún `Recurso` (ni por correo ni por `jira_account_id` ya mapeado),
+    para que `/admin/integraciones` las liste y el admin las asocie a mano
+    una sola vez (fase 12, adenda: la mayoría de las cuentas de Jira no
+    expone su correo por la API)."""
+    from apps.recursos.models import Recurso
+
+    from .integraciones.jira_tempo import ClienteJiraTempo, ErrorIntegracionJira
+
+    cliente = ClienteJiraTempo()
+    try:
+        worklogs = cliente.obtener_worklogs(desde, hasta)
+    except ErrorIntegracionJira:
+        return []
+
+    conteo_por_cuenta = {}
+    for worklog in worklogs:
+        account_id = worklog["author"]["accountId"]
+        conteo_por_cuenta[account_id] = conteo_por_cuenta.get(account_id, 0) + 1
+
+    mapeadas = set(
+        Recurso.objects.filter(jira_account_id__in=conteo_por_cuenta).values_list(
+            "jira_account_id", flat=True
+        )
+    )
+
+    resultado = []
+    for account_id, cantidad in conteo_por_cuenta.items():
+        if account_id in mapeadas:
+            continue
+        try:
+            info_jira = cliente.resolver_correo_usuario(account_id)
+        except Exception:  # noqa: BLE001 - una cuenta rara no debe tumbar el listado
+            info_jira = None
+        correo = info_jira.get("correo") if info_jira else None
+        if correo and Recurso.objects.filter(email__iexact=correo).exists():
+            continue
+        resultado.append(
+            {
+                "jira_account_id": account_id,
+                "nombre": (info_jira.get("nombre") if info_jira else None) or account_id,
+                "worklogs": cantidad,
+            }
+        )
+    return sorted(resultado, key=lambda fila: fila["nombre"])
 
 
 @transaction.atomic

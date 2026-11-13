@@ -466,3 +466,62 @@ $ docker compose -f infra/docker-compose.yml exec backend pytest -q
 $ docker compose -f infra/docker-compose.yml exec backend ruff check .
 All checks passed!
 ```
+
+## Adenda 4: solo se importaban las horas de una persona (correo no visible en Jira)
+
+El usuario pidió ver, en la pestaña Ejecución de `/proyectos/{id}`, las horas ejecutadas por cada
+recurso del proyecto — esa tabla ("Plan vs. ejecutado por recurso") ya existía desde la fase 08,
+pero solo mostraba a una persona pese a que en Jira hay docenas registrando horas.
+
+### Diagnóstico
+
+Se confirmó contra el Jira real del usuario: de 24 cuentas de Jira distintas con worklogs en el
+rango probado, **23 devuelven `emailAddress: null`** en `/rest/api/3/user` — solo la cuenta dueña
+del token (la del usuario) expone su correo. Esto es la configuración de privacidad de cuenta de
+cada persona en Atlassian ("Visibilidad de correo"), no algo que se pueda forzar con otro token ni
+con permisos de admin de Jira si la persona la puso en "Nadie". Como `_resolver_recurso_por_worklog`
+solo buscaba el `Recurso` por correo, todas esas 23 personas se omitían con "no tiene correo
+visible en Jira" — no es un bug, es el dato real que la API entrega — y por eso solo se importaban
+las horas de quien es dueño del token.
+
+Sí se obtiene de forma confiable el `displayName` de cada persona, con volúmenes de worklogs
+reales importantes (27 a 912 por cuenta en el rango probado).
+
+### Diseño
+
+- `Recurso` gana `jira_account_id` (Char(100), null, único cuando no es null) — un mapeo manual
+  Jira → Recurso para cuando el correo no está disponible.
+- `_resolver_recurso_por_worklog` ahora intenta primero por correo (como antes) y, si no hay
+  coincidencia, cae a `Recurso.objects.filter(jira_account_id=account_id)`.
+- Nuevo `GET /integraciones/jira/personas-sin-mapear/?desde=&hasta=` (`ADMIN`/`PMO`): trae los
+  worklogs del rango, agrupa por cuenta de Jira y devuelve las que no resuelven a ningún
+  `Recurso` (ni por correo ni por `jira_account_id` ya mapeado), con `{jira_account_id, nombre,
+  worklogs}` — para que el admin sepa a cuántas horas corresponde cada persona antes de asociarla.
+- `/admin/integraciones` gana una tercera tarjeta, "Personas de Jira sin asociar": busca con las
+  mismas fechas del importador y, por cada persona, un selector de `Recurso` existente + botón
+  "Asociar", que hace `PATCH /recursos/{id}/ {jira_account_id}` (reutiliza el endpoint de recursos
+  ya existente, sin endpoint nuevo para la escritura).
+- El mapeo se hace una sola vez por persona: de ahí en adelante toda corrida futura (comando o
+  botón) la resuelve sola.
+
+### Evidencia
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/ejecucion apps/recursos -q
+153 passed in 204.19s
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py check
+System check identified no issues (0 silenced).
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py makemigrations --check --dry-run
+No changes detected
+
+$ docker compose -f infra/docker-compose.yml exec frontend npm run lint
+All files pass linting.
+
+$ docker compose -f infra/docker-compose.yml exec frontend npx ng build
+Application bundle generation complete. [36.698 seconds]
+```

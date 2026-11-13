@@ -197,3 +197,61 @@ def test_otros_roles_no_pueden_disparar_la_importacion(roles, cliente, rol):
     )
 
     assert respuesta.status_code == 403
+
+
+# --- GET /integraciones/jira/personas-sin-mapear/ ----------------------------
+
+
+def test_admin_lista_personas_sin_mapear(roles, cliente):
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+    personas_falsas = [{"jira_account_id": "acc-1", "nombre": "Ana", "worklogs": 5}]
+
+    with patch(
+        "apps.ejecucion.views.personas_jira_sin_mapear", return_value=personas_falsas
+    ) as personas_mock:
+        respuesta = cliente.get(
+            "/api/v1/integraciones/jira/personas-sin-mapear/",
+            {"desde": "2026-01-01", "hasta": "2026-01-31"},
+        )
+
+    assert respuesta.status_code == 200
+    assert respuesta.data == personas_falsas
+    args, _ = personas_mock.call_args
+    assert args[0].isoformat() == "2026-01-01"
+    assert args[1].isoformat() == "2026-01-31"
+
+
+def test_pmo_tambien_puede_listar_personas_sin_mapear(roles, cliente):
+    pmo = crear_usuario_con_rol("PMO")
+    cliente.force_authenticate(user=pmo)
+
+    with patch("apps.ejecucion.views.personas_jira_sin_mapear", return_value=[]):
+        respuesta = cliente.get(
+            "/api/v1/integraciones/jira/personas-sin-mapear/",
+            {"desde": "2026-01-01", "hasta": "2026-01-31"},
+        )
+
+    assert respuesta.status_code == 200
+
+
+def test_personas_sin_mapear_sin_fechas_da_400(roles, cliente):
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.get("/api/v1/integraciones/jira/personas-sin-mapear/")
+
+    assert respuesta.status_code == 400
+
+
+@pytest.mark.parametrize("rol", ["LIDER", "RECURSO", "CONSULTA"])
+def test_otros_roles_no_pueden_listar_personas_sin_mapear(roles, cliente, rol):
+    usuario = crear_usuario_con_rol(rol)
+    cliente.force_authenticate(user=usuario)
+
+    respuesta = cliente.get(
+        "/api/v1/integraciones/jira/personas-sin-mapear/",
+        {"desde": "2026-01-01", "hasta": "2026-01-31"},
+    )
+
+    assert respuesta.status_code == 403

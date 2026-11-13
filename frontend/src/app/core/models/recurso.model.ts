@@ -10,6 +10,7 @@ export interface Recurso extends ModeloBase {
   capacidad_horas_mes: string;
   fecha_ingreso: string | null;
   fecha_retiro: string | null;
+  jira_account_id: string | null;
 }
 
 export interface TarifaRecurso extends ModeloBase {

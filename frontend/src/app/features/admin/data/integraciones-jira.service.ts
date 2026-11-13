@@ -43,6 +43,12 @@ export interface ResumenImportacionJira {
   errores: OmisionImportacion[];
 }
 
+export interface PersonaJiraSinMapear {
+  jira_account_id: string;
+  nombre: string;
+  worklogs: number;
+}
+
 /** Fase 12: no son recursos CRUD paginados (uno es una lista en vivo desde
  * Jira, el otro una fila única de configuración), así que no extiende
  * `ApiService<T>` — mismo criterio que `DocumentosService`. */
@@ -73,6 +79,13 @@ export class IntegracionesJiraService {
     return this.http.post<ResumenImportacionJira>(
       `${environment.apiBaseUrl}/integraciones/jira/importar/`,
       cuerpo,
+    );
+  }
+
+  listarPersonasSinMapear(desde: string, hasta: string): Observable<PersonaJiraSinMapear[]> {
+    return this.http.get<PersonaJiraSinMapear[]>(
+      `${environment.apiBaseUrl}/integraciones/jira/personas-sin-mapear/`,
+      { params: { desde, hasta } },
     );
   }
 }

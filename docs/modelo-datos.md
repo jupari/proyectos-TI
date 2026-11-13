@@ -138,8 +138,17 @@ Reglas: `U(proyecto, orden)`. La suma de `peso` de las fases activas de un proye
 | `capacidad_horas_mes` | Decimal horas | default 160 |
 | `fecha_ingreso` | Date | null |
 | `fecha_retiro` | Date | null |
+| `jira_account_id` | Char(100) | null, **U** cuando no es null; mapeo manual Jira → Recurso (fase 12) |
 
 Regla: si `usuario` está presente es **U**; un usuario no puede estar ligado a dos recursos.
+
+`jira_account_id` existe porque la mayoría de las cuentas de Jira no expone su correo por la API
+(depende de la configuración de privacidad de cada persona en su cuenta de Atlassian, no hay
+forma de forzarlo desde un token distinto): la importación de horas (§6, "Integración de horas
+con Jira/Tempo") resuelve el `Recurso` primero por `email`, y si no hay coincidencia, por este
+campo. Se llena a mano, una sola vez por persona, desde `/admin/integraciones` → "Personas de
+Jira sin asociar" (`GET /integraciones/jira/personas-sin-mapear/`, ver `docs/api-contrato.md`
+§6), que lista las cuentas de Jira con worklogs en un rango que no resuelven a ningún `Recurso`.
 
 ### `TarifaRecurso` — historial de tarifas, para costear con la vigente a la fecha
 `recurso` FK · `valor_hora` Decimal dinero · `moneda` Char(3) ·

@@ -6,6 +6,7 @@ from .views import (
     GastoEjecutadoViewSet,
     ImportarHorasJiraView,
     IntegracionJiraProyectosView,
+    PersonasJiraSinMapearView,
     RegistroEjecucionViewSet,
 )
 
@@ -28,6 +29,11 @@ urlpatterns = [
         "integraciones/jira/importar/",
         ImportarHorasJiraView.as_view(),
         name="integracion-jira-importar",
+    ),
+    path(
+        "integraciones/jira/personas-sin-mapear/",
+        PersonasJiraSinMapearView.as_view(),
+        name="integracion-jira-personas-sin-mapear",
     ),
     *router.urls,
 ]

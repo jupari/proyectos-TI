@@ -135,6 +135,11 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
   si se omite, usa el valor global. Devuelve el mismo resumen que el comando
   (`{creados, actualizados, detalle: [{fecha, recurso_nombre, proyecto_codigo,
   proyecto_nombre, horas, accion}], omitidos, errores}`)
+- `GET /integraciones/jira/personas-sin-mapear/?desde=&hasta=` (fase 12 adenda, solo
+  `ADMIN`/`PMO`) → `[{jira_account_id, nombre, worklogs}]` de las cuentas de Jira con worklogs en
+  el rango que no resuelven a ningún `Recurso` (ni por correo ni por `jira_account_id` ya
+  mapeado); se asocian a mano con `PATCH /recursos/{id}/ {jira_account_id}` (docs/modelo-datos.md
+  §4)
 
 **Seguimiento**
 - `/seguimientos/` — filtros `proyecto`, `periodicidad`, `estado`, `fecha_corte__gte`
