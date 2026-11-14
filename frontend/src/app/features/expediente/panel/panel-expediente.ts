@@ -1,5 +1,13 @@
 import { JsonPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import {
@@ -43,7 +51,7 @@ const TAMANO_MAXIMO_MB = 25;
     JsonPipe,
   ],
 })
-export class PanelExpediente {
+export class PanelExpediente implements OnInit {
   readonly proyectoId = input.required<string>();
 
   private readonly proyectosService = inject(ProyectosService);
@@ -95,7 +103,10 @@ export class PanelExpediente {
     ([valor, etiqueta]) => ({ valor, etiqueta }),
   );
 
-  constructor() {
+  ngOnInit(): void {
+    // `proyectoId` es un input required de signal: no está disponible todavía
+    // en el constructor (Angular lo asigna después de construir la
+    // instancia), por eso la carga inicial se dispara acá y no ahí.
     this.cargarExpediente();
   }
 
