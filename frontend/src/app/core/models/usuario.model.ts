@@ -49,6 +49,13 @@ export interface RespuestaLogin {
   usuario: Usuario;
 }
 
+/** Respuesta del paso 1 del login local (fase 13): credenciales válidas,
+ * falta confirmar el código que se envió por correo. */
+export interface RespuestaSolicitarCodigo {
+  requiere_codigo: true;
+  login_token: string;
+}
+
 export interface RolMeta {
   id: string;
   codigo: string;

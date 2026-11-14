@@ -1,6 +1,7 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
+from django.utils import timezone
 
 from apps.core.choices import ProveedorAuth
 from apps.core.models import ModeloBase
@@ -65,6 +66,28 @@ class Usuario(AbstractUser, ModeloBase):
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellidos}"
+
+
+class CodigoAccesoDobleFactor(ModeloBase):
+    """Código de 6 dígitos enviado por correo para completar un login local
+    (fase 13). Su `id` (UUID heredado de `ModeloBase`) hace de `login_token`
+    que el frontend pasa junto con el código: es impredecible y de un solo
+    registro, no hace falta firmarlo."""
+
+    usuario = models.ForeignKey(
+        "accounts.Usuario", on_delete=models.CASCADE, related_name="codigos_2fa"
+    )
+    codigo_hash = models.CharField(max_length=128)
+    expira_en = models.DateTimeField()
+    intentos = models.PositiveSmallIntegerField(default=0)
+    usado_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "código de doble factor"
+        verbose_name_plural = "códigos de doble factor"
+
+    def vigente(self):
+        return self.usado_en is None and self.expira_en > timezone.now()
 
 
 class RolMeta(ModeloBase):

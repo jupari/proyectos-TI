@@ -8,8 +8,10 @@ from .views import (
     GoogleCallbackView,
     LoginView,
     LogoutView,
+    ReenviarCodigoView,
     RolViewSet,
     UsuarioViewSet,
+    VerificarCodigoView,
     YoView,
 )
 
@@ -19,6 +21,8 @@ router.register("roles", RolViewSet, basename="rol")
 
 urlpatterns = [
     path("auth/login/", LoginView.as_view(), name="auth-login"),
+    path("auth/verificar-codigo/", VerificarCodigoView.as_view(), name="auth-verificar-codigo"),
+    path("auth/reenviar-codigo/", ReenviarCodigoView.as_view(), name="auth-reenviar-codigo"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="auth-refresh"),
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("auth/yo/", YoView.as_view(), name="auth-yo"),

@@ -14,3 +14,15 @@ class LoginRateThrottle(ScopedRateThrottle):
         ident = self.get_ident(request)
         identificador = f"{ident}:{email}" if email else ident
         return self.cache_format % {"scope": self.scope, "ident": identificador}
+
+
+class CodigoRateThrottle(ScopedRateThrottle):
+    """Igual que `LoginRateThrottle`, pero el paso 2 del login (fase 13) no
+    manda `email` en el body — manda `login_token` — así que la clave de
+    caché se arma con ese campo en su lugar."""
+
+    def get_cache_key(self, request, view):
+        login_token = (request.data.get("login_token") or "").strip()
+        ident = self.get_ident(request)
+        identificador = f"{ident}:{login_token}" if login_token else ident
+        return self.cache_format % {"scope": self.scope, "ident": identificador}

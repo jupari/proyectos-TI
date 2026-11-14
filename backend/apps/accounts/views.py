@@ -1,3 +1,8 @@
+import datetime
+import secrets
+
+from django.conf import settings
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Group
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -9,7 +14,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.core.choices import TipoEvento
 from apps.core.exceptions import ErrorConflicto
@@ -18,7 +22,8 @@ from apps.core.roles import codigos_roles_de
 from apps.core.services import registrar_evento
 from apps.core.views import ViewSetBase
 
-from .models import RolMeta, Usuario
+from .correo import enviar_codigo_2fa
+from .models import CodigoAccesoDobleFactor, RolMeta, Usuario
 from .oauth import (
     canjear_codigo,
     construir_url_autorizacion,
@@ -28,14 +33,16 @@ from .oauth import (
 )
 from .serializers import (
     CambiarClaveSerializer,
-    LoginSerializer,
+    ReenviarCodigoSerializer,
     RolMetaSerializer,
+    SolicitarCodigoSerializer,
     UsuarioActualizarSerializer,
     UsuarioActualSerializer,
     UsuarioAdminEscrituraSerializer,
     UsuarioSerializer,
+    VerificarCodigoSerializer,
 )
-from .throttling import LoginRateThrottle
+from .throttling import CodigoRateThrottle, LoginRateThrottle
 
 
 def _tokens_de(usuario):
@@ -57,28 +64,104 @@ def _tokens_de(usuario):
     }
 
 
-class LoginView(TokenObtainPairView):
-    serializer_class = LoginSerializer
+def _generar_y_enviar_codigo(usuario):
+    codigo = f"{secrets.randbelow(1_000_000):06d}"
+    registro = CodigoAccesoDobleFactor.objects.create(
+        usuario=usuario,
+        codigo_hash=make_password(codigo),
+        expira_en=timezone.now() + datetime.timedelta(minutes=settings.OTP_LIFETIME_MINUTES),
+    )
+    enviar_codigo_2fa(usuario, codigo)
+    return registro
+
+
+class LoginView(APIView):
+    """Primer paso del login local (fase 13): valida email+clave y, si son
+    correctas, envía el código de verificación por correo en vez de emitir
+    tokens — eso lo hace `VerificarCodigoView` una vez confirmado el código."""
+
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
     throttle_scope = "login"
 
-    def post(self, request, *args, **kwargs):
-        respuesta = super().post(request, *args, **kwargs)
-        if respuesta.status_code == 200:
-            usuario = Usuario.objects.filter(email=request.data.get("email")).first()
-            if usuario is not None:
-                usuario.ultimo_acceso_en = timezone.now()
-                usuario.save(update_fields=["ultimo_acceso_en"])
-                respuesta.data["usuario"] = UsuarioSerializer(usuario).data
-                registrar_evento(
-                    tipo_evento=TipoEvento.LOGIN,
-                    entidad="Usuario",
-                    entidad_id=usuario.id,
-                    descripcion=f"Inicio de sesión de {usuario.email}.",
-                    usuario=usuario,
-                )
-        return respuesta
+    @extend_schema(
+        summary="Paso 1 del login local: valida credenciales y envía el código por correo",
+        request=SolicitarCodigoSerializer,
+        responses={200: {"type": "object", "properties": {
+            "requiere_codigo": {"type": "boolean"},
+            "login_token": {"type": "string", "format": "uuid"},
+        }}},
+    )
+    def post(self, request):
+        serializer = SolicitarCodigoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        registro = _generar_y_enviar_codigo(serializer.validated_data["usuario"])
+        return Response({"requiere_codigo": True, "login_token": str(registro.id)})
+
+
+class VerificarCodigoView(APIView):
+    """Segundo paso del login local (fase 13): confirma el código enviado
+    por correo y, si es correcto, emite los tokens reales."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [CodigoRateThrottle]
+    throttle_scope = "verificar-codigo"
+
+    @extend_schema(
+        summary="Paso 2 del login local: verifica el código y emite los tokens",
+        request=VerificarCodigoSerializer,
+        responses={200: {
+            "type": "object",
+            "properties": {
+                "access": {"type": "string"},
+                "refresh": {"type": "string"},
+                "usuario": {"$ref": "#/components/schemas/Usuario"},
+            },
+        }},
+    )
+    def post(self, request):
+        serializer = VerificarCodigoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        usuario = serializer.validated_data["usuario"]
+
+        datos = _tokens_de(usuario)
+        registrar_evento(
+            tipo_evento=TipoEvento.LOGIN,
+            entidad="Usuario",
+            entidad_id=usuario.id,
+            descripcion=f"Inicio de sesión de {usuario.email}.",
+            usuario=usuario,
+        )
+        return Response(datos)
+
+
+class ReenviarCodigoView(APIView):
+    """Reenvía un código nuevo para un login local pendiente (fase 13), por
+    si el primero no llegó o venció, sin reiniciar el login desde cero."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [CodigoRateThrottle]
+    throttle_scope = "reenviar-codigo"
+
+    @extend_schema(
+        summary="Reenvía el código de verificación de un login pendiente",
+        request=ReenviarCodigoSerializer,
+        responses={204: None},
+    )
+    def post(self, request):
+        serializer = ReenviarCodigoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        registro = serializer.validated_data["registro"]
+
+        codigo = f"{secrets.randbelow(1_000_000):06d}"
+        registro.codigo_hash = make_password(codigo)
+        registro.expira_en = timezone.now() + datetime.timedelta(
+            minutes=settings.OTP_LIFETIME_MINUTES
+        )
+        registro.intentos = 0
+        registro.save(update_fields=["codigo_hash", "expira_en", "intentos"])
+        enviar_codigo_2fa(registro.usuario, codigo)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class LogoutView(APIView):

@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { RespuestaLogin, UsuarioActual } from '../models';
+import { RespuestaLogin, RespuestaSolicitarCodigo, UsuarioActual } from '../models';
 import {
   calcularCodeChallenge,
   generarCodeVerifier,
@@ -57,17 +57,45 @@ export class AuthService {
     localStorage.removeItem(CLAVE_REFRESH);
   }
 
-  async login(email: string, clave: string): Promise<void> {
+  /** Paso 1 del login local (fase 13): valida email+clave y devuelve el
+   * `login_token` del código que se acaba de enviar por correo. No guarda
+   * tokens todavía — eso lo hace `verificarCodigo`. */
+  async solicitarCodigo(email: string, clave: string): Promise<string> {
     this.cargando.set(true);
     try {
       const respuesta = await firstValueFrom(
-        this.http.post<RespuestaLogin>(`${this.base}/auth/login/`, { email, password: clave }),
+        this.http.post<RespuestaSolicitarCodigo>(`${this.base}/auth/login/`, {
+          email,
+          password: clave,
+        }),
+      );
+      return respuesta.login_token;
+    } finally {
+      this.cargando.set(false);
+    }
+  }
+
+  /** Paso 2: confirma el código recibido por correo y recién ahí abre la sesión. */
+  async verificarCodigo(loginToken: string, codigo: string): Promise<void> {
+    this.cargando.set(true);
+    try {
+      const respuesta = await firstValueFrom(
+        this.http.post<RespuestaLogin>(`${this.base}/auth/verificar-codigo/`, {
+          login_token: loginToken,
+          codigo,
+        }),
       );
       this.guardarTokens(respuesta.access, respuesta.refresh);
       await this.cargarUsuario();
     } finally {
       this.cargando.set(false);
     }
+  }
+
+  async reenviarCodigo(loginToken: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post(`${this.base}/auth/reenviar-codigo/`, { login_token: loginToken }),
+    );
   }
 
   /** Para que el botón "Continuar con Google" se oculte si el backend

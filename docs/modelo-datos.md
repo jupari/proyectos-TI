@@ -53,6 +53,20 @@ Reglas:
 | `es_sistema` | Boolean | `True` en los cinco roles sembrados; no se pueden borrar |
 | `orden` | Integer | para listarlos de mayor a menor privilegio |
 
+### `CodigoAccesoDobleFactor` (fase 13)
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `usuario` | FK Usuario | |
+| `codigo_hash` | Char(128) | el código de 6 dígitos nunca se guarda en texto plano |
+| `expira_en` | DateTime | `OTP_LIFETIME_MINUTES` desde que se crea |
+| `intentos` | Integer | se invalida al llegar a `OTP_MAX_INTENTOS` |
+| `usado_en` | DateTime | null; marca el registro como consumido (éxito o bloqueo) |
+
+Su `id` (UUID heredado de `ModeloBase`) hace de `login_token` entre
+`/auth/login/` y `/auth/verificar-codigo/`. Excluido del signal genérico de
+auditoría (`apps.core.signals.NOMBRES_EXCLUIDOS_BITACORA`): es plumbing
+interno de cada intento de login, no un evento de negocio.
+
 ---
 
 ## 2. App `catalogos`

@@ -134,6 +134,11 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.core.exceptions.manejador_excepciones",
     "DEFAULT_THROTTLE_RATES": {
         "login": "5/min",
+        "verificar-codigo": "10/min",
+        # DRF solo admite un período simple (sec/min/hour/day) en el rate,
+        # no "N por cada X minutos" — "3/hour" es la aproximación más
+        # cercana a la intención original de "3 cada 10 minutos".
+        "reenviar-codigo": "3/hour",
     },
 }
 

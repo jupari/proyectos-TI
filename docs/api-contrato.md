@@ -29,20 +29,29 @@ Respuesta de lista:
 
 ---
 
-## 2. Autenticación y sesión (fase 03)
+## 2. Autenticación y sesión (fase 03, login en dos pasos desde fase 13)
+
+El login local es de dos pasos: `/auth/login/` valida email+clave y envía un
+código de 6 dígitos por correo (vence en `OTP_LIFETIME_MINUTES`, 10 min por
+defecto; `OTP_MAX_INTENTOS`, 5 por defecto), pero no emite tokens todavía;
+`/auth/verificar-codigo/` confirma ese código y recién ahí devuelve
+`{access, refresh, usuario}`. El login con Google (`/auth/google/callback/`)
+no pasa por este segundo paso — ya trae su propio segundo factor.
 
 | Método | Ruta | Público | Descripción |
 |--------|------|---------|-------------|
-| POST | `/auth/login/` | sí | `{email, password}` → `{access, refresh, usuario}` |
+| POST | `/auth/login/` | sí | `{email, password}` → `{requiere_codigo: true, login_token}` |
+| POST | `/auth/verificar-codigo/` | sí | `{login_token, codigo}` → `{access, refresh, usuario}` |
+| POST | `/auth/reenviar-codigo/` | sí | `{login_token}` → 204, genera un código nuevo para el mismo login pendiente |
 | POST | `/auth/refresh/` | sí | `{refresh}` → `{access, refresh}` (rotación activa) |
 | POST | `/auth/logout/` | no | `{refresh}` → 204, deja el refresh en la blacklist |
 | GET | `/auth/yo/` | no | usuario actual con `roles`, `permisos_ui` y `proyectos_liderados` |
 | PATCH | `/auth/yo/` | no | actualiza `nombres`, `apellidos`, `cargo`, `telefono` |
 | POST | `/auth/cambiar-clave/` | no | `{clave_actual, clave_nueva}` |
 | GET | `/auth/google/autorizar/` | sí | → `{url_autorizacion, state}` para el flujo con PKCE |
-| POST | `/auth/google/callback/` | sí | `{code, state, code_verifier}` → igual que `/auth/login/` |
+| POST | `/auth/google/callback/` | sí | `{code, state, code_verifier}` → `{access, refresh, usuario}` directo, sin paso de código |
 
-`usuario` en las respuestas de login:
+`usuario` en las respuestas que emiten tokens (`/auth/verificar-codigo/`, `/auth/google/callback/`):
 
 ```json
 {
