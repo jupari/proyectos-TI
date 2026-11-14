@@ -27,3 +27,5 @@ MIDDLEWARE.insert(  # noqa: F405
 )
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
