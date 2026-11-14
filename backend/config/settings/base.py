@@ -83,11 +83,19 @@ DATABASES = {
     }
 }
 
+# Política básica de contraseñas (fase 13): longitud mínima + variedad de
+# caracteres + no estar en la lista de claves comunes. Los usuarios creados
+# por un admin reciben una clave temporal aleatoria y no pasan por acá (ver
+# `UsuarioAdminEscrituraSerializer.create`); eligen su propia clave recién en
+# `CambiarClaveSerializer`, que sí llama a `validate_password`.
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "apps.accounts.validadores.ValidadorComplejidadClave"},
 ]
 
 AUTH_USER_MODEL = "accounts.Usuario"
