@@ -159,6 +159,31 @@ def test_cambiar_clave_actual_incorrecta_falla(roles, cliente):
     assert respuesta.status_code == 400
 
 
+@pytest.mark.parametrize(
+    "clave_debil",
+    [
+        "Corta12",  # menos de 10 caracteres
+        "clavesinnumero",  # sin dígito
+        "CLAVE12345",  # sin minúscula
+        "clave12345",  # sin mayúscula
+        "Password123",  # en la lista de claves comunes
+    ],
+)
+def test_cambiar_clave_nueva_debil_se_rechaza(roles, cliente, clave_debil):
+    usuario = crear_usuario_con_rol("RECURSO", password="ClaveVieja123")
+    cliente.force_authenticate(user=usuario)
+
+    respuesta = cliente.post(
+        "/api/v1/auth/cambiar-clave/",
+        {"clave_actual": "ClaveVieja123", "clave_nueva": clave_debil},
+        format="json",
+    )
+
+    assert respuesta.status_code == 400
+    usuario.refresh_from_db()
+    assert usuario.check_password("ClaveVieja123")
+
+
 def test_seis_intentos_de_login_en_un_minuto_dan_429(roles, cliente):
     usuario = crear_usuario_con_rol("RECURSO", password="demo12345")
 
