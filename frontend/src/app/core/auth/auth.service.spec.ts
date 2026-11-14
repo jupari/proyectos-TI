@@ -43,12 +43,33 @@ describe('AuthService', () => {
     localStorage.clear();
   });
 
-  it('login guarda los tokens y carga el usuario', async () => {
-    const promesa = servicio.login('lider@demo.local', 'demo12345');
+  it('solicitarCodigo devuelve el login_token sin guardar tokens todavía', async () => {
+    const promesa = servicio.solicitarCodigo('lider@demo.local', 'demo12345');
 
     const peticionLogin = httpMock.expectOne(`${environment.apiBaseUrl}/auth/login/`);
     expect(peticionLogin.request.body).toEqual({ email: 'lider@demo.local', password: 'demo12345' });
-    peticionLogin.flush({ access: 'token-acceso', refresh: 'token-refresco', usuario: USUARIO_DEMO });
+    peticionLogin.flush({ requiere_codigo: true, login_token: 'token-pendiente' });
+
+    const loginToken = await promesa;
+
+    expect(loginToken).toBe('token-pendiente');
+    expect(servicio.obtenerAccessToken()).toBeNull();
+    expect(servicio.autenticado()).toBe(false);
+  });
+
+  it('verificarCodigo guarda los tokens y carga el usuario', async () => {
+    const promesa = servicio.verificarCodigo('token-pendiente', '123456');
+
+    const peticionVerificar = httpMock.expectOne(`${environment.apiBaseUrl}/auth/verificar-codigo/`);
+    expect(peticionVerificar.request.body).toEqual({
+      login_token: 'token-pendiente',
+      codigo: '123456',
+    });
+    peticionVerificar.flush({
+      access: 'token-acceso',
+      refresh: 'token-refresco',
+      usuario: USUARIO_DEMO,
+    });
     await esperarMicrotareas();
 
     const peticionYo = httpMock.expectOne(`${environment.apiBaseUrl}/auth/yo/`);

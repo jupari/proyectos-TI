@@ -1,7 +1,11 @@
+import re
+
 import pytest
+from django.core import mail
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
+from apps.accounts.models import CodigoAccesoDobleFactor
 from apps.accounts.tests.conftest import crear_usuario_con_rol
 from apps.core.choices import ProveedorAuth
 
@@ -20,7 +24,27 @@ def cliente():
     return APIClient()
 
 
-def test_login_devuelve_access_refresh_y_usuario(roles, cliente):
+def _codigo_del_ultimo_correo():
+    cuerpo = mail.outbox[-1].body
+    return re.search(r"\b(\d{6})\b", cuerpo).group(1)
+
+
+def _login_completo(cliente, email, password):
+    """Hace los dos pasos del login local y devuelve la respuesta final
+    (`{access, refresh, usuario}`), como hacía el endpoint único de antes."""
+    paso1 = cliente.post(
+        "/api/v1/auth/login/", {"email": email, "password": password}, format="json"
+    )
+    assert paso1.status_code == 200, paso1.data
+    codigo = _codigo_del_ultimo_correo()
+    return cliente.post(
+        "/api/v1/auth/verificar-codigo/",
+        {"login_token": paso1.data["login_token"], "codigo": codigo},
+        format="json",
+    )
+
+
+def test_login_paso1_envia_codigo_por_correo_y_no_emite_tokens(roles, cliente):
     usuario = crear_usuario_con_rol("LIDER", email="lider@demo.local", password="demo12345")
 
     respuesta = cliente.post(
@@ -28,9 +52,127 @@ def test_login_devuelve_access_refresh_y_usuario(roles, cliente):
     )
 
     assert respuesta.status_code == 200
+    assert respuesta.data["requiere_codigo"] is True
+    assert "login_token" in respuesta.data
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == [usuario.email]
+
+
+def test_login_completo_con_codigo_correcto_devuelve_access_refresh_y_usuario(roles, cliente):
+    usuario = crear_usuario_con_rol("LIDER", email="lider@demo.local", password="demo12345")
+
+    respuesta = _login_completo(cliente, usuario.email, "demo12345")
+
+    assert respuesta.status_code == 200
     assert set(respuesta.data) == {"access", "refresh", "usuario"}
     assert respuesta.data["usuario"]["email"] == usuario.email
     assert respuesta.data["usuario"]["roles"] == ["LIDER"]
+
+
+def test_verificar_codigo_incorrecto_incrementa_intentos_y_rechaza(roles, cliente):
+    usuario = crear_usuario_con_rol("RECURSO", password="demo12345")
+    paso1 = cliente.post(
+        "/api/v1/auth/login/", {"email": usuario.email, "password": "demo12345"}, format="json"
+    )
+    login_token = paso1.data["login_token"]
+
+    respuesta = cliente.post(
+        "/api/v1/auth/verificar-codigo/",
+        {"login_token": login_token, "codigo": "000000"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 401
+    registro = CodigoAccesoDobleFactor.objects.get(id=login_token)
+    assert registro.intentos == 1
+    assert registro.usado_en is None
+
+
+def test_verificar_codigo_se_bloquea_tras_el_maximo_de_intentos(roles, cliente, settings):
+    settings.OTP_MAX_INTENTOS = 2
+    usuario = crear_usuario_con_rol("RECURSO", password="demo12345")
+    paso1 = cliente.post(
+        "/api/v1/auth/login/", {"email": usuario.email, "password": "demo12345"}, format="json"
+    )
+    login_token = paso1.data["login_token"]
+    codigo_correcto = _codigo_del_ultimo_correo()
+
+    for _ in range(2):
+        respuesta = cliente.post(
+            "/api/v1/auth/verificar-codigo/",
+            {"login_token": login_token, "codigo": "000000"},
+            format="json",
+        )
+        assert respuesta.status_code == 401
+
+    # Ya se agotaron los intentos: ni siquiera el código correcto sirve, hay
+    # que reiniciar el login desde cero.
+    respuesta = cliente.post(
+        "/api/v1/auth/verificar-codigo/",
+        {"login_token": login_token, "codigo": codigo_correcto},
+        format="json",
+    )
+    assert respuesta.status_code == 401
+
+
+def test_verificar_codigo_vencido_se_rechaza(roles, cliente):
+    usuario = crear_usuario_con_rol("RECURSO", password="demo12345")
+    paso1 = cliente.post(
+        "/api/v1/auth/login/", {"email": usuario.email, "password": "demo12345"}, format="json"
+    )
+    login_token = paso1.data["login_token"]
+    codigo = _codigo_del_ultimo_correo()
+
+    registro = CodigoAccesoDobleFactor.objects.get(id=login_token)
+    registro.expira_en = registro.expira_en.replace(year=2000)
+    registro.save(update_fields=["expira_en"])
+
+    respuesta = cliente.post(
+        "/api/v1/auth/verificar-codigo/",
+        {"login_token": login_token, "codigo": codigo},
+        format="json",
+    )
+    assert respuesta.status_code == 401
+
+
+def test_verificar_codigo_ya_usado_no_sirve_dos_veces(roles, cliente):
+    usuario = crear_usuario_con_rol("RECURSO", password="demo12345")
+    primera = _login_completo(cliente, usuario.email, "demo12345")
+    assert primera.status_code == 200
+    login_token = CodigoAccesoDobleFactor.objects.latest("creado_en").id
+    codigo = _codigo_del_ultimo_correo()
+
+    segunda = cliente.post(
+        "/api/v1/auth/verificar-codigo/",
+        {"login_token": str(login_token), "codigo": codigo},
+        format="json",
+    )
+    assert segunda.status_code == 401
+
+
+def test_reenviar_codigo_genera_uno_nuevo_y_reinicia_intentos(roles, cliente):
+    usuario = crear_usuario_con_rol("RECURSO", password="demo12345")
+    paso1 = cliente.post(
+        "/api/v1/auth/login/", {"email": usuario.email, "password": "demo12345"}, format="json"
+    )
+    login_token = paso1.data["login_token"]
+    codigo_original = _codigo_del_ultimo_correo()
+
+    respuesta = cliente.post(
+        "/api/v1/auth/reenviar-codigo/", {"login_token": login_token}, format="json"
+    )
+
+    assert respuesta.status_code == 204
+    assert len(mail.outbox) == 2
+    codigo_nuevo = _codigo_del_ultimo_correo()
+    assert codigo_nuevo != codigo_original
+
+    verificacion = cliente.post(
+        "/api/v1/auth/verificar-codigo/",
+        {"login_token": login_token, "codigo": codigo_nuevo},
+        format="json",
+    )
+    assert verificacion.status_code == 200
 
 
 def test_login_clave_incorrecta_devuelve_401_con_sobre_de_error(roles, cliente):
@@ -93,9 +235,7 @@ def test_yo_patch_actualiza_datos_personales(roles, cliente):
 
 def test_refresh_rota_el_token_y_el_anterior_queda_invalido(roles, cliente):
     usuario = crear_usuario_con_rol("LIDER", password="demo12345")
-    login = cliente.post(
-        "/api/v1/auth/login/", {"email": usuario.email, "password": "demo12345"}, format="json"
-    )
+    login = _login_completo(cliente, usuario.email, "demo12345")
     refresh_original = login.data["refresh"]
 
     primero = cliente.post("/api/v1/auth/refresh/", {"refresh": refresh_original}, format="json")
@@ -108,9 +248,7 @@ def test_refresh_rota_el_token_y_el_anterior_queda_invalido(roles, cliente):
 
 def test_logout_deja_el_refresh_inservible(roles, cliente):
     usuario = crear_usuario_con_rol("LIDER", password="demo12345")
-    login = cliente.post(
-        "/api/v1/auth/login/", {"email": usuario.email, "password": "demo12345"}, format="json"
-    )
+    login = _login_completo(cliente, usuario.email, "demo12345")
     refresh = login.data["refresh"]
     cliente.force_authenticate(user=usuario)
 

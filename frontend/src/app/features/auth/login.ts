@@ -8,6 +8,8 @@ import { ErrorApi } from '../../core/models';
 import { Boton } from '../../shared/ui/boton/boton';
 import { Input } from '../../shared/ui/input/input';
 
+const SEGUNDOS_ESPERA_REENVIO = 30;
+
 @Component({
   selector: 'app-login',
   templateUrl: './login.html',
@@ -26,6 +28,14 @@ export class Login {
   protected readonly erroresPorCampo = signal<Record<string, string[]>>({});
   protected readonly googleDisponible = signal(false);
 
+  /** Paso 1 (credenciales) o paso 2 (código recibido por correo) — fase 13. */
+  protected readonly paso = signal<'credenciales' | 'codigo'>('credenciales');
+  protected readonly loginToken = signal('');
+  protected readonly codigo = signal('');
+  protected readonly reenviando = signal(false);
+  protected readonly segundosParaReenviar = signal(0);
+  private intervaloReenvio?: ReturnType<typeof setInterval>;
+
   constructor() {
     void this.auth.googleDisponible().then((disponible) => this.googleDisponible.set(disponible));
   }
@@ -39,13 +49,60 @@ export class Login {
     this.mensajeError.set('');
     this.erroresPorCampo.set({});
     try {
-      await this.auth.login(this.email(), this.clave());
+      const loginToken = await this.auth.solicitarCodigo(this.email(), this.clave());
+      this.loginToken.set(loginToken);
+      this.paso.set('codigo');
+      this.iniciarEsperaReenvio();
+    } catch (error) {
+      this.mostrarError(error);
+    } finally {
+      this.enviando.set(false);
+    }
+  }
+
+  protected async confirmarCodigo(): Promise<void> {
+    this.enviando.set(true);
+    this.mensajeError.set('');
+    try {
+      await this.auth.verificarCodigo(this.loginToken(), this.codigo());
       await this.router.navigateByUrl(this.returnUrl());
     } catch (error) {
       this.mostrarError(error);
     } finally {
       this.enviando.set(false);
     }
+  }
+
+  protected async reenviarCodigo(): Promise<void> {
+    this.reenviando.set(true);
+    this.mensajeError.set('');
+    try {
+      await this.auth.reenviarCodigo(this.loginToken());
+      this.iniciarEsperaReenvio();
+    } catch (error) {
+      this.mostrarError(error);
+    } finally {
+      this.reenviando.set(false);
+    }
+  }
+
+  protected volverACredenciales(): void {
+    this.paso.set('credenciales');
+    this.codigo.set('');
+    this.mensajeError.set('');
+    clearInterval(this.intervaloReenvio);
+  }
+
+  private iniciarEsperaReenvio(): void {
+    clearInterval(this.intervaloReenvio);
+    this.segundosParaReenviar.set(SEGUNDOS_ESPERA_REENVIO);
+    this.intervaloReenvio = setInterval(() => {
+      const restantes = this.segundosParaReenviar() - 1;
+      this.segundosParaReenviar.set(restantes);
+      if (restantes <= 0) {
+        clearInterval(this.intervaloReenvio);
+      }
+    }, 1000);
   }
 
   protected async continuarConGoogle(): Promise<void> {

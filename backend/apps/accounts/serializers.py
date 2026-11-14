@@ -1,13 +1,15 @@
 import secrets
 
+from django.conf import settings
+from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from apps.accounts.models import RolMeta, Usuario
+from apps.accounts.models import CodigoAccesoDobleFactor, RolMeta, Usuario
 from apps.accounts.permisos_ui import permisos_de
 from apps.core.choices import ProveedorAuth
 
@@ -122,22 +124,72 @@ class RolMetaSerializer(serializers.ModelSerializer):
         read_only_fields = ["es_sistema"]
 
 
-class LoginSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token["roles"] = list(
-            user.groups.filter(rol_meta__isnull=False).values_list("rol_meta__codigo", flat=True)
-        )
-        token["nombre_completo"] = user.nombre_completo
-        return token
+class SolicitarCodigoSerializer(serializers.Serializer):
+    """Primer paso del login local (fase 13): valida email+clave pero no
+    emite tokens todavía — eso lo hace `VerificarCodigoSerializer` una vez
+    confirmado el código que se envía por correo tras este paso.
+
+    No hereda de `TokenObtainPairSerializer`: ese serializer emite un
+    `RefreshToken` real como efecto secundario de `validate()` (y con
+    `BLACKLIST_AFTER_ROTATION` activo, cada uno deja un `OutstandingToken` en
+    la base aunque nunca se use) — más simple verificar credenciales a mano
+    sin ese efecto secundario.
+    """
+
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        email = attrs.get(self.username_field)
-        usuario = Usuario.objects.filter(email=email).first()
+        usuario = Usuario.objects.filter(email__iexact=attrs["email"]).first()
         if usuario is not None and usuario.proveedor_auth == ProveedorAuth.GOOGLE:
             raise AuthenticationFailed("Esta cuenta inicia sesión con Google.")
-        return super().validate(attrs)
+        # Mismo mensaje y código que usaba `TokenObtainPairSerializer` por
+        # defecto, para no cambiarle el contrato de error al frontend.
+        clave_valida = usuario is not None and usuario.check_password(attrs["password"])
+        if usuario is None or not usuario.is_active or not clave_valida:
+            raise AuthenticationFailed(
+                "No active account found with the given credentials",
+                code="no_active_account",
+            )
+        attrs["usuario"] = usuario
+        return attrs
+
+
+class VerificarCodigoSerializer(serializers.Serializer):
+    login_token = serializers.UUIDField()
+    codigo = serializers.CharField()
+
+    def validate(self, attrs):
+        registro = (
+            CodigoAccesoDobleFactor.objects.select_related("usuario")
+            .filter(id=attrs["login_token"])
+            .first()
+        )
+        if registro is None or not registro.vigente():
+            raise AuthenticationFailed("El código es inválido o ya venció.")
+
+        if not check_password(attrs["codigo"], registro.codigo_hash):
+            registro.intentos += 1
+            if registro.intentos >= settings.OTP_MAX_INTENTOS:
+                registro.usado_en = timezone.now()
+            registro.save(update_fields=["intentos", "usado_en"])
+            raise AuthenticationFailed("El código no es correcto.")
+
+        registro.usado_en = timezone.now()
+        registro.save(update_fields=["usado_en"])
+        attrs["usuario"] = registro.usuario
+        return attrs
+
+
+class ReenviarCodigoSerializer(serializers.Serializer):
+    login_token = serializers.UUIDField()
+
+    def validate(self, attrs):
+        registro = CodigoAccesoDobleFactor.objects.filter(id=attrs["login_token"]).first()
+        if registro is None or registro.usado_en is not None:
+            raise AuthenticationFailed("El código es inválido o ya venció.")
+        attrs["registro"] = registro
+        return attrs
 
 
 class CambiarClaveSerializer(serializers.Serializer):

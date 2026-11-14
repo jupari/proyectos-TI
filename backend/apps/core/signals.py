@@ -22,9 +22,17 @@ logger = logging.getLogger("apps.core.signals")
 CAMPOS_EXCLUIDOS_DIFF = {"actualizado_en", "actualizado_por_id"}
 
 # Modelos que no generan entradas de bitácora: EntradaBitacora (evitaría
-# recursión infinita) y los de token_blacklist, que además ni heredan de
-# ModeloBase (quedan excluidos solo por completitud/documentación).
-NOMBRES_EXCLUIDOS_BITACORA = {"EntradaBitacora", "OutstandingToken", "BlacklistedToken"}
+# recursión infinita), los de token_blacklist (ni heredan de ModeloBase,
+# quedan acá solo por completitud/documentación), y CodigoAccesoDobleFactor
+# (fase 13): es plumbing interno de autenticación que se crea/actualiza en
+# cada intento de login, sin valor como evento de negocio — el login en sí
+# ya queda registrado explícitamente una vez se verifica el código.
+NOMBRES_EXCLUIDOS_BITACORA = {
+    "EntradaBitacora",
+    "OutstandingToken",
+    "BlacklistedToken",
+    "CodigoAccesoDobleFactor",
+}
 
 
 def _campos_auditables(modelo):

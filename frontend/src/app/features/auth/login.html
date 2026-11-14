@@ -9,52 +9,96 @@
       </p>
     }
 
-    <form class="flex flex-col gap-4" (ngSubmit)="enviar()">
-      <app-input
-        etiqueta="Correo electrónico"
-        tipo="email"
-        autocomplete="username"
-        [ngModel]="email()"
-        (ngModelChange)="email.set($event)"
-        name="email"
-        [error]="erroresPorCampo()['email']?.[0] ?? ''"
-      />
-      <app-input
-        etiqueta="Contraseña"
-        tipo="password"
-        autocomplete="current-password"
-        [ngModel]="clave()"
-        (ngModelChange)="clave.set($event)"
-        name="password"
-        [error]="erroresPorCampo()['password']?.[0] ?? ''"
-      />
+    @if (paso() === 'credenciales') {
+      <form class="flex flex-col gap-4" (ngSubmit)="enviar()">
+        <app-input
+          etiqueta="Correo electrónico"
+          tipo="email"
+          autocomplete="username"
+          [ngModel]="email()"
+          (ngModelChange)="email.set($event)"
+          name="email"
+          [error]="erroresPorCampo()['email']?.[0] ?? ''"
+        />
+        <app-input
+          etiqueta="Contraseña"
+          tipo="password"
+          autocomplete="current-password"
+          [ngModel]="clave()"
+          (ngModelChange)="clave.set($event)"
+          name="password"
+          [error]="erroresPorCampo()['password']?.[0] ?? ''"
+        />
 
-      <app-boton tipo="submit" [cargando]="enviando()" [completo]="true">
-        Iniciar sesión
-      </app-boton>
-
-      <span
-        class="cursor-not-allowed text-center text-sm text-neutro-400"
-        title="Solicítelo al administrador"
-      >
-        ¿Olvidó su contraseña?
-      </span>
-
-      @if (googleDisponible()) {
-        <div class="flex items-center gap-2 text-xs text-neutro-400">
-          <span class="h-px flex-1 bg-neutro-200"></span>
-          o
-          <span class="h-px flex-1 bg-neutro-200"></span>
-        </div>
-        <app-boton
-          tipo="button"
-          variante="secundario"
-          [completo]="true"
-          (clic)="continuarConGoogle()"
-        >
-          Continuar con Google
+        <app-boton tipo="submit" [cargando]="enviando()" [completo]="true">
+          Iniciar sesión
         </app-boton>
-      }
-    </form>
+
+        <span
+          class="cursor-not-allowed text-center text-sm text-neutro-400"
+          title="Solicítelo al administrador"
+        >
+          ¿Olvidó su contraseña?
+        </span>
+
+        @if (googleDisponible()) {
+          <div class="flex items-center gap-2 text-xs text-neutro-400">
+            <span class="h-px flex-1 bg-neutro-200"></span>
+            o
+            <span class="h-px flex-1 bg-neutro-200"></span>
+          </div>
+          <app-boton
+            tipo="button"
+            variante="secundario"
+            [completo]="true"
+            (clic)="continuarConGoogle()"
+          >
+            Continuar con Google
+          </app-boton>
+        }
+      </form>
+    } @else {
+      <form class="flex flex-col gap-4" (ngSubmit)="confirmarCodigo()">
+        <p class="text-sm text-neutro-600">
+          Te enviamos un código de verificación a <strong>{{ email() }}</strong>. Ingrésalo para
+          continuar.
+        </p>
+        <app-input
+          etiqueta="Código de verificación"
+          tipo="text"
+          autocomplete="one-time-code"
+          [ngModel]="codigo()"
+          (ngModelChange)="codigo.set($event)"
+          name="codigo"
+          [error]="erroresPorCampo()['codigo']?.[0] ?? ''"
+        />
+
+        <app-boton tipo="submit" [cargando]="enviando()" [completo]="true">
+          Verificar código
+        </app-boton>
+
+        <div class="flex items-center justify-between text-sm">
+          <button
+            type="button"
+            class="text-neutro-500 hover:underline"
+            (click)="volverACredenciales()"
+          >
+            Volver
+          </button>
+          @if (segundosParaReenviar() > 0) {
+            <span class="text-neutro-400">Reenviar en {{ segundosParaReenviar() }}s</span>
+          } @else {
+            <button
+              type="button"
+              class="text-marca-600 hover:underline disabled:cursor-not-allowed disabled:text-neutro-400"
+              [disabled]="reenviando()"
+              (click)="reenviarCodigo()"
+            >
+              Reenviar código
+            </button>
+          }
+        </div>
+      </form>
+    }
   </div>
 </div>
