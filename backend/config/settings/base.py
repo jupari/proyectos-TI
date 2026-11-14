@@ -179,3 +179,21 @@ JIRA_BASE_URL = env("JIRA_BASE_URL", default="")
 JIRA_EMAIL = env("JIRA_EMAIL", default="")
 JIRA_API_TOKEN = env("JIRA_API_TOKEN", default="")
 TEMPO_API_TOKEN = env("TEMPO_API_TOKEN", default="")
+
+# Envío de correo (fase 13: código de verificación en dos pasos y enlace de
+# recuperación de clave). `EMAIL_BACKEND` lo define cada entorno
+# (dev/test/prod) por separado, no acá.
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
+# URL pública del frontend, para construir el enlace de recuperación de
+# clave que va dentro del correo (el backend no la conoce por ningún otro
+# medio: no hay nada que la derive de ALLOWED_HOSTS ni de CORS_ALLOWED_ORIGINS).
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:4200")
+
+OTP_LIFETIME_MINUTES = env.int("OTP_LIFETIME_MINUTES", default=10)
+OTP_MAX_INTENTOS = env.int("OTP_MAX_INTENTOS", default=5)
+PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=3600)
