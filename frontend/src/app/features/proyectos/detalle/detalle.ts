@@ -1083,6 +1083,103 @@ export class DetalleProyecto {
     });
   }
 
+  // --- flujo de aprobación de gastos (BORRADOR -> ENVIADO -> APROBADO) ------
+
+  protected readonly puedeAprobarGasto = computed(() => this.auth.tienePermiso('gastos.aprobar'));
+  protected readonly procesandoGasto = signal(false);
+  protected readonly dialogoRechazoGastoAbierto = signal(false);
+  protected readonly gastoARechazar = signal<GastoEjecutado | null>(null);
+  protected readonly motivoRechazoGasto = signal('');
+
+  protected async enviarGasto(gasto: GastoEjecutado): Promise<void> {
+    const confirmado = await this.confirmacion.confirmar({
+      titulo: 'Enviar a aprobación',
+      mensaje: `¿Enviar el gasto de «${gasto.rubro_descripcion}» a aprobación?`,
+      textoConfirmar: 'Enviar',
+    });
+    if (!confirmado) return;
+
+    this.procesandoGasto.set(true);
+    this.gastosService.enviar(gasto.id).subscribe({
+      next: () => {
+        this.procesandoGasto.set(false);
+        this.cargarEjecucion();
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Gasto enviado a aprobación.' });
+      },
+      error: (error: unknown) => {
+        this.procesandoGasto.set(false);
+        this.toast.mostrar({
+          tipo: 'error',
+          mensaje: this.mensajeDeError(error, 'No se pudo enviar el gasto.'),
+        });
+      },
+    });
+  }
+
+  protected async aprobarGasto(gasto: GastoEjecutado): Promise<void> {
+    const confirmado = await this.confirmacion.confirmar({
+      titulo: 'Aprobar gasto',
+      mensaje: `¿Aprobar el gasto de «${gasto.rubro_descripcion}»? Quedará contado como ejecutado.`,
+      textoConfirmar: 'Aprobar',
+    });
+    if (!confirmado) return;
+
+    this.procesandoGasto.set(true);
+    this.gastosService.aprobar(gasto.id).subscribe({
+      next: () => {
+        this.procesandoGasto.set(false);
+        this.cargarEjecucion();
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Gasto aprobado.' });
+      },
+      error: (error: unknown) => {
+        this.procesandoGasto.set(false);
+        this.toast.mostrar({
+          tipo: 'error',
+          mensaje: this.mensajeDeError(error, 'No se pudo aprobar el gasto.'),
+        });
+      },
+    });
+  }
+
+  protected abrirRechazoGasto(gasto: GastoEjecutado): void {
+    this.gastoARechazar.set(gasto);
+    this.motivoRechazoGasto.set('');
+    this.dialogoRechazoGastoAbierto.set(true);
+  }
+
+  protected cerrarRechazoGasto(): void {
+    this.dialogoRechazoGastoAbierto.set(false);
+    this.gastoARechazar.set(null);
+  }
+
+  protected confirmarRechazoGasto(): void {
+    const gasto = this.gastoARechazar();
+    const motivo = this.motivoRechazoGasto().trim();
+    if (!gasto) return;
+    if (!motivo) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Escriba el motivo del rechazo.' });
+      return;
+    }
+
+    this.procesandoGasto.set(true);
+    this.gastosService.rechazar(gasto.id, motivo).subscribe({
+      next: () => {
+        this.procesandoGasto.set(false);
+        this.dialogoRechazoGastoAbierto.set(false);
+        this.gastoARechazar.set(null);
+        this.cargarEjecucion();
+        this.toast.mostrar({ tipo: 'exito', mensaje: 'Gasto rechazado.' });
+      },
+      error: (error: unknown) => {
+        this.procesandoGasto.set(false);
+        this.toast.mostrar({
+          tipo: 'error',
+          mensaje: this.mensajeDeError(error, 'No se pudo rechazar el gasto.'),
+        });
+      },
+    });
+  }
+
   // --- Gráficos de la pestaña Resumen (fase 10 §10.3.8) --------------------
 
   protected readonly resumenTareas = signal<ResumenTareasTablero | null>(null);

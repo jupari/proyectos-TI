@@ -222,6 +222,20 @@ def test_yo_devuelve_roles_y_permisos_ui_correctos(roles, cliente):
     assert "proyectos_liderados" in respuesta.data
 
 
+def test_solo_admin_y_pmo_tienen_gastos_aprobar(roles, cliente):
+    """Enviar/aprobar/rechazar un GastoEjecutado es solo de ADMIN/PMO
+    (apps.ejecucion.views.PermisoGastoEjecutado); un LIDER puede crear el
+    gasto pero no moverlo de BORRADOR, así que no debe ver esos botones."""
+    pmo = crear_usuario_con_rol("PMO")
+    lider = crear_usuario_con_rol("LIDER")
+
+    cliente.force_authenticate(user=pmo)
+    assert "gastos.aprobar" in cliente.get("/api/v1/auth/yo/").data["permisos_ui"]
+
+    cliente.force_authenticate(user=lider)
+    assert "gastos.aprobar" not in cliente.get("/api/v1/auth/yo/").data["permisos_ui"]
+
+
 def test_yo_patch_actualiza_datos_personales(roles, cliente):
     usuario = crear_usuario_con_rol("RECURSO")
     cliente.force_authenticate(user=usuario)

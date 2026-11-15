@@ -627,6 +627,9 @@
             <tr>
               <th class="py-1">Rubro</th><th class="py-1">Fecha</th><th class="py-1">Monto</th>
               <th class="py-1">Proveedor</th><th class="py-1">Documento</th><th class="py-1">Estado</th>
+              @if (puedeAprobarGasto()) {
+                <th class="py-1"></th>
+              }
             </tr>
           </thead>
           <tbody class="divide-y divide-neutro-100">
@@ -638,9 +641,45 @@
                 <td class="py-2">{{ gasto.proveedor }}</td>
                 <td class="py-2">{{ gasto.numero_documento }}</td>
                 <td class="py-2"><app-badge [valor]="gasto.estado_aprobacion" /></td>
+                @if (puedeAprobarGasto()) {
+                  <td class="py-2 text-right">
+                    @if (gasto.estado_aprobacion === 'BORRADOR' || gasto.estado_aprobacion === 'RECHAZADO') {
+                      <button
+                        type="button"
+                        class="text-marca-600 hover:underline"
+                        [disabled]="procesandoGasto()"
+                        (click)="enviarGasto(gasto)"
+                      >
+                        Enviar
+                      </button>
+                    }
+                    @if (gasto.estado_aprobacion === 'ENVIADO') {
+                      <button
+                        type="button"
+                        class="mr-2 text-exito hover:underline"
+                        [disabled]="procesandoGasto()"
+                        (click)="aprobarGasto(gasto)"
+                      >
+                        Aprobar
+                      </button>
+                      <button
+                        type="button"
+                        class="text-peligro hover:underline"
+                        [disabled]="procesandoGasto()"
+                        (click)="abrirRechazoGasto(gasto)"
+                      >
+                        Rechazar
+                      </button>
+                    }
+                  </td>
+                }
               </tr>
             } @empty {
-              <tr><td colspan="6" class="py-4 text-neutro-400">Sin gastos registrados.</td></tr>
+              <tr>
+                <td class="py-4 text-neutro-400" [attr.colspan]="puedeAprobarGasto() ? 7 : 6">
+                  Sin gastos registrados.
+                </td>
+              </tr>
             }
           </tbody>
         </table>
@@ -716,6 +755,31 @@
     <div pie class="flex gap-2">
       <app-boton variante="secundario" (clic)="cerrarDialogoEstado()">Cancelar</app-boton>
       <app-boton [cargando]="cambiandoEstado()" (clic)="confirmarCambioEstado()">Confirmar</app-boton>
+    </div>
+  </app-modal>
+
+  <app-modal
+    [abierto]="dialogoRechazoGastoAbierto()"
+    titulo="Rechazar gasto"
+    (cerrar)="cerrarRechazoGasto()"
+  >
+    <div class="flex flex-col gap-4">
+      <app-textarea
+        etiqueta="Motivo del rechazo *"
+        [ngModel]="motivoRechazoGasto()"
+        (ngModelChange)="motivoRechazoGasto.set($event)"
+        name="motivoRechazoGasto"
+      />
+    </div>
+    <div pie class="flex gap-2">
+      <app-boton variante="secundario" (clic)="cerrarRechazoGasto()">Cancelar</app-boton>
+      <app-boton
+        variante="peligro"
+        [cargando]="procesandoGasto()"
+        (clic)="confirmarRechazoGasto()"
+      >
+        Rechazar
+      </app-boton>
     </div>
   </app-modal>
 
