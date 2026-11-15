@@ -195,6 +195,10 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
+# Sin esto, un SMTP que no responde (red, IP bloqueada, servidor caído)
+# cuelga la conexión indefinidamente en vez de fallar rápido — y eso
+# bloquea el worker entero de gunicorn hasta que Render lo mata.
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 # URL pública del frontend, para construir el enlace de recuperación de
 # clave que va dentro del correo (el backend no la conoce por ningún otro
 # medio: no hay nada que la derive de ALLOWED_HOSTS ni de CORS_ALLOWED_ORIGINS).
