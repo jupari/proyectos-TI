@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     EjecucionMensualView,
     ExportarTableroView,
+    PlanCostosProyectoView,
     RecursosOcupacionView,
     ResumenGlobalView,
     TablaProyectosPorPeriodoView,
@@ -17,6 +18,11 @@ urlpatterns = [
         "tablero/proyectos-por-periodo/",
         TablaProyectosPorPeriodoView.as_view(),
         name="tablero-proyectos-por-periodo",
+    ),
+    path(
+        "tablero/plan-costos/",
+        PlanCostosProyectoView.as_view(),
+        name="tablero-plan-costos",
     ),
     path(
         "tablero/ejecucion-mensual/",

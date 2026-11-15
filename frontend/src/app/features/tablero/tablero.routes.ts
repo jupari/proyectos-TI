@@ -14,4 +14,8 @@ export const tableroRoutes: Routes = [
     loadComponent: () =>
       import('./proyectos-periodo/proyectos-periodo').then((m) => m.ProyectosPeriodoTablero),
   },
+  {
+    path: 'plan-costos',
+    loadComponent: () => import('./plan-costos/plan-costos').then((m) => m.PlanCostosTablero),
+  },
 ];

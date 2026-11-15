@@ -102,6 +102,48 @@ export interface RecursosTablero {
   calculado_en: string;
 }
 
+/** Un mes de `PlanCostosProyecto` (fase 15): `horas_*` solo existen en el
+ * bloque "Personal" — en los demás bloques (licencias, infraestructura,
+ * servicios, capacitación, otros) el costo es derivado de `RubroPresupuesto`/
+ * `GastoEjecutado`, sin concepto de horas. */
+export interface ValoresPlanCostosMes {
+  horas_plan?: number;
+  valor_plan: number;
+  horas_ejec?: number;
+  valor_ejec: number;
+}
+
+export interface FilaPlanCostos {
+  id: string;
+  nombre: string;
+  perfil?: string | null;
+  rol?: string;
+  valor_hora?: number;
+  dedicacion_pct?: number;
+  por_mes: Record<string, ValoresPlanCostosMes>;
+  total: ValoresPlanCostosMes;
+}
+
+export interface BloquePlanCostos {
+  categoria: string;
+  etiqueta: string;
+  filas: FilaPlanCostos[];
+  subtotal: {
+    por_mes: Record<string, ValoresPlanCostosMes>;
+    total: ValoresPlanCostosMes;
+  };
+}
+
+export interface PlanCostosProyecto {
+  meses: string[];
+  bloques: BloquePlanCostos[];
+  total_general: {
+    por_mes: Record<string, ValoresPlanCostosMes>;
+    total: ValoresPlanCostosMes;
+  };
+  calculado_en: string;
+}
+
 export interface ResumenTareasTablero {
   por_estado: Record<string, number>;
   total: number;

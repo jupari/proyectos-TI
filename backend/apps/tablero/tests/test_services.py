@@ -15,6 +15,7 @@ from apps.tareas.tests.factories import TareaFactory
 from ..services import (
     ejecucion_mensual,
     ocupacion_recursos,
+    plan_costos_proyecto,
     resumen_ejecucion,
     resumen_global,
     resumen_tareas,
@@ -607,3 +608,145 @@ def test_semaforo_amarillo_cuando_el_gasto_supera_90_por_ciento_sin_otros_dispar
     semaforo = semaforo_calculado(proyecto, fecha_corte=datetime.date(2026, 7, 2))
 
     assert semaforo == Semaforo.AMARILLO
+
+
+# --- plan_costos_proyecto -----------------------------------------------
+
+
+def test_plan_costos_proyecto_calcula_personal_por_mes():
+    proyecto = ProyectoFactory(
+        fecha_inicio_plan=datetime.date(2026, 1, 1), fecha_fin_plan=datetime.date(2026, 2, 28)
+    )
+    recurso = RecursoFactory(nombre="Ana López")
+    AsignacionRecursoFactory(
+        proyecto=proyecto,
+        recurso=recurso,
+        fecha_desde=datetime.date(2026, 1, 1),
+        fecha_hasta=datetime.date(2026, 1, 31),
+        horas_planeadas=160,
+        valor_hora_plan=50_000,
+    )  # costo_planeado = 8_000_000, cae completo en enero
+    RegistroEjecucionFactory(
+        proyecto=proyecto,
+        recurso=recurso,
+        horas=150,
+        valor_hora_aplicado=50_000,
+        periodo_inicio=datetime.date(2026, 1, 15),
+        periodo_fin=datetime.date(2026, 1, 15),
+        estado_aprobacion=EstadoAprobacion.APROBADO,
+    )
+
+    datos = plan_costos_proyecto(proyecto)
+
+    assert datos["meses"] == ["2026-01", "2026-02"]
+    bloque = datos["bloques"][0]
+    assert bloque["categoria"] == "PERSONAL"
+    fila = bloque["filas"][0]
+    assert fila["nombre"] == "Ana López"
+    assert fila["por_mes"]["2026-01"]["horas_plan"] == Decimal("160.00")
+    assert fila["por_mes"]["2026-01"]["valor_plan"] == Decimal("8000000.00")
+    assert fila["por_mes"]["2026-01"]["horas_ejec"] == Decimal("150.00")
+    assert fila["por_mes"]["2026-01"]["valor_ejec"] == Decimal("7500000.00")
+    assert fila["por_mes"]["2026-02"]["horas_plan"] == Decimal("0")
+    assert fila["por_mes"]["2026-02"]["horas_ejec"] == Decimal("0")
+    assert fila["total"]["horas_plan"] == Decimal("160.00")
+
+
+def test_plan_costos_proyecto_reparte_rubro_no_personal_en_partes_iguales():
+    proyecto = ProyectoFactory(
+        fecha_inicio_plan=datetime.date(2026, 1, 1), fecha_fin_plan=datetime.date(2026, 3, 31)
+    )
+    RubroPresupuestoFactory(
+        proyecto=proyecto,
+        categoria="LICENCIAS",
+        descripcion="Microsoft 365",
+        monto_planeado=3_000_000,
+    )
+
+    datos = plan_costos_proyecto(proyecto)
+
+    assert datos["meses"] == ["2026-01", "2026-02", "2026-03"]
+    bloque = next(b for b in datos["bloques"] if b["categoria"] == "LICENCIAS")
+    fila = bloque["filas"][0]
+    assert fila["nombre"] == "Microsoft 365"
+    for mes in datos["meses"]:
+        assert fila["por_mes"][mes]["valor_plan"] == Decimal("1000000")
+    assert fila["total"]["valor_plan"] == Decimal("3000000")
+
+
+def test_plan_costos_proyecto_agrupa_gastos_ejecutados_al_mes_de_su_fecha():
+    proyecto = ProyectoFactory(
+        fecha_inicio_plan=datetime.date(2026, 1, 1), fecha_fin_plan=datetime.date(2026, 2, 28)
+    )
+    rubro = RubroPresupuestoFactory(
+        proyecto=proyecto, categoria="SERVICIOS", monto_planeado=2_000_000
+    )
+    GastoEjecutadoFactory(
+        proyecto=proyecto,
+        rubro=rubro,
+        fecha=datetime.date(2026, 2, 10),
+        monto=500_000,
+        numero_documento="FAC-APROBADO",
+        estado_aprobacion=EstadoAprobacion.APROBADO,
+    )
+    GastoEjecutadoFactory(
+        proyecto=proyecto,
+        rubro=rubro,
+        fecha=datetime.date(2026, 1, 5),
+        monto=999_999,
+        numero_documento="FAC-PENDIENTE",
+        estado_aprobacion=EstadoAprobacion.ENVIADO,  # no aprobado: no debe sumar
+    )
+
+    datos = plan_costos_proyecto(proyecto)
+
+    bloque = next(b for b in datos["bloques"] if b["categoria"] == "SERVICIOS")
+    fila = bloque["filas"][0]
+    assert fila["por_mes"]["2026-01"]["valor_ejec"] == Decimal("0")
+    assert fila["por_mes"]["2026-02"]["valor_ejec"] == Decimal("500000")
+
+
+def test_plan_costos_proyecto_no_duplica_personal_con_un_rubro_de_esa_categoria():
+    """Un `RubroPresupuesto` con categoria=PERSONAL no genera un segundo
+    bloque "Personal": esa fila sale de `AsignacionRecurso`, no de un rubro."""
+    proyecto = ProyectoFactory(
+        fecha_inicio_plan=datetime.date(2026, 1, 1), fecha_fin_plan=datetime.date(2026, 1, 31)
+    )
+    RubroPresupuestoFactory(proyecto=proyecto, categoria="PERSONAL", monto_planeado=1_000_000)
+
+    datos = plan_costos_proyecto(proyecto)
+
+    assert [b["categoria"] for b in datos["bloques"]] == ["PERSONAL"]
+    assert datos["bloques"][0]["filas"] == []
+
+
+def test_plan_costos_proyecto_subtotal_y_total_general_cuadran():
+    proyecto = ProyectoFactory(
+        fecha_inicio_plan=datetime.date(2026, 1, 1), fecha_fin_plan=datetime.date(2026, 1, 31)
+    )
+    AsignacionRecursoFactory(
+        proyecto=proyecto,
+        fecha_desde=datetime.date(2026, 1, 1),
+        fecha_hasta=datetime.date(2026, 1, 31),
+        horas_planeadas=100,
+        valor_hora_plan=10_000,
+    )  # costo_planeado = 1_000_000
+    RubroPresupuestoFactory(proyecto=proyecto, categoria="LICENCIAS", monto_planeado=500_000)
+
+    datos = plan_costos_proyecto(proyecto)
+
+    bloque_personal = next(b for b in datos["bloques"] if b["categoria"] == "PERSONAL")
+    assert bloque_personal["subtotal"]["total"]["valor_plan"] == Decimal("1000000")
+    bloque_licencias = next(b for b in datos["bloques"] if b["categoria"] == "LICENCIAS")
+    assert bloque_licencias["subtotal"]["total"]["valor_plan"] == Decimal("500000")
+    assert datos["total_general"]["total"]["valor_plan"] == Decimal("1500000")
+
+
+def test_plan_costos_proyecto_sin_desde_ni_hasta_usa_la_planeacion_del_proyecto():
+    proyecto = ProyectoFactory(
+        fecha_inicio_plan=datetime.date(2026, 5, 1), fecha_fin_plan=datetime.date(2026, 7, 31)
+    )
+
+    datos = plan_costos_proyecto(proyecto)
+
+    assert datos["meses"] == ["2026-05", "2026-06", "2026-07"]

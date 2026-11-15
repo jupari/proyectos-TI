@@ -456,6 +456,13 @@ Solo lectura y agregación sobre lo anterior. Los cálculos viven en
 `apps/tablero/services.py` y se reutilizan desde los serializers de proyecto y seguimiento,
 para que no haya dos fórmulas distintas en el código.
 
+`plan_costos_proyecto` (fase 15) es la única vista que reparte
+`RubroPresupuesto.monto_planeado` en el tiempo: como el rubro no tiene fecha
+propia, se divide en partes iguales entre los meses del rango consultado
+(`monto_planeado / cantidad_de_meses`). Es una aproximación a propósito, no
+un dato capturado — si el gasto real de ese rubro no es parejo mes a mes, el
+"planeado" de la grilla tampoco lo será.
+
 ---
 
 ## 10. Fórmulas de control (única definición válida)
