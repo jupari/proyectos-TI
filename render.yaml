@@ -10,11 +10,12 @@
 #   (MEDIA_ROOT) se pierden en cada deploy o reinicio.
 # - La base de datos Postgres free expira a los 90 días.
 # - El login (y la recuperación de clave) necesitan EMAIL_HOST_USER y
-#   EMAIL_HOST_PASSWORD puestos a mano en el dashboard: son una cuenta de
-#   Gmail con verificación en dos pasos activada y una "contraseña de
-#   aplicación" generada en myaccount.google.com/apppasswords (la clave
-#   normal de la cuenta no sirve para SMTP). Sin esto, nadie puede
-#   terminar de iniciar sesión en este despliegue.
+#   EMAIL_HOST_PASSWORD puestos a mano en el dashboard: son las credenciales
+#   SMTP de una cuenta gratuita en brevo.com (Settings -> SMTP & API ->
+#   pestaña SMTP). EMAIL_HOST_USER es el correo de esa cuenta;
+#   EMAIL_HOST_PASSWORD es la "SMTP key" que se genera ahí (no la
+#   contraseña de la cuenta Brevo). Sin esto, nadie puede terminar de
+#   iniciar sesión en este despliegue.
 #
 # Si el nombre "seguimiento-ti-backend" ya está en uso, Render le añadirá
 # un sufijo a la URL pública: hay que reflejar esa URL real en
@@ -68,12 +69,11 @@ services:
       - key: MAX_UPLOAD_MB
         value: "25"
       # Correo (fase 13): código de verificación en dos pasos y
-      # recuperación de clave. EMAIL_HOST_USER/PASSWORD son credenciales
-      # reales de una cuenta de Gmail — no se comiten al repo, hay que
-      # pegarlas a mano en el dashboard de Render (ver guía de "contraseña
-      # de aplicación" de Gmail).
+      # recuperación de clave. EMAIL_HOST_USER/PASSWORD son las credenciales
+      # SMTP de una cuenta gratuita en brevo.com — no se comiten al repo,
+      # hay que pegarlas a mano en el dashboard de Render.
       - key: EMAIL_HOST
-        value: smtp.gmail.com
+        value: smtp-relay.brevo.com
       - key: EMAIL_PORT
         value: "587"
       - key: EMAIL_USE_TLS
