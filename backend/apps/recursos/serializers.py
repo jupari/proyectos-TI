@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 
 from rest_framework import serializers
 
@@ -13,6 +14,7 @@ from .services import validar_asignacion, validar_vigencias, valor_hora_vigente
 class RecursoSerializer(serializers.ModelSerializer):
     perfil_nombre = serializers.SerializerMethodField()
     tarifa_vigente = serializers.SerializerMethodField()
+    tarifa_vigente_mensual = serializers.SerializerMethodField()
     proyectos_activos = serializers.SerializerMethodField()
 
     class Meta:
@@ -30,6 +32,7 @@ class RecursoSerializer(serializers.ModelSerializer):
             "fecha_retiro",
             "jira_account_id",
             "tarifa_vigente",
+            "tarifa_vigente_mensual",
             "proyectos_activos",
             "activo",
         ]
@@ -43,6 +46,15 @@ class RecursoSerializer(serializers.ModelSerializer):
         except ErrorReglaNegocio:
             return None
 
+    def get_tarifa_vigente_mensual(self, obj) -> str | None:
+        # Dato derivado, no capturado: valor_hora x capacidad_horas_mes del
+        # recurso. No hay un "valor mensual" independiente en el modelo.
+        try:
+            valor_hora = valor_hora_vigente(obj, datetime.date.today())
+        except ErrorReglaNegocio:
+            return None
+        return str((valor_hora * obj.capacidad_horas_mes).quantize(Decimal("0.01")))
+
     def get_proyectos_activos(self, obj) -> int:
         return (
             obj.asignaciones.filter(activo=True, proyecto__activo=True)
@@ -53,17 +65,25 @@ class RecursoSerializer(serializers.ModelSerializer):
 
 
 class TarifaRecursoSerializer(serializers.ModelSerializer):
+    valor_mes = serializers.SerializerMethodField()
+
     class Meta:
         model = TarifaRecurso
         fields = [
             "id",
             "recurso",
             "valor_hora",
+            "valor_mes",
             "moneda",
             "vigente_desde",
             "vigente_hasta",
             "activo",
         ]
+
+    def get_valor_mes(self, obj) -> str:
+        # Derivado, no capturado: valor_hora x capacidad_horas_mes del
+        # recurso de esta tarifa (docs/modelo-datos.md §4).
+        return str((obj.valor_hora * obj.recurso.capacidad_horas_mes).quantize(Decimal("0.01")))
 
     def create(self, validated_data):
         tarifa = TarifaRecurso(**validated_data)

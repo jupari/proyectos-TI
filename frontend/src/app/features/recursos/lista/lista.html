@@ -43,6 +43,9 @@
   <ng-template #colTarifa let-fila>
     {{ fila.tarifa_vigente | moneda }}
   </ng-template>
+  <ng-template #colTarifaMensual let-fila>
+    {{ fila.tarifa_vigente_mensual | moneda }}
+  </ng-template>
   <ng-template #colCapacidad let-fila>
     {{ fila.capacidad_horas_mes | horas }}
   </ng-template>
@@ -59,8 +62,9 @@
       { clave: 'tipo', titulo: 'Tipo', plantilla: colTipo },
       columnas[2],
       { clave: 'tarifa_vigente', titulo: 'Tarifa vigente', alinear: 'derecha', plantilla: colTarifa },
+      { clave: 'tarifa_vigente_mensual', titulo: 'Valor mensual', alinear: 'derecha', plantilla: colTarifaMensual },
       { clave: 'capacidad_horas_mes', titulo: 'Capacidad', alinear: 'derecha', plantilla: colCapacidad },
-      columnas[5],
+      columnas[6],
       { clave: 'activo', titulo: 'Estado', plantilla: colEstado },
       { clave: 'acciones', titulo: '', alinear: 'derecha', plantilla: colAcciones }
     ]"

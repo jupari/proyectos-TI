@@ -174,6 +174,9 @@ Reglas:
   `apps/recursos/services.py` y la usan la asignación y la ejecución.
 - Si no hay tarifa vigente para la fecha, se cae a `perfil.tarifa_hora_referencia`; si tampoco
   hay, el registro de ejecución se rechaza con 400 y mensaje explícito.
+- `valor_mes` (fase 13, solo en `TarifaRecursoSerializer`) y `tarifa_vigente_mensual` (solo en
+  `RecursoSerializer`) son derivados, no campos del modelo: `valor_hora x capacidad_horas_mes`
+  del recurso. No hay un valor mensual independiente que se capture a mano.
 
 ### `AsignacionRecurso` — **el plan** de recursos del proyecto
 | Campo | Tipo | Notas |

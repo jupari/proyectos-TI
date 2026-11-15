@@ -66,6 +66,7 @@ export class ListaRecursos {
     { clave: 'tipo', titulo: 'Tipo' },
     { clave: 'perfil_nombre', titulo: 'Perfil' },
     { clave: 'tarifa_vigente', titulo: 'Tarifa vigente', alinear: 'derecha' },
+    { clave: 'tarifa_vigente_mensual', titulo: 'Valor mensual', alinear: 'derecha' },
     { clave: 'capacidad_horas_mes', titulo: 'Capacidad', alinear: 'derecha' },
     { clave: 'proyectos_activos', titulo: 'Proyectos activos', alinear: 'centro' },
     { clave: 'activo', titulo: 'Estado' },

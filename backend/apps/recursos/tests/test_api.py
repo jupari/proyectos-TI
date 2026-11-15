@@ -48,6 +48,31 @@ def test_cualquier_autenticado_lista_recursos(roles, cliente):
     assert respuesta.data["count"] == 1
 
 
+def test_recurso_trae_tarifa_vigente_mensual_calculada(roles, cliente):
+    recurso = RecursoFactory(capacidad_horas_mes=160)
+    TarifaRecursoFactory(
+        recurso=recurso, valor_hora=70_000, vigente_desde=datetime.date(2024, 1, 1)
+    )
+    usuario = crear_usuario_con_rol("CONSULTA")
+    cliente.force_authenticate(user=usuario)
+
+    respuesta = cliente.get(f"/api/v1/recursos/{recurso.id}/")
+
+    assert respuesta.data["tarifa_vigente"] == "70000.00"
+    assert respuesta.data["tarifa_vigente_mensual"] == "11200000.00"
+
+
+def test_recurso_sin_tarifa_ni_perfil_trae_mensual_en_none(roles, cliente):
+    recurso = RecursoFactory()
+    usuario = crear_usuario_con_rol("CONSULTA")
+    cliente.force_authenticate(user=usuario)
+
+    respuesta = cliente.get(f"/api/v1/recursos/{recurso.id}/")
+
+    assert respuesta.data["tarifa_vigente"] is None
+    assert respuesta.data["tarifa_vigente_mensual"] is None
+
+
 def test_filtro_sin_asignacion(roles, cliente):
     con_asignacion = AsignacionRecursoFactory().recurso
     sin_asignacion = RecursoFactory()
@@ -76,6 +101,20 @@ def test_filtro_por_usuario_encuentra_el_propio_recurso(roles, cliente):
 
 
 # --- tarifas -------------------------------------------------------------
+
+
+def test_tarifa_de_recurso_trae_valor_mes_calculado(roles, cliente):
+    recurso = RecursoFactory(capacidad_horas_mes=160)
+    tarifa = TarifaRecursoFactory(
+        recurso=recurso, valor_hora=70_000, vigente_desde=datetime.date(2024, 1, 1)
+    )
+    usuario = crear_usuario_con_rol("CONSULTA")
+    cliente.force_authenticate(user=usuario)
+
+    respuesta = cliente.get(f"/api/v1/tarifas-recurso/{tarifa.id}/")
+
+    assert respuesta.data["valor_hora"] == "70000.00"
+    assert respuesta.data["valor_mes"] == "11200000.00"
 
 
 def test_crear_tarifa_que_solapa_la_anterior_la_cierra_sola(roles, cliente):
