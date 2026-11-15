@@ -144,7 +144,12 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
 - `POST /registros-ejecucion/{id}/rechazar/` — `{motivo_rechazo}` obligatorio
 - `POST /registros-ejecucion/{id}/reabrir/` — solo `PMO` y `ADMIN`
 - `GET /registros-ejecucion/resumen/?proyecto=&agrupar_por=recurso|tarea|mes` → agregados
-- `/gastos-ejecutados/` — mismo ciclo de aprobación
+- `/gastos-ejecutados/` — mismo ciclo de aprobación (`enviar`/`aprobar`/`rechazar`/`reabrir`),
+  pero a diferencia de `registros-ejecucion` el `LIDER` **no** puede enviar ni aprobar sus
+  propios gastos, solo crearlos (`PermisoGastoEjecutado`) — enviar/aprobar/rechazar es solo
+  `ADMIN`/`PMO`. El frontend expone estos botones en la tabla "Gastos ejecutados" del detalle
+  del proyecto, condicionados al permiso `gastos.aprobar` (fase 15 adenda; solo lo tienen
+  `ADMIN` y `PMO` en `PERMISOS_POR_ROL`)
 - `GET /integraciones/jira/proyectos/` (fase 12, solo `ADMIN`/`PMO`) → lista en vivo
   `[{clave, nombre}]` de los proyectos del Jira configurado, para elegir a mano cuál corresponde
   a `Proyecto.clave_jira` en el formulario de proyecto (nunca se escribe esa clave a mano)
