@@ -27,6 +27,7 @@ from apps.core.calculos import (
     prorratear_por_rango,
 )
 from apps.core.choices import (
+    CategoriaRubro,
     EstadoAprobacion,
     EstadoCompromiso,
     EstadoHito,
@@ -506,6 +507,205 @@ def tabla_proyectos_por_periodo(proyectos, desde, hasta):
             "horas_ejec": total_ejec,
             "pct_horas": float(pct_total) * 100 if pct_total is not None else None,
         },
+    }
+
+
+def _nuevo_acumulador(campos):
+    return dict.fromkeys(campos, CERO)
+
+
+def _sumar_en(acumulador, valores):
+    for campo in acumulador:
+        acumulador[campo] += valores[campo]
+
+
+def _armar_bloque(categoria, etiqueta, filas, campos, claves_mes):
+    """Agrega `filas` (cada una con `por_mes`/`total` ya calculados) en un
+    bloque con subtotal por mes y subtotal total — misma forma para el
+    bloque de personal (4 campos: horas/valor x plan/ejec) y los de rubro
+    (2 campos: solo valor), para no repetir la lógica de acumular dos veces."""
+    subtotal_por_mes = {clave: _nuevo_acumulador(campos) for clave in claves_mes}
+    subtotal_total = _nuevo_acumulador(campos)
+    for fila in filas:
+        for clave in claves_mes:
+            _sumar_en(subtotal_por_mes[clave], fila["por_mes"][clave])
+        _sumar_en(subtotal_total, fila["total"])
+    return {
+        "categoria": categoria,
+        "etiqueta": etiqueta,
+        "filas": filas,
+        "subtotal": {"por_mes": subtotal_por_mes, "total": subtotal_total},
+    }
+
+
+def plan_costos_proyecto(proyecto, desde=None, hasta=None):
+    """Plan de costos de UN proyecto (fase 15), inspirado en una plantilla de
+    flujo de pagos mensual: por cada mes del rango, costo planeado vs.
+    ejecutado, desglosado en un bloque "Personal" (una fila por recurso, con
+    horas y valor) y un bloque por cada categoría de `RubroPresupuesto` con
+    datos en el proyecto (`CategoriaRubro`: LICENCIAS, INFRAESTRUCTURA,
+    SERVICIOS, CAPACITACION, OTROS — solo valor, sin horas), más subtotal por
+    bloque y un total general en dinero.
+
+    Sin `desde`/`hasta` se usa la planeación completa del proyecto
+    (`fecha_inicio_plan`–`fecha_fin_plan`). Reutiliza el mismo prorrateo que
+    `ejecucion_mensual` (`prorratear_por_mes`) para el personal; los rubros
+    no tienen fecha propia, así que su `monto_planeado` se reparte en partes
+    iguales entre los meses del rango (no hay otra forma de saber cuándo se
+    gastará, y así no hace falta pedir un dato nuevo).
+
+    Los `RubroPresupuesto` con `categoria=PERSONAL` se excluyen del bloque
+    por categoría: el personal de este reporte sale de `AsignacionRecurso`,
+    no de un rubro (nada obliga hoy a que exista un rubro de personal, y
+    mostrarlo aparte duplicaría el costo)."""
+    from apps.ejecucion.models import GastoEjecutado, RegistroEjecucion
+    from apps.proyectos.models import RubroPresupuesto
+    from apps.recursos.models import AsignacionRecurso
+
+    desde = desde or proyecto.fecha_inicio_plan
+    hasta = hasta or proyecto.fecha_fin_plan
+    meses = meses_entre(desde, hasta)
+    claves_mes = [f"{anio}-{mes:02d}" for anio, mes in meses]
+    campos_personal = ("horas_plan", "valor_plan", "horas_ejec", "valor_ejec")
+    campos_dinero = ("valor_plan", "valor_ejec")
+
+    # --- Personal: una fila por recurso, sumando todas sus asignaciones ----
+    asignaciones_por_recurso = {}
+    for asignacion in AsignacionRecurso.objects.filter(
+        activo=True, proyecto=proyecto
+    ).select_related("recurso", "recurso__perfil"):
+        asignaciones_por_recurso.setdefault(asignacion.recurso_id, []).append(asignacion)
+
+    registros_por_recurso = {}
+    for registro in RegistroEjecucion.objects.filter(
+        activo=True, estado_aprobacion=EstadoAprobacion.APROBADO, proyecto=proyecto
+    ):
+        registros_por_recurso.setdefault(registro.recurso_id, []).append(registro)
+
+    filas_personal = []
+    for recurso_id, asignaciones in asignaciones_por_recurso.items():
+        recurso = asignaciones[0].recurso
+        registros = registros_por_recurso.get(recurso_id, [])
+        por_mes = {}
+        total = _nuevo_acumulador(campos_personal)
+        for (anio, mes), clave in zip(meses, claves_mes, strict=True):
+            horas_plan = sum(
+                (
+                    prorratear_por_mes(a.fecha_desde, a.fecha_hasta, a.horas_planeadas, anio, mes)
+                    for a in asignaciones
+                ),
+                CERO,
+            )
+            valor_plan = sum(
+                (
+                    prorratear_por_mes(a.fecha_desde, a.fecha_hasta, a.costo_planeado, anio, mes)
+                    for a in asignaciones
+                ),
+                CERO,
+            )
+            registros_del_mes = [
+                r
+                for r in registros
+                if (r.periodo_inicio.year, r.periodo_inicio.month) == (anio, mes)
+            ]
+            horas_ejec = sum((r.horas for r in registros_del_mes), CERO)
+            valor_ejec = sum((r.costo for r in registros_del_mes), CERO)
+            valores = {
+                "horas_plan": horas_plan,
+                "valor_plan": valor_plan,
+                "horas_ejec": horas_ejec,
+                "valor_ejec": valor_ejec,
+            }
+            por_mes[clave] = valores
+            _sumar_en(total, valores)
+
+        # Si el recurso tiene más de una asignación en el proyecto, el rol y
+        # la tarifa que se muestran son los de la primera: las horas y el
+        # costo sí suman todas, pero mostrar varios roles/tarifas a la vez
+        # no cabe en una sola fila.
+        primera = asignaciones[0]
+        filas_personal.append(
+            {
+                "id": str(recurso_id),
+                "nombre": recurso.nombre,
+                "perfil": recurso.perfil.nombre if recurso.perfil else None,
+                "rol": primera.rol_en_proyecto,
+                "valor_hora": primera.valor_hora_plan,
+                "dedicacion_pct": primera.porcentaje_dedicacion,
+                "por_mes": por_mes,
+                "total": total,
+            }
+        )
+    filas_personal.sort(key=lambda f: f["nombre"])
+    bloques = [
+        _armar_bloque(
+            "PERSONAL",
+            CategoriaRubro.PERSONAL.label,
+            filas_personal,
+            campos_personal,
+            claves_mes,
+        )
+    ]
+
+    # --- Un bloque por cada categoría de rubro (no-personal) con datos -----
+    cantidad_meses = len(meses) or 1
+    rubros_por_categoria = {}
+    for rubro in RubroPresupuesto.objects.filter(activo=True, proyecto=proyecto).exclude(
+        categoria=CategoriaRubro.PERSONAL
+    ):
+        rubros_por_categoria.setdefault(rubro.categoria, []).append(rubro)
+
+    gastos_por_rubro = {}
+    for gasto in GastoEjecutado.objects.filter(
+        activo=True, estado_aprobacion=EstadoAprobacion.APROBADO, proyecto=proyecto
+    ):
+        gastos_por_rubro.setdefault(gasto.rubro_id, []).append(gasto)
+
+    for categoria, rubros in rubros_por_categoria.items():
+        filas_categoria = []
+        for rubro in sorted(rubros, key=lambda r: r.descripcion):
+            valor_plan_mensual = rubro.monto_planeado / cantidad_meses
+            gastos = gastos_por_rubro.get(rubro.id, [])
+            por_mes = {}
+            total = _nuevo_acumulador(campos_dinero)
+            for (anio, mes), clave in zip(meses, claves_mes, strict=True):
+                valor_ejec = sum(
+                    (g.monto for g in gastos if (g.fecha.year, g.fecha.month) == (anio, mes)),
+                    CERO,
+                )
+                valores = {"valor_plan": valor_plan_mensual, "valor_ejec": valor_ejec}
+                por_mes[clave] = valores
+                _sumar_en(total, valores)
+            filas_categoria.append(
+                {
+                    "id": str(rubro.id),
+                    "nombre": rubro.descripcion,
+                    "por_mes": por_mes,
+                    "total": total,
+                }
+            )
+        bloques.append(
+            _armar_bloque(
+                categoria,
+                CategoriaRubro(categoria).label,
+                filas_categoria,
+                campos_dinero,
+                claves_mes,
+            )
+        )
+
+    total_general = _armar_bloque(
+        None,
+        "Total general",
+        [{"por_mes": b["subtotal"]["por_mes"], "total": b["subtotal"]["total"]} for b in bloques],
+        campos_dinero,
+        claves_mes,
+    )
+
+    return {
+        "meses": claves_mes,
+        "bloques": bloques,
+        "total_general": total_general["subtotal"],
     }
 
 

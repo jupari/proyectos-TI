@@ -339,3 +339,62 @@ All files pass linting.
 $ docker compose -f infra/docker-compose.yml exec frontend npx ng build
 Application bundle generation complete.
 ```
+
+## Adenda (fase 15): "Plan de costos" — plan vs. ejecutado de un proyecto, por mes y categoría, con horas y valor
+
+Pedido por el usuario, a partir de una plantilla de Sheets de flujo de pagos mensual
+(bloques Personal/Proveedores/Software-Licencias/Logística-Viáticos, con columnas por mes).
+No existía en el código ninguna vista que combinara recursos + gastos no-personal **por mes
+y por categoría** a la vez: `ejecucion_mensual` es mensual pero solo de personal;
+`tabla_proyectos`/`resumen_global` combinan personal + no-personal pero sin desglose mensual
+ni por categoría. Dos decisiones del usuario antes de construir: (1) un selector
+Planeado/Ejecutado en vez de duplicar columnas por mes, y (2) los costos no-personal (sin
+fecha propia) se reparten en partes iguales entre los meses del rango.
+
+### Diseño
+
+- Nuevo `plan_costos_proyecto(proyecto, desde=None, hasta=None)` en `apps/tablero/services.py`.
+  Un bloque "Personal" (una fila por recurso, sumando todas sus asignaciones si tiene más de
+  una; horas y valor prorrateados por mes con `prorratear_por_mes`, igual que
+  `ejecucion_mensual`) y un bloque por cada `CategoriaRubro` con `RubroPresupuesto` en el
+  proyecto (excluyendo `categoria=PERSONAL`, para no duplicar ese costo: ahí sale de
+  `AsignacionRecurso`, no de un rubro). El `monto_planeado` de cada rubro no-personal se
+  reparte en partes iguales entre los meses del rango (decisión confirmada; no hay fecha
+  propia en `RubroPresupuesto` para prorratear de otra forma). Lo ejecutado no-personal agrupa
+  `GastoEjecutado.monto` (`APROBADO`) por el mes de su `fecha`. Subtotal por bloque y total
+  general (solo dinero) con el mismo helper `_armar_bloque`, para no repetir la acumulación.
+- Nuevo `GET /tablero/plan-costos/?proyecto=&desde=&hasta=` (`PlanCostosProyectoView`):
+  `proyecto` obligatorio (a diferencia del resto del tablero, que opera sobre un conjunto de
+  proyectos), 404 si no existe o cae fuera del alcance por rol del usuario. Mismo patrón de
+  caché que los demás endpoints. Se sumó a `/tablero/exportar/?vista=plan-costos` (de paso se
+  corrigió que esa lista de vistas válidas no incluía "proyectos-por-periodo", un vacío previo
+  a esta fase).
+- Pantalla nueva `/tablero/plan-costos`: selector de proyecto obligatorio (nada se carga sin
+  elegir uno) + selector segmentado Planeado/Ejecutado que no dispara otra petición — lee la
+  misma respuesta ya cargada. Tabla con scroll horizontal, encabezado de dos niveles (mes →
+  Horas/Valor), filas agrupadas por bloque con subtotal y fila de total general. Primera
+  pantalla del tablero con columnas de mes en el encabezado — no había precedente de eso en el
+  frontend (`proyectos-periodo` agrega un rango a un solo número, sin grilla mensual).
+
+### Evidencia
+
+```
+$ docker compose -f infra/docker-compose.yml exec backend pytest apps/tablero -q
+.........................................
+41 passed
+
+$ docker compose -f infra/docker-compose.yml exec backend pytest -q
+516 passed
+
+$ docker compose -f infra/docker-compose.yml exec backend ruff check .
+All checks passed!
+
+$ docker compose -f infra/docker-compose.yml exec backend python manage.py makemigrations --check --dry-run
+No changes detected
+
+$ docker compose -f infra/docker-compose.yml exec frontend npx ng lint
+All files pass linting.
+
+$ docker compose -f infra/docker-compose.yml exec frontend npx ng build
+Application bundle generation complete.
+```

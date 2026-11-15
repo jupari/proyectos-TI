@@ -10,7 +10,7 @@ import io
 
 from django.http import StreamingHttpResponse
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -20,6 +20,7 @@ from .filters import proyectos_del_tablero
 from .services import (
     ejecucion_mensual,
     ocupacion_recursos,
+    plan_costos_proyecto,
     resumen_global,
     resumen_tareas,
     tabla_proyectos,
@@ -156,6 +157,38 @@ class TablaProyectosPorPeriodoView(APIView):
             request,
             "proyectos-por-periodo",
             lambda: tabla_proyectos_por_periodo(proyectos, desde, hasta),
+        )
+        return Response({**datos, "calculado_en": calculado_en.isoformat()})
+
+
+class PlanCostosProyectoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Plan de costos de un proyecto, por mes y categoría",
+        description="docs/api-contrato.md §7: costo planeado vs. ejecutado de UN "
+        "proyecto, mes a mes, en un bloque «Personal» (una fila por recurso, con "
+        "horas y valor) y un bloque por cada categoría de rubro con datos "
+        "(solo valor). Sin `desde`/`hasta` se usa la planeación completa del "
+        "proyecto (`fecha_inicio_plan`–`fecha_fin_plan`).",
+        parameters=[
+            OpenApiParameter("proyecto", str, required=True),
+            OpenApiParameter("desde", str, required=False),
+            OpenApiParameter("hasta", str, required=False),
+        ],
+        responses={200: {"type": "object"}},
+    )
+    def get(self, request):
+        proyecto_id = request.query_params.get("proyecto")
+        if not proyecto_id:
+            raise ValidationError({"proyecto": ["Este parámetro es obligatorio."]})
+        proyecto = proyectos_del_tablero(request).filter(id=proyecto_id).first()
+        if proyecto is None:
+            raise NotFound("El proyecto no existe o no está en su alcance.")
+        desde, hasta = _rango_fechas(request, requerido=False)
+
+        datos, calculado_en = desde_cache_o_calcular(
+            request, "plan-costos", lambda: plan_costos_proyecto(proyecto, desde, hasta)
         )
         return Response({**datos, "calculado_en": calculado_en.isoformat()})
 
@@ -331,11 +364,66 @@ def _filas_csv_ejecucion_mensual(proyectos, request):
     return encabezados, filas
 
 
+def _filas_csv_plan_costos(proyectos, request):
+    proyecto_id = request.query_params.get("proyecto")
+    if not proyecto_id:
+        raise ValidationError({"proyecto": ["Este parámetro es obligatorio."]})
+    proyecto = proyectos.filter(id=proyecto_id).first()
+    if proyecto is None:
+        raise NotFound("El proyecto no existe o no está en su alcance.")
+    desde, hasta = _rango_fechas(request, requerido=False)
+    datos = plan_costos_proyecto(proyecto, desde, hasta)
+    meses = datos["meses"]
+
+    encabezados = ["Categoría", "Concepto"]
+    for mes in meses:
+        encabezados += [
+            f"Horas plan {mes}",
+            f"Valor plan {mes}",
+            f"Horas ejec {mes}",
+            f"Valor ejec {mes}",
+        ]
+    encabezados += ["Total horas plan", "Total valor plan", "Total horas ejec", "Total valor ejec"]
+
+    def _renglon(etiqueta, concepto, por_mes, total):
+        renglon = [etiqueta, concepto]
+        for mes in meses:
+            valores = por_mes[mes]
+            renglon += [
+                _texto(valores.get("horas_plan")),
+                _texto(valores.get("valor_plan")),
+                _texto(valores.get("horas_ejec")),
+                _texto(valores.get("valor_ejec")),
+            ]
+        renglon += [
+            _texto(total.get("horas_plan")),
+            _texto(total.get("valor_plan")),
+            _texto(total.get("horas_ejec")),
+            _texto(total.get("valor_ejec")),
+        ]
+        return renglon
+
+    filas = []
+    for bloque in datos["bloques"]:
+        for fila in bloque["filas"]:
+            filas.append(
+                _renglon(bloque["etiqueta"], fila["nombre"], fila["por_mes"], fila["total"])
+            )
+        subtotal = bloque["subtotal"]
+        filas.append(
+            _renglon(bloque["etiqueta"], "SUBTOTAL", subtotal["por_mes"], subtotal["total"])
+        )
+    total_general = datos["total_general"]
+    filas.append(_renglon("", "TOTAL GENERAL", total_general["por_mes"], total_general["total"]))
+    return encabezados, filas
+
+
 _CONSTRUCTORES_CSV = {
     "proyectos": lambda proyectos, request: _filas_csv_proyectos(proyectos),
     "recursos": _filas_csv_recursos,
     "ejecucion-mensual": _filas_csv_ejecucion_mensual,
     "proyectos-por-periodo": _filas_csv_proyectos_por_periodo,
+    "plan-costos": _filas_csv_plan_costos,
 }
 
 
@@ -353,11 +441,21 @@ class ExportarTableroView(APIView):
             *PARAMETROS_FILTRO_PROYECTO,
             OpenApiParameter("formato", str, required=True, enum=["csv"]),
             OpenApiParameter(
-                "vista", str, required=True, enum=["proyectos", "recursos", "ejecucion-mensual"]
+                "vista",
+                str,
+                required=True,
+                enum=[
+                    "proyectos",
+                    "recursos",
+                    "ejecucion-mensual",
+                    "proyectos-por-periodo",
+                    "plan-costos",
+                ],
             ),
             OpenApiParameter("desde", str, required=False),
             OpenApiParameter("hasta", str, required=False),
             OpenApiParameter("perfil", str, required=False),
+            OpenApiParameter("proyecto", str, required=False),
         ],
         responses={200: {"type": "string", "format": "binary"}},
     )
@@ -369,7 +467,12 @@ class ExportarTableroView(APIView):
         constructor = _CONSTRUCTORES_CSV.get(vista)
         if constructor is None:
             raise ValidationError(
-                {"vista": ["Debe ser «proyectos», «recursos» o «ejecucion-mensual»."]}
+                {
+                    "vista": [
+                        "Debe ser «proyectos», «recursos», «ejecucion-mensual», "
+                        "«proyectos-por-periodo» o «plan-costos»."
+                    ]
+                }
             )
 
         proyectos = proyectos_del_tablero(request)

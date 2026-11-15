@@ -192,7 +192,16 @@ Sub-recursos con CRUD propio, filtrables por `?proyecto=`:
 | `GET /tablero/proyectos-por-periodo/?desde=&hasta=` (adenda) | una fila por proyecto con `{id, codigo, nombre, horas_plan, horas_ejec, pct_horas}` dentro de `[desde, hasta]` (una semana o un mes elegidos a mano, sin partir en meses calendario como `ejecucion-mensual`), más una fila `totales` con la suma; `desde`/`hasta` obligatorios |
 | `GET /tablero/recursos/?desde=&hasta=` | horas planeadas vs. ejecutadas por recurso y su % de ocupación |
 | `GET /tablero/tareas/?proyecto=` | conteo por estado, tareas vencidas, tareas creadas durante la ejecución |
-| `GET /tablero/exportar/?formato=csv&vista=proyectos\|recursos\|ejecucion-mensual\|proyectos-por-periodo` | descarga CSV de la vista indicada |
+| `GET /tablero/plan-costos/?proyecto=&desde=&hasta=` (fase 15) | plan de costos de UN proyecto, mes a mes: bloque "Personal" (una fila por recurso, horas+valor) y un bloque por cada categoría de `RubroPresupuesto` con datos (solo valor); `proyecto` obligatorio, 404 si no existe o no está en el alcance del usuario; sin `desde`/`hasta` usa `fecha_inicio_plan`–`fecha_fin_plan` del proyecto |
+| `GET /tablero/exportar/?formato=csv&vista=proyectos\|recursos\|ejecucion-mensual\|proyectos-por-periodo\|plan-costos` | descarga CSV de la vista indicada |
+
+`plan_costos_proyecto`: el costo de personal se prorratea por mes a partir de
+`AsignacionRecurso`/`RegistroEjecucion` (igual que `ejecucion-mensual`); los
+rubros no-personal no tienen fecha propia, así que su `monto_planeado` se
+reparte en partes iguales entre los meses del rango (no hay forma de saber
+cuándo se gastará sin pedir un dato nuevo). Los rubros con
+`categoria=PERSONAL` se excluyen del desglose por categoría — ese costo ya
+sale de las asignaciones, no duplicarlo.
 
 Bloque `resumen_ejecucion` que se reutiliza en varias respuestas:
 

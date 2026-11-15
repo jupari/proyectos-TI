@@ -1,0 +1,123 @@
+<div class="flex flex-col gap-4">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-lg font-semibold text-neutro-800">Plan de costos del proyecto</h1>
+    <div class="flex items-center gap-2">
+      <app-boton variante="secundario" tamano="sm" routerLink="/tablero">« Volver al tablero</app-boton>
+      @if (datos()) {
+        <app-boton variante="secundario" tamano="sm" [cargando]="exportando()" (clic)="exportarCsv()">
+          Exportar CSV
+        </app-boton>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-3 rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta">
+    <app-select
+      etiqueta="Proyecto"
+      placeholder="Elija un proyecto…"
+      [opciones]="opcionesProyectos()"
+      [ngModel]="proyectoId()"
+      (ngModelChange)="alCambiarProyecto($event)"
+    />
+    @if (proyectoId()) {
+      <app-select
+        etiqueta="Ver"
+        [opciones]="opcionesVista"
+        [ngModel]="vista()"
+        (ngModelChange)="vista.set($event)"
+      />
+    }
+  </div>
+
+  @if (!proyectoId()) {
+    <app-estado-vacio mensaje="Elige un proyecto para ver su plan de costos." />
+  } @else if (cargando()) {
+    <p class="text-sm text-neutro-500">Cargando…</p>
+  } @else if (error()) {
+    <p class="rounded-panel border border-peligro/30 bg-peligro/5 p-6 text-center text-sm text-peligro">
+      No se pudo cargar el plan de costos de este proyecto.
+    </p>
+  } @else if (datos(); as d) {
+    <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-white">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-neutro-200 text-neutro-500">
+          <tr>
+            <th class="px-3 py-2" rowspan="2">Concepto</th>
+            <th class="px-3 py-2" rowspan="2">Rol</th>
+            <th class="px-3 py-2 text-right" rowspan="2">Valor hora</th>
+            @for (mes of meses(); track mes) {
+              <th class="border-l border-neutro-200 px-3 py-1 text-center" colspan="2">
+                {{ formatoMes(mes) }}
+              </th>
+            }
+            <th class="border-l border-neutro-200 px-3 py-1 text-center" colspan="2">Total</th>
+          </tr>
+          <tr>
+            @for (mes of meses(); track mes) {
+              <th class="border-l border-neutro-200 px-3 py-1 text-right">Horas</th>
+              <th class="px-3 py-1 text-right">Valor</th>
+            }
+            <th class="border-l border-neutro-200 px-3 py-1 text-right">Horas</th>
+            <th class="px-3 py-1 text-right">Valor</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutro-100">
+          @for (bloque of d.bloques; track bloque.categoria) {
+            <tr class="bg-neutro-50">
+              <td class="px-3 py-1.5 font-medium text-neutro-700" [attr.colspan]="totalColumnas()">
+                {{ bloque.etiqueta }}
+              </td>
+            </tr>
+            @for (fila of bloque.filas; track fila.id) {
+              <tr class="hover:bg-neutro-50">
+                <td class="px-3 py-2">{{ fila.nombre }}</td>
+                <td class="px-3 py-2 text-neutro-500">{{ fila.rol ?? '—' }}</td>
+                <td class="px-3 py-2 text-right">{{ fila.valor_hora | moneda }}</td>
+                @for (mes of meses(); track mes) {
+                  <td class="border-l border-neutro-100 px-3 py-2 text-right">
+                    {{ horasDe(fila.por_mes[mes]) | horas }}
+                  </td>
+                  <td class="px-3 py-2 text-right">{{ valorDe(fila.por_mes[mes]) | moneda }}</td>
+                }
+                <td class="border-l border-neutro-100 px-3 py-2 text-right">
+                  {{ horasDe(fila.total) | horas }}
+                </td>
+                <td class="px-3 py-2 text-right">{{ valorDe(fila.total) | moneda }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="px-3 py-3 text-neutro-400" [attr.colspan]="totalColumnas()">
+                  Sin datos en esta categoría.
+                </td>
+              </tr>
+            }
+            <tr class="font-semibold">
+              <td class="px-3 py-2" colspan="3">Subtotal {{ bloque.etiqueta }}</td>
+              @for (mes of meses(); track mes) {
+                <td class="border-l border-neutro-100 px-3 py-2 text-right">
+                  {{ horasDe(bloque.subtotal.por_mes[mes]) | horas }}
+                </td>
+                <td class="px-3 py-2 text-right">{{ valorDe(bloque.subtotal.por_mes[mes]) | moneda }}</td>
+              }
+              <td class="border-l border-neutro-100 px-3 py-2 text-right">
+                {{ horasDe(bloque.subtotal.total) | horas }}
+              </td>
+              <td class="px-3 py-2 text-right">{{ valorDe(bloque.subtotal.total) | moneda }}</td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr class="border-t border-neutro-200 bg-neutro-50 font-bold">
+            <td class="px-3 py-2" colspan="3">TOTAL GENERAL</td>
+            @for (mes of meses(); track mes) {
+              <td class="border-l border-neutro-100 px-3 py-2"></td>
+              <td class="px-3 py-2 text-right">{{ valorDe(d.total_general.por_mes[mes]) | moneda }}</td>
+            }
+            <td class="border-l border-neutro-100 px-3 py-2"></td>
+            <td class="px-3 py-2 text-right">{{ valorDe(d.total_general.total) | moneda }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  }
+</div>

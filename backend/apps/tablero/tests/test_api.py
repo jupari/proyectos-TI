@@ -7,7 +7,7 @@ from rest_framework.test import APIClient
 
 from apps.core.choices import EstadoAprobacion
 from apps.ejecucion.tests.factories import RegistroEjecucionFactory
-from apps.proyectos.tests.factories import ProyectoFactory
+from apps.proyectos.tests.factories import ProyectoFactory, RubroPresupuestoFactory
 from apps.recursos.tests.factories import AsignacionRecursoFactory
 from conftest import crear_usuario_con_rol
 
@@ -202,3 +202,86 @@ def test_refrescar_true_salta_la_cache_sin_necesidad_de_invalidacion(roles, clie
 
     tercero = cliente.get("/api/v1/tablero/resumen/?refrescar=true").data
     assert tercero["horas_planeadas"] == Decimal("150.00")
+
+
+# --- /tablero/plan-costos/ ------------------------------------------------
+
+
+def test_plan_costos_sin_proyecto_da_400(roles, cliente):
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.get("/api/v1/tablero/plan-costos/")
+
+    assert respuesta.status_code == 400
+
+
+def test_plan_costos_de_proyecto_inexistente_da_404(roles, cliente):
+    admin = crear_usuario_con_rol("ADMIN")
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.get(
+        "/api/v1/tablero/plan-costos/", {"proyecto": "00000000-0000-0000-0000-000000000000"}
+    )
+
+    assert respuesta.status_code == 404
+
+
+def test_plan_costos_trae_bloques_y_meses(roles, cliente):
+    admin = crear_usuario_con_rol("ADMIN")
+    proyecto = ProyectoFactory(
+        fecha_inicio_plan=datetime.date(2026, 1, 1), fecha_fin_plan=datetime.date(2026, 2, 28)
+    )
+    AsignacionRecursoFactory(
+        proyecto=proyecto,
+        fecha_desde=datetime.date(2026, 1, 1),
+        fecha_hasta=datetime.date(2026, 2, 28),
+        horas_planeadas=200,
+        valor_hora_plan=50_000,
+    )
+    RubroPresupuestoFactory(proyecto=proyecto, categoria="LICENCIAS", monto_planeado=1_000_000)
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.get("/api/v1/tablero/plan-costos/", {"proyecto": str(proyecto.id)})
+
+    assert respuesta.status_code == 200
+    assert respuesta.data["meses"] == ["2026-01", "2026-02"]
+    categorias = [b["categoria"] for b in respuesta.data["bloques"]]
+    assert categorias == ["PERSONAL", "LICENCIAS"]
+    assert "calculado_en" in respuesta.data
+
+
+def test_lider_no_ve_plan_costos_de_un_proyecto_ajeno(roles, cliente):
+    lider = crear_usuario_con_rol("LIDER")
+    otro_gerente = crear_usuario_con_rol("LIDER")
+    proyecto_ajeno = ProyectoFactory(gerente=otro_gerente)
+    cliente.force_authenticate(user=lider)
+
+    respuesta = cliente.get("/api/v1/tablero/plan-costos/", {"proyecto": str(proyecto_ajeno.id)})
+
+    assert respuesta.status_code == 404
+
+
+def test_exportar_csv_plan_costos(roles, cliente):
+    admin = crear_usuario_con_rol("ADMIN")
+    proyecto = ProyectoFactory(
+        fecha_inicio_plan=datetime.date(2026, 1, 1), fecha_fin_plan=datetime.date(2026, 1, 31)
+    )
+    AsignacionRecursoFactory(
+        proyecto=proyecto,
+        fecha_desde=datetime.date(2026, 1, 1),
+        fecha_hasta=datetime.date(2026, 1, 31),
+        horas_planeadas=100,
+        valor_hora_plan=50_000,
+    )
+    cliente.force_authenticate(user=admin)
+
+    respuesta = cliente.get(
+        "/api/v1/tablero/exportar/",
+        {"formato": "csv", "vista": "plan-costos", "proyecto": str(proyecto.id)},
+    )
+
+    assert respuesta.status_code == 200
+    contenido = b"".join(respuesta.streaming_content).decode("utf-8")
+    assert "Categoría;Concepto" in contenido
+    assert "TOTAL GENERAL" in contenido

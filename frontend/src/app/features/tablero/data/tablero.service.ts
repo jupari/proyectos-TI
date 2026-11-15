@@ -6,6 +6,7 @@ import { environment } from '../../../../environments/environment';
 import {
   EjecucionMensualTablero,
   FiltrosTablero,
+  PlanCostosProyecto,
   RecursosTablero,
   ResumenGlobalTablero,
   ResumenTareasTablero,
@@ -17,7 +18,8 @@ export type VistaExportarTablero =
   | 'proyectos'
   | 'recursos'
   | 'ejecucion-mensual'
-  | 'proyectos-por-periodo';
+  | 'proyectos-por-periodo'
+  | 'plan-costos';
 
 /** Los seis endpoints de `docs/api-contrato.md §7` no son un CRUD de un
  * recurso (no hay modelo propio: todo es agregación de solo lectura), así
@@ -64,6 +66,12 @@ export class TableroService {
 
   recursos(filtros?: FiltrosTablero): Observable<RecursosTablero> {
     return this.http.get<RecursosTablero>(`${this.base}/recursos/`, {
+      params: this.parametros(filtros),
+    });
+  }
+
+  planCostos(filtros: FiltrosTablero): Observable<PlanCostosProyecto> {
+    return this.http.get<PlanCostosProyecto>(`${this.base}/plan-costos/`, {
       params: this.parametros(filtros),
     });
   }
