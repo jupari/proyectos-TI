@@ -31,7 +31,8 @@
           <div><dt class="text-neutro-400">Perfil</dt><dd class="text-neutro-800">{{ recurso()!.perfil_nombre ?? '—' }}</dd></div>
           <div><dt class="text-neutro-400">Correo</dt><dd class="text-neutro-800">{{ recurso()!.email ?? '—' }}</dd></div>
           <div><dt class="text-neutro-400">Capacidad mensual</dt><dd class="text-neutro-800">{{ recurso()!.capacidad_horas_mes | horas }}</dd></div>
-          <div><dt class="text-neutro-400">Tarifa vigente hoy</dt><dd class="text-neutro-800">{{ recurso()!.tarifa_vigente | moneda }}</dd></div>
+          <div><dt class="text-neutro-400">Tarifa vigente hoy (hora)</dt><dd class="text-neutro-800">{{ recurso()!.tarifa_vigente | moneda }}</dd></div>
+          <div><dt class="text-neutro-400">Tarifa vigente hoy (mes)</dt><dd class="text-neutro-800">{{ recurso()!.tarifa_vigente_mensual | moneda }}</dd></div>
           <div><dt class="text-neutro-400">Fecha de ingreso</dt><dd class="text-neutro-800">{{ recurso()!.fecha_ingreso | fechaCorta }}</dd></div>
           <div><dt class="text-neutro-400">Fecha de retiro</dt><dd class="text-neutro-800">{{ recurso()!.fecha_retiro | fechaCorta }}</dd></div>
           <div><dt class="text-neutro-400">Proyectos activos</dt><dd class="text-neutro-800">{{ recurso()!.proyectos_activos }}</dd></div>
@@ -48,17 +49,23 @@
         </div>
         <table class="w-full text-left text-sm">
           <thead class="text-neutro-500">
-            <tr><th class="py-1">Valor/hora</th><th class="py-1">Vigente desde</th><th class="py-1">Vigente hasta</th></tr>
+            <tr>
+              <th class="py-1">Valor/hora</th>
+              <th class="py-1">Valor/mes</th>
+              <th class="py-1">Vigente desde</th>
+              <th class="py-1">Vigente hasta</th>
+            </tr>
           </thead>
           <tbody class="divide-y divide-neutro-100">
             @for (tarifa of tarifas(); track tarifa.id) {
               <tr [class.font-semibold]="!tarifa.vigente_hasta" [class.text-exito]="!tarifa.vigente_hasta">
                 <td class="py-2">{{ tarifa.valor_hora | moneda }}</td>
+                <td class="py-2">{{ tarifa.valor_mes | moneda }}</td>
                 <td class="py-2">{{ tarifa.vigente_desde | fechaCorta }}</td>
                 <td class="py-2">{{ tarifa.vigente_hasta ? (tarifa.vigente_hasta | fechaCorta) : 'Vigente' }}</td>
               </tr>
             } @empty {
-              <tr><td colspan="3" class="py-4 text-neutro-400">Sin tarifas registradas.</td></tr>
+              <tr><td colspan="4" class="py-4 text-neutro-400">Sin tarifas registradas.</td></tr>
             }
           </tbody>
         </table>
@@ -112,6 +119,11 @@
         (ngModelChange)="nuevoValorHora.set($event)"
         name="nuevoValorHora"
       />
+      @if (nuevoValorMesEstimado() !== null) {
+        <p class="text-xs text-neutro-500">
+          ≈ {{ nuevoValorMesEstimado() | moneda }} al mes (con la capacidad actual del recurso).
+        </p>
+      }
       <app-datepicker
         etiqueta="Vigente desde *"
         [ngModel]="nuevaVigenteDesde()"

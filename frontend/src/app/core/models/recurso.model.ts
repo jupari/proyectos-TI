@@ -16,6 +16,8 @@ export interface Recurso extends ModeloBase {
 export interface TarifaRecurso extends ModeloBase {
   recurso: string;
   valor_hora: string;
+  /** Derivado: valor_hora x capacidad_horas_mes del recurso, no se captura aparte. */
+  valor_mes: string;
   moneda: string;
   vigente_desde: string;
   vigente_hasta: string | null;

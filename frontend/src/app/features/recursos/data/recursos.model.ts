@@ -5,6 +5,8 @@ import { Recurso } from '../../../core/models';
 export interface RecursoLista extends Recurso {
   perfil_nombre: string | null;
   tarifa_vigente: string | null;
+  /** Derivado: tarifa_vigente x capacidad_horas_mes, no se captura aparte. */
+  tarifa_vigente_mensual: string | null;
   proyectos_activos: number;
 }
 

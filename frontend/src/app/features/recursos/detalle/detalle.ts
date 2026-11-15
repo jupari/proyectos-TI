@@ -80,6 +80,14 @@ export class DetalleRecurso {
   protected readonly nuevaVigenteDesde = signal<string | null>(null);
   protected readonly guardandoTarifa = signal(false);
 
+  /** Solo informativo en el diálogo: valor_hora x capacidad_horas_mes del
+   * recurso, el mismo cálculo que hace el backend al mostrar `valor_mes`. */
+  protected readonly nuevoValorMesEstimado = computed(() => {
+    const valorHora = this.nuevoValorHora();
+    const capacidad = Number(this.recurso()?.capacidad_horas_mes ?? 0);
+    return valorHora != null ? valorHora * capacidad : null;
+  });
+
   protected readonly hayTarifaAbierta = computed(() =>
     this.tarifas().some((t) => !t.vigente_hasta),
   );
