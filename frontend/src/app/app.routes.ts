@@ -8,6 +8,8 @@ import { CambiarClave } from './features/auth/cambiar-clave';
 import { GoogleCallback } from './features/auth/google-callback';
 import { Login } from './features/auth/login';
 import { Perfil } from './features/auth/perfil';
+import { RecuperarClave } from './features/auth/recuperar-clave';
+import { RestablecerClave } from './features/auth/restablecer-clave';
 import { Pagina403 } from './features/comun/pagina-403';
 import { Pagina404 } from './features/comun/pagina-404';
 import { Shell } from './layout/shell';
@@ -17,6 +19,8 @@ export const routes: Routes = [
   { path: 'auth/login', component: Login },
   { path: 'auth/google/callback', component: GoogleCallback },
   { path: 'auth/cambiar-clave', component: CambiarClave, canActivate: [autenticadoGuard] },
+  { path: 'auth/recuperar', component: RecuperarClave },
+  { path: 'auth/restablecer', component: RestablecerClave },
   { path: '403', component: Pagina403 },
 
   ...(!environment.production

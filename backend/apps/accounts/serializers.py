@@ -4,10 +4,13 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.encoding import DjangoUnicodeDecodeError, force_str
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, ValidationError
 
 from apps.accounts.models import CodigoAccesoDobleFactor, RolMeta, Usuario
 from apps.accounts.permisos_ui import permisos_de
@@ -208,6 +211,49 @@ class CambiarClaveSerializer(serializers.Serializer):
 
     def save(self):
         usuario = self.context["request"].user
+        usuario.set_password(self.validated_data["clave_nueva"])
+        usuario.debe_cambiar_clave = False
+        usuario.save(update_fields=["password", "debe_cambiar_clave"])
+        return usuario
+
+
+class SolicitarRecuperacionSerializer(serializers.Serializer):
+    """Fase 13. Solo valida el formato del correo: la vista decide en
+    silencio si existe un usuario y si corresponde enviarle algo — este
+    endpoint nunca revela si una cuenta existe."""
+
+    email = serializers.EmailField()
+
+
+class RestablecerClaveSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    clave_nueva = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        try:
+            pk = force_str(urlsafe_base64_decode(attrs["uid"]))
+            usuario = Usuario.objects.get(pk=pk)
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+            DjangoUnicodeDecodeError,
+            Usuario.DoesNotExist,
+        ):
+            raise ValidationError({"uid": ["El enlace de recuperación no es válido."]}) from None
+
+        if not default_token_generator.check_token(usuario, attrs["token"]):
+            raise ValidationError(
+                {"token": ["El enlace de recuperación no es válido o ya venció."]}
+            )
+
+        validate_password(attrs["clave_nueva"], user=usuario)
+        attrs["usuario"] = usuario
+        return attrs
+
+    def save(self):
+        usuario = self.validated_data["usuario"]
         usuario.set_password(self.validated_data["clave_nueva"])
         usuario.debe_cambiar_clave = False
         usuario.save(update_fields=["password", "debe_cambiar_clave"])

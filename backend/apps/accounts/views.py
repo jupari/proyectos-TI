@@ -4,25 +4,29 @@ import secrets
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Group
+from django.contrib.auth.tokens import default_token_generator
 from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import SAFE_METHODS, AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.core.choices import TipoEvento
+from apps.core.choices import ProveedorAuth, TipoEvento
 from apps.core.exceptions import ErrorConflicto
 from apps.core.permissions import EsAdminOSoloLectura
 from apps.core.roles import codigos_roles_de
 from apps.core.services import registrar_evento
 from apps.core.views import ViewSetBase
 
-from .correo import enviar_codigo_2fa
+from .correo import enviar_codigo_2fa, enviar_enlace_recuperacion
 from .models import CodigoAccesoDobleFactor, RolMeta, Usuario
 from .oauth import (
     canjear_codigo,
@@ -34,8 +38,10 @@ from .oauth import (
 from .serializers import (
     CambiarClaveSerializer,
     ReenviarCodigoSerializer,
+    RestablecerClaveSerializer,
     RolMetaSerializer,
     SolicitarCodigoSerializer,
+    SolicitarRecuperacionSerializer,
     UsuarioActualizarSerializer,
     UsuarioActualSerializer,
     UsuarioAdminEscrituraSerializer,
@@ -220,6 +226,61 @@ class CambiarClaveView(APIView):
         serializer = CambiarClaveSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SolicitarRecuperacionView(APIView):
+    """Fase 13. Siempre responde 200, exista o no el correo — nunca revela
+    si una cuenta existe. Solo envía el enlace si existe y es `LOCAL`
+    (una cuenta `GOOGLE` no tiene clave propia que recuperar)."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "recuperar-clave"
+
+    @extend_schema(
+        summary="Pide el enlace de recuperación de clave por correo",
+        request=SolicitarRecuperacionSerializer,
+        responses={200: None},
+    )
+    def post(self, request):
+        serializer = SolicitarRecuperacionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        usuario = Usuario.objects.filter(
+            email__iexact=serializer.validated_data["email"], proveedor_auth=ProveedorAuth.LOCAL
+        ).first()
+        if usuario is not None:
+            uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+            token = default_token_generator.make_token(usuario)
+            enlace = f"{settings.FRONTEND_URL}/auth/restablecer?uid={uid}&token={token}"
+            enviar_enlace_recuperacion(usuario, enlace)
+
+        mensaje = "Si el correo existe, llegará un enlace para recuperar la clave."
+        return Response({"mensaje": mensaje})
+
+
+class RestablecerClaveView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "recuperar-clave"
+
+    @extend_schema(
+        summary="Cambia la clave usando el enlace de recuperación",
+        request=RestablecerClaveSerializer,
+        responses={204: None},
+    )
+    def post(self, request):
+        serializer = RestablecerClaveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        usuario = serializer.save()
+        registrar_evento(
+            tipo_evento=TipoEvento.LOGIN,
+            entidad="Usuario",
+            entidad_id=usuario.id,
+            descripcion=f"Recuperación de clave de {usuario.email}.",
+            usuario=usuario,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

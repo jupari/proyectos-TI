@@ -9,6 +9,12 @@
 # - El disco del backend es efímero: los archivos subidos al expediente
 #   (MEDIA_ROOT) se pierden en cada deploy o reinicio.
 # - La base de datos Postgres free expira a los 90 días.
+# - El login (y la recuperación de clave) necesitan EMAIL_HOST_USER y
+#   EMAIL_HOST_PASSWORD puestos a mano en el dashboard: son una cuenta de
+#   Gmail con verificación en dos pasos activada y una "contraseña de
+#   aplicación" generada en myaccount.google.com/apppasswords (la clave
+#   normal de la cuenta no sirve para SMTP). Sin esto, nadie puede
+#   terminar de iniciar sesión en este despliegue.
 #
 # Si el nombre "seguimiento-ti-backend" ya está en uso, Render le añadirá
 # un sufijo a la URL pública: hay que reflejar esa URL real en
@@ -61,6 +67,31 @@ services:
         value: pdf,docx,xlsx,pptx,png,jpg,jpeg,msg,txt,csv,zip
       - key: MAX_UPLOAD_MB
         value: "25"
+      # Correo (fase 13): código de verificación en dos pasos y
+      # recuperación de clave. EMAIL_HOST_USER/PASSWORD son credenciales
+      # reales de una cuenta de Gmail — no se comiten al repo, hay que
+      # pegarlas a mano en el dashboard de Render (ver guía de "contraseña
+      # de aplicación" de Gmail).
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USE_TLS
+        value: "True"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: FRONTEND_URL
+        value: https://seguimiento-ti-frontend.onrender.com
+      - key: OTP_LIFETIME_MINUTES
+        value: "10"
+      - key: OTP_MAX_INTENTOS
+        value: "5"
+      - key: PASSWORD_RESET_TIMEOUT
+        value: "3600"
       - key: POSTGRES_DB
         fromDatabase:
           name: seguimiento-ti-db
