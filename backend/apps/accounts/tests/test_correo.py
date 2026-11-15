@@ -37,3 +37,29 @@ def test_enviar_codigo_2fa_si_el_smtp_falla_lanza_error_claro_en_vez_de_colgarse
     with patch("apps.accounts.correo.send_mail", side_effect=TimeoutError("smtp colgado")):
         with pytest.raises(ErrorEnvioCorreo):
             enviar_codigo_2fa(usuario, "123456")
+
+
+def test_con_brevo_api_key_configurada_envia_por_la_api_http(settings):
+    settings.BREVO_API_KEY = "clave-de-prueba"
+    usuario = UsuarioFactory(email="persona@demo.local", nombres="Ana")
+
+    with patch("apps.accounts.correo.requests.post") as post_simulado:
+        post_simulado.return_value.status_code = 201
+        enviar_codigo_2fa(usuario, "123456")
+
+    assert len(mail.outbox) == 0  # no pasó por SMTP
+    _url, kwargs = post_simulado.call_args
+    assert kwargs["headers"]["api-key"] == "clave-de-prueba"
+    assert kwargs["json"]["to"] == [{"email": "persona@demo.local"}]
+    assert "123456" in kwargs["json"]["textContent"]
+
+
+def test_con_brevo_api_key_configurada_si_la_api_falla_lanza_error_claro(settings):
+    settings.BREVO_API_KEY = "clave-de-prueba"
+    usuario = UsuarioFactory(email="persona@demo.local", nombres="Ana")
+
+    with patch("apps.accounts.correo.requests.post") as post_simulado:
+        post_simulado.return_value.status_code = 401
+        post_simulado.return_value.text = "Unauthorized"
+        with pytest.raises(ErrorEnvioCorreo):
+            enviar_codigo_2fa(usuario, "123456")

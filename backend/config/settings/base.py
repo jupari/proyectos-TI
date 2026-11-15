@@ -199,6 +199,11 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
 # cuelga la conexión indefinidamente en vez de fallar rápido — y eso
 # bloquea el worker entero de gunicorn hasta que Render lo mata.
 EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
+# Con esto configurada, apps.accounts.correo envía por la API HTTP de
+# Brevo en vez de SMTP: evita el bloqueo de puertos SMTP salientes que
+# aplican Render y otros PaaS gratuitos. Vacío en dev/test a propósito
+# (usan el backend de consola/memoria, no hace falta una key real).
+BREVO_API_KEY = env("BREVO_API_KEY", default="")
 # URL pública del frontend, para construir el enlace de recuperación de
 # clave que va dentro del correo (el backend no la conoce por ningún otro
 # medio: no hay nada que la derive de ALLOWED_HOSTS ni de CORS_ALLOWED_ORIGINS).

@@ -1,15 +1,28 @@
 """Envío de correo de autenticación (fase 13): código de verificación en dos
 pasos y enlace de recuperación de clave. Texto plano a propósito — es un
-alcance básico, sin plantillas HTML."""
+alcance básico, sin plantillas HTML.
+
+Con `BREVO_API_KEY` configurada, el envío va por la API HTTP de Brevo
+(`requests.post` normal, puerto 443) en vez del backend SMTP de Django:
+Render (y varios PaaS gratuitos) bloquean las conexiones salientes por los
+puertos SMTP habituales (25/465/587) para prevenir abuso, así que cualquier
+proveedor por SMTP se cuelga ahí sin importar que las credenciales estén
+bien. Sin `BREVO_API_KEY` (dev/test, o quien prefiera SMTP real), se usa
+`django.core.mail.send_mail` de toda la vida.
+"""
 
 import logging
 
+import requests
 from django.conf import settings
 from django.core.mail import send_mail
 
 from apps.core.exceptions import ErrorApi
 
 logger = logging.getLogger("apps.accounts.correo")
+
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+TIMEOUT_SEGUNDOS = 10
 
 
 class ErrorEnvioCorreo(ErrorApi):
@@ -18,12 +31,39 @@ class ErrorEnvioCorreo(ErrorApi):
     default_detail = "No se pudo enviar el correo. Intenta de nuevo en un momento."
 
 
-def _enviar(asunto, mensaje, destinatario):
+def _enviar_via_api_brevo(asunto, mensaje, destinatario):
     try:
-        # Sin `timeout`, un SMTP que se cuelga (red, IP bloqueada, servidor
-        # caído) bloquea la petición indefinidamente: el worker de gunicorn
-        # termina muerto por su propio timeout (o por quedarse sin memoria),
-        # tumbando con un 500 opaco en vez de un error claro para la persona.
+        respuesta = requests.post(
+            BREVO_API_URL,
+            json={
+                "sender": {"email": settings.DEFAULT_FROM_EMAIL},
+                "to": [{"email": destinatario}],
+                "subject": asunto,
+                "textContent": mensaje,
+            },
+            headers={
+                "api-key": settings.BREVO_API_KEY,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            timeout=TIMEOUT_SEGUNDOS,
+        )
+    except requests.RequestException as exc:
+        raise ErrorEnvioCorreo() from exc
+    if respuesta.status_code >= 300:
+        logger.error(
+            "Brevo respondió %s al enviar a %s: %s",
+            respuesta.status_code,
+            destinatario,
+            respuesta.text[:300],
+        )
+        raise ErrorEnvioCorreo()
+
+
+def _enviar_via_smtp(asunto, mensaje, destinatario):
+    try:
+        # `EMAIL_TIMEOUT` (settings/base.py) evita que un SMTP colgado
+        # bloquee el worker entero de gunicorn indefinidamente.
         send_mail(
             subject=asunto,
             message=mensaje,
@@ -34,6 +74,13 @@ def _enviar(asunto, mensaje, destinatario):
     except Exception as exc:
         logger.error("No se pudo enviar correo a %s: %s", destinatario, exc)
         raise ErrorEnvioCorreo() from exc
+
+
+def _enviar(asunto, mensaje, destinatario):
+    if settings.BREVO_API_KEY:
+        _enviar_via_api_brevo(asunto, mensaje, destinatario)
+    else:
+        _enviar_via_smtp(asunto, mensaje, destinatario)
 
 
 def enviar_codigo_2fa(usuario, codigo):

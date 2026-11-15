@@ -9,13 +9,13 @@
 # - El disco del backend es efímero: los archivos subidos al expediente
 #   (MEDIA_ROOT) se pierden en cada deploy o reinicio.
 # - La base de datos Postgres free expira a los 90 días.
-# - El login (y la recuperación de clave) necesitan EMAIL_HOST_USER y
-#   EMAIL_HOST_PASSWORD puestos a mano en el dashboard: son las credenciales
-#   SMTP de una cuenta gratuita en brevo.com (Settings -> SMTP & API ->
-#   pestaña SMTP). EMAIL_HOST_USER es el correo de esa cuenta;
-#   EMAIL_HOST_PASSWORD es la "SMTP key" que se genera ahí (no la
-#   contraseña de la cuenta Brevo). Sin esto, nadie puede terminar de
-#   iniciar sesión en este despliegue.
+# - El login (y la recuperación de clave) necesitan BREVO_API_KEY puesta a
+#   mano en el dashboard: Render bloquea las conexiones SMTP salientes
+#   (puertos 25/465/587) para prevenir abuso, así que el envío va por la
+#   API HTTP de Brevo (brevo.com, capa gratuita) en vez de SMTP. La key se
+#   genera en Settings -> SMTP & API -> pestaña "API Keys" (no la SMTP
+#   key de la otra pestaña). Sin esto, nadie puede terminar de iniciar
+#   sesión en este despliegue.
 #
 # Si el nombre "seguimiento-ti-backend" ya está en uso, Render le añadirá
 # un sufijo a la URL pública: hay que reflejar esa URL real en
@@ -69,18 +69,10 @@ services:
       - key: MAX_UPLOAD_MB
         value: "25"
       # Correo (fase 13): código de verificación en dos pasos y
-      # recuperación de clave. EMAIL_HOST_USER/PASSWORD son las credenciales
-      # SMTP de una cuenta gratuita en brevo.com — no se comiten al repo,
-      # hay que pegarlas a mano en el dashboard de Render.
-      - key: EMAIL_HOST
-        value: smtp-relay.brevo.com
-      - key: EMAIL_PORT
-        value: "587"
-      - key: EMAIL_USE_TLS
-        value: "True"
-      - key: EMAIL_HOST_USER
-        sync: false
-      - key: EMAIL_HOST_PASSWORD
+      # recuperación de clave, vía la API HTTP de Brevo (Render bloquea
+      # SMTP saliente). BREVO_API_KEY y DEFAULT_FROM_EMAIL no se comiten
+      # al repo, hay que pegarlos a mano en el dashboard de Render.
+      - key: BREVO_API_KEY
         sync: false
       - key: DEFAULT_FROM_EMAIL
         sync: false
