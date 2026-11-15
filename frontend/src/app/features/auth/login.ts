@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { ErrorApi } from '../../core/models';
@@ -14,7 +14,7 @@ const SEGUNDOS_ESPERA_REENVIO = 30;
   selector: 'app-login',
   templateUrl: './login.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Boton, Input],
+  imports: [FormsModule, Boton, Input, RouterLink],
 })
 export class Login {
   private readonly auth = inject(AuthService);

@@ -48,6 +48,8 @@ no pasa por este segundo paso — ya trae su propio segundo factor.
 | GET | `/auth/yo/` | no | usuario actual con `roles`, `permisos_ui` y `proyectos_liderados` |
 | PATCH | `/auth/yo/` | no | actualiza `nombres`, `apellidos`, `cargo`, `telefono` |
 | POST | `/auth/cambiar-clave/` | no | `{clave_actual, clave_nueva}` |
+| POST | `/auth/recuperar-clave/` | sí | `{email}` → 200 genérico siempre (nunca revela si la cuenta existe); si existe y es `LOCAL`, envía un enlace por correo |
+| POST | `/auth/restablecer-clave/` | sí | `{uid, token, clave_nueva}` → 204; `uid`/`token` vienen del enlace del correo (vence según `PASSWORD_RESET_TIMEOUT`, 1h por defecto; token de un solo uso) |
 | GET | `/auth/google/autorizar/` | sí | → `{url_autorizacion, state}` para el flujo con PKCE |
 | POST | `/auth/google/callback/` | sí | `{code, state, code_verifier}` → `{access, refresh, usuario}` directo, sin paso de código |
 

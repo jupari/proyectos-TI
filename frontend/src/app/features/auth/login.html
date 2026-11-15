@@ -34,12 +34,9 @@
           Iniciar sesión
         </app-boton>
 
-        <span
-          class="cursor-not-allowed text-center text-sm text-neutro-400"
-          title="Solicítelo al administrador"
-        >
+        <a routerLink="/auth/recuperar" class="text-center text-sm text-marca-600 hover:underline">
           ¿Olvidó su contraseña?
-        </span>
+        </a>
 
         @if (googleDisponible()) {
           <div class="flex items-center gap-2 text-xs text-neutro-400">

@@ -139,6 +139,7 @@ REST_FRAMEWORK = {
         # no "N por cada X minutos" — "3/hour" es la aproximación más
         # cercana a la intención original de "3 cada 10 minutos".
         "reenviar-codigo": "3/hour",
+        "recuperar-clave": "3/hour",
     },
 }
 

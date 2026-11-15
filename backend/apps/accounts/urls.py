@@ -9,7 +9,9 @@ from .views import (
     LoginView,
     LogoutView,
     ReenviarCodigoView,
+    RestablecerClaveView,
     RolViewSet,
+    SolicitarRecuperacionView,
     UsuarioViewSet,
     VerificarCodigoView,
     YoView,
@@ -27,6 +29,12 @@ urlpatterns = [
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("auth/yo/", YoView.as_view(), name="auth-yo"),
     path("auth/cambiar-clave/", CambiarClaveView.as_view(), name="auth-cambiar-clave"),
+    path(
+        "auth/recuperar-clave/", SolicitarRecuperacionView.as_view(), name="auth-recuperar-clave"
+    ),
+    path(
+        "auth/restablecer-clave/", RestablecerClaveView.as_view(), name="auth-restablecer-clave"
+    ),
     path("auth/google/autorizar/", GoogleAutorizarView.as_view(), name="auth-google-autorizar"),
     path("auth/google/callback/", GoogleCallbackView.as_view(), name="auth-google-callback"),
     *router.urls,

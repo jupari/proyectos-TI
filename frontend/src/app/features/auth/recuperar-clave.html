@@ -1,0 +1,42 @@
+<div class="flex min-h-screen items-center justify-center bg-neutro-50 px-4">
+  <div class="w-full max-w-sm rounded-panel border border-neutro-200 bg-white p-6 shadow-tarjeta">
+    <h1 class="mb-1 text-xl font-semibold text-neutro-900">Recuperar contraseña</h1>
+
+    @if (enviado()) {
+      <p class="mb-6 text-sm text-neutro-600">
+        Si el correo existe, llegará un enlace para elegir una contraseña nueva. Revisa tu bandeja
+        de entrada.
+      </p>
+      <app-boton routerLink="/auth/login" variante="secundario" [completo]="true">
+        Volver a iniciar sesión
+      </app-boton>
+    } @else {
+      <p class="mb-6 text-sm text-neutro-500">
+        Ingresa tu correo y te enviaremos un enlace para elegir una contraseña nueva.
+      </p>
+
+      @if (mensajeError()) {
+        <p class="mb-4 rounded-panel bg-peligro/10 px-3 py-2 text-sm text-peligro" role="alert">
+          {{ mensajeError() }}
+        </p>
+      }
+
+      <form class="flex flex-col gap-4" (ngSubmit)="enviar()">
+        <app-input
+          etiqueta="Correo electrónico"
+          tipo="email"
+          autocomplete="username"
+          [ngModel]="email()"
+          (ngModelChange)="email.set($event)"
+          name="email"
+        />
+        <app-boton tipo="submit" [cargando]="enviando()" [completo]="true">
+          Enviar enlace
+        </app-boton>
+        <a routerLink="/auth/login" class="text-center text-sm text-neutro-500 hover:underline">
+          Volver a iniciar sesión
+        </a>
+      </form>
+    }
+  </div>
+</div>
