@@ -1,6 +1,17 @@
-# Blueprint de Render para desplegar el backend (Django), el frontend
-# (Angular, como sitio estático) y la base de datos Postgres en el plan
-# gratuito. Uso: en Render, "New +" -> "Blueprint" -> conectar este repo.
+# Blueprint de Render con DOS entornos, cada uno con backend (Django),
+# frontend (Angular, sitio estático) y base de datos Postgres:
+#   - Producción: rama `master`  -> seguimiento-ti-{backend,frontend,db}
+#   - QA:         rama `develop` -> seguimiento-ti-qa-{backend,frontend,db}
+# Ambos usan `autoDeployTrigger: checksPass`: Render solo despliega un commit
+# si pasan los checks de .github/workflows/ci.yml.
+#
+# IMPORTANTE: el Blueprint debe estar conectado a la rama `master` (Settings
+# del Blueprint en Render), porque es de donde lee este archivo. Los nombres
+# de producción no cambiaron para no recrear servicios ni la base de datos.
+# OJO: Render solo permite UNA base Postgres gratuita por workspace; si
+# `seguimiento-ti-qa-db` falla al crearse, cambiar su `plan` a uno de pago.
+#
+# Plan gratuito. Uso: en Render, "New +" -> "Blueprint" -> conectar este repo.
 #
 # Limitaciones del plan free a tener en cuenta (ver docs/... o el mensaje
 # del asistente que generó este archivo):
@@ -23,16 +34,26 @@
 # DJANGO_ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS / CORS_ALLOWED_ORIGINS de abajo.
 
 databases:
+  # --- Producción (master) ---
   - name: seguimiento-ti-db
     plan: free
     databaseName: seguimiento
     user: seguimiento
 
+  # --- QA (develop) ---
+  - name: seguimiento-ti-qa-db
+    plan: free
+    databaseName: seguimiento_qa
+    user: seguimiento_qa
+
 services:
+  # ===== Producción (master) =====
   - type: web
     name: seguimiento-ti-backend
     runtime: python
     plan: free
+    branch: master
+    autoDeployTrigger: checksPass
     rootDir: backend
     buildCommand: >-
       pip install --upgrade pip &&
@@ -108,8 +129,102 @@ services:
   - type: web
     name: seguimiento-ti-frontend
     runtime: static
+    branch: master
+    autoDeployTrigger: checksPass
     rootDir: frontend
     buildCommand: npm ci && npm run build -- --configuration=render
+    staticPublishPath: dist/frontend/browser
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # ===== QA (develop) =====
+  - type: web
+    name: seguimiento-ti-qa-backend
+    runtime: python
+    plan: free
+    branch: develop
+    autoDeployTrigger: checksPass
+    rootDir: backend
+    buildCommand: >-
+      pip install --upgrade pip &&
+      pip install -e ".[dev]" &&
+      python manage.py collectstatic --noinput &&
+      python manage.py migrate
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+    healthCheckPath: /api/v1/salud/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: seguimiento-ti-qa-backend.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://seguimiento-ti-qa-frontend.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://seguimiento-ti-qa-backend.onrender.com
+      - key: TIME_ZONE
+        value: America/Bogota
+      - key: MONEDA_BASE
+        value: COP
+      - key: JWT_ACCESS_MINUTES
+        value: "30"
+      - key: JWT_REFRESH_DAYS
+        value: "7"
+      - key: EXTENSIONES_PERMITIDAS
+        value: pdf,docx,xlsx,pptx,png,jpg,jpeg,msg,txt,csv,zip
+      - key: MAX_UPLOAD_MB
+        value: "25"
+      # Correo (fase 13): código de verificación en dos pasos y
+      # recuperación de clave, vía la API HTTP de Brevo (Render bloquea
+      # SMTP saliente). BREVO_API_KEY y DEFAULT_FROM_EMAIL no se comiten
+      # al repo, hay que pegarlos a mano en el dashboard de Render.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: FRONTEND_URL
+        value: https://seguimiento-ti-qa-frontend.onrender.com
+      - key: OTP_LIFETIME_MINUTES
+        value: "10"
+      - key: OTP_MAX_INTENTOS
+        value: "5"
+      - key: PASSWORD_RESET_TIMEOUT
+        value: "3600"
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: seguimiento-ti-qa-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: seguimiento-ti-qa-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: seguimiento-ti-qa-db
+          property: password
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: seguimiento-ti-qa-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: seguimiento-ti-qa-db
+          property: port
+
+  - type: web
+    name: seguimiento-ti-qa-frontend
+    runtime: static
+    branch: develop
+    autoDeployTrigger: checksPass
+    rootDir: frontend
+    buildCommand: npm ci && npm run build -- --configuration=qa
     staticPublishPath: dist/frontend/browser
     routes:
       - type: rewrite
