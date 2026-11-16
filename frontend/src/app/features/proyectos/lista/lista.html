@@ -86,7 +86,7 @@
     <app-semaforo [valor]="esValorSemaforo(fila.semaforo)" [mostrarTexto]="false" />
   </ng-template>
   <ng-template #colAcciones let-fila>
-    <a [routerLink]="['/proyectos', fila.id]" class="text-sm font-medium text-teal-700 hover:underline">
+    <a [routerLink]="['/proyectos', fila.id]" class="text-sm font-medium text-teal-700 hover:text-teal-800 hover:underline">
       Ver
     </a>
   </ng-template>
