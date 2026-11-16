@@ -18,18 +18,18 @@ export class Login {
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
 
-  protected readonly email = signal('');
-  protected readonly clave = signal('');
-  protected readonly enviando = signal(false);
-  protected readonly mensajeError = signal('');
-  protected readonly erroresPorCampo = signal<Record<string, string[]>>({});
+  protected email = signal('');
+  protected clave = signal('');
+  protected enviando = signal(false);
+  protected mensajeError = signal('');
+  protected erroresPorCampo = signal<Record<string, string[]>>({});
 
   /** Paso 1 (credenciales) o paso 2 (código recibido por correo) — fase 13. */
-  protected readonly paso = signal<'credenciales' | 'codigo'>('credenciales');
-  protected readonly loginToken = signal('');
-  protected readonly codigo = signal('');
-  protected readonly reenviando = signal(false);
-  protected readonly segundosParaReenviar = signal(0);
+  protected paso = signal<'credenciales' | 'codigo'>('credenciales');
+  protected loginToken = signal('');
+  protected codigo = signal('');
+  protected reenviando = signal(false);
+  protected segundosParaReenviar = signal(0);
   private intervaloReenvio?: ReturnType<typeof setInterval>;
 
   private returnUrl(): string {
