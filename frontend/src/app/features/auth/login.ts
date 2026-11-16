@@ -1,12 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { ErrorApi } from '../../core/models';
-import { Boton } from '../../shared/ui/boton/boton';
-import { Input } from '../../shared/ui/input/input';
 
 const SEGUNDOS_ESPERA_REENVIO = 30;
 
@@ -14,7 +11,7 @@ const SEGUNDOS_ESPERA_REENVIO = 30;
   selector: 'app-login',
   templateUrl: './login.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Boton, Input, RouterLink],
+  imports: [RouterLink],
 })
 export class Login {
   private readonly auth = inject(AuthService);
@@ -26,7 +23,6 @@ export class Login {
   protected readonly enviando = signal(false);
   protected readonly mensajeError = signal('');
   protected readonly erroresPorCampo = signal<Record<string, string[]>>({});
-  protected readonly googleDisponible = signal(false);
 
   /** Paso 1 (credenciales) o paso 2 (código recibido por correo) — fase 13. */
   protected readonly paso = signal<'credenciales' | 'codigo'>('credenciales');
@@ -35,10 +31,6 @@ export class Login {
   protected readonly reenviando = signal(false);
   protected readonly segundosParaReenviar = signal(0);
   private intervaloReenvio?: ReturnType<typeof setInterval>;
-
-  constructor() {
-    void this.auth.googleDisponible().then((disponible) => this.googleDisponible.set(disponible));
-  }
 
   private returnUrl(): string {
     return this.ruta.snapshot.queryParamMap.get('returnUrl') ?? '/tablero';
@@ -103,15 +95,6 @@ export class Login {
         clearInterval(this.intervaloReenvio);
       }
     }, 1000);
-  }
-
-  protected async continuarConGoogle(): Promise<void> {
-    try {
-      const url = await this.auth.loginGoogle(this.returnUrl());
-      window.location.href = url;
-    } catch (error) {
-      this.mostrarError(error);
-    }
   }
 
   private mostrarError(error: unknown): void {

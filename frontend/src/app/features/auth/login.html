@@ -1,95 +1,193 @@
-<div class="flex min-h-screen items-center justify-center bg-neutro-50 px-4">
-  <div class="w-full max-w-sm rounded-panel border border-neutro-200 bg-white p-6 shadow-tarjeta">
-    <h1 class="mb-1 text-xl font-semibold text-neutro-900">Seguimiento de Proyectos de TI</h1>
-    <p class="mb-6 text-sm text-neutro-500">Inicie sesión para continuar.</p>
+<div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-neutro-50 to-neutro-100 px-4 py-6">
+  <div class="w-full max-w-md rounded-panel bg-white p-8 shadow-hover">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-teal-600 mb-2">Seguimiento TI</h1>
+      <p class="text-sm text-neutro-600">Sistema de control de proyectos</p>
+    </div>
 
+    <!-- Error Alert -->
     @if (mensajeError()) {
-      <p class="mb-4 rounded-panel bg-peligro/10 px-3 py-2 text-sm text-peligro" role="alert">
-        {{ mensajeError() }}
-      </p>
+      <div class="mb-6 rounded-panel bg-peligro/10 px-4 py-3 border border-peligro/20" role="alert">
+        <p class="text-sm font-medium text-peligro">{{ mensajeError() }}</p>
+      </div>
     }
 
+    <!-- Paso 1: Credenciales -->
     @if (paso() === 'credenciales') {
-      <form class="flex flex-col gap-4" (ngSubmit)="enviar()">
-        <app-input
-          etiqueta="Correo electrónico"
-          tipo="email"
-          autocomplete="username"
-          [ngModel]="email()"
-          (ngModelChange)="email.set($event)"
-          name="email"
-          [error]="erroresPorCampo()['email']?.[0] ?? ''"
-        />
-        <app-input
-          etiqueta="Contraseña"
-          tipo="password"
-          autocomplete="current-password"
-          [ngModel]="clave()"
-          (ngModelChange)="clave.set($event)"
-          name="password"
-          [error]="erroresPorCampo()['password']?.[0] ?? ''"
-        />
+      <form class="flex flex-col gap-6" (ngSubmit)="enviar()">
+        <!-- Email Input -->
+        <div>
+          <label for="email" class="block text-sm font-medium text-neutro-700 mb-2">
+            Correo electrónico
+          </label>
+          <input
+            id="email"
+            type="email"
+            autocomplete="username"
+            placeholder="tu@email.com"
+            [value]="email()"
+            (input)="email.set($event.target.value)"
+            class="
+              w-full
+              px-4 py-3
+              border-b-2 border-neutro-300
+              focus:border-teal-500 focus:outline-none
+              text-neutro-700
+              transition-colors duration-150
+              placeholder:text-neutro-400
+              bg-transparent
+            "
+          />
+          @if (erroresPorCampo()['email']?.[0]) {
+            <p class="text-xs text-peligro mt-1">{{ erroresPorCampo()['email']?.[0] }}</p>
+          }
+        </div>
 
-        <app-boton tipo="submit" [cargando]="enviando()" [completo]="true">
-          Iniciar sesión
-        </app-boton>
+        <!-- Password Input -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-neutro-700 mb-2">
+            Contraseña
+          </label>
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="••••••••"
+            [value]="clave()"
+            (input)="clave.set($event.target.value)"
+            class="
+              w-full
+              px-4 py-3
+              border-b-2 border-neutro-300
+              focus:border-teal-500 focus:outline-none
+              text-neutro-700
+              transition-colors duration-150
+              placeholder:text-neutro-400
+              bg-transparent
+            "
+          />
+          @if (erroresPorCampo()['password']?.[0]) {
+            <p class="text-xs text-peligro mt-1">{{ erroresPorCampo()['password']?.[0] }}</p>
+          }
+        </div>
 
-        <a routerLink="/auth/recuperar" class="text-center text-sm text-marca-600 hover:underline">
-          ¿Olvidó su contraseña?
-        </a>
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          [disabled]="enviando()"
+          class="
+            py-3 px-6
+            bg-teal-500 hover:bg-teal-600
+            text-white font-medium
+            rounded-panel
+            transition-colors duration-200
+            disabled:opacity-50 disabled:cursor-not-allowed
+          "
+        >
+          @if (enviando()) {
+            Iniciando sesión...
+          } @else {
+            Continuar
+          }
+        </button>
 
-        @if (googleDisponible()) {
-          <div class="flex items-center gap-2 text-xs text-neutro-400">
-            <span class="h-px flex-1 bg-neutro-200"></span>
-            o
-            <span class="h-px flex-1 bg-neutro-200"></span>
-          </div>
-          <app-boton
-            tipo="button"
-            variante="secundario"
-            [completo]="true"
-            (clic)="continuarConGoogle()"
+        <!-- Forgot Password Link -->
+        <div class="text-center">
+          <a
+            routerLink="/auth/recuperar"
+            class="text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors"
           >
-            Continuar con Google
-          </app-boton>
-        }
+            ¿Olvidó su contraseña?
+          </a>
+        </div>
       </form>
-    } @else {
-      <form class="flex flex-col gap-4" (ngSubmit)="confirmarCodigo()">
-        <p class="text-sm text-neutro-600">
-          Te enviamos un código de verificación a <strong>{{ email() }}</strong>. Ingrésalo para
-          continuar.
-        </p>
-        <app-input
-          etiqueta="Código de verificación"
-          tipo="text"
-          autocomplete="one-time-code"
-          [ngModel]="codigo()"
-          (ngModelChange)="codigo.set($event)"
-          name="codigo"
-          [error]="erroresPorCampo()['codigo']?.[0] ?? ''"
-        />
+    }
 
-        <app-boton tipo="submit" [cargando]="enviando()" [completo]="true">
-          Verificar código
-        </app-boton>
+    <!-- Paso 2: Verificación de Código -->
+    @else {
+      <form class="flex flex-col gap-6" (ngSubmit)="confirmarCodigo()">
+        <!-- Instructions -->
+        <div class="rounded-panel bg-teal-50 p-4 border border-teal-100">
+          <h2 class="text-sm font-semibold text-teal-900 mb-2">Verifica tu identidad</h2>
+          <p class="text-sm text-teal-800">
+            Hemos enviado un código de verificación a <strong>{{ email() }}</strong>
+          </p>
+        </div>
 
-        <div class="flex items-center justify-between text-sm">
+        <!-- Code Input -->
+        <div>
+          <label for="codigo" class="block text-sm font-medium text-neutro-700 mb-2">
+            Código de verificación
+          </label>
+          <input
+            id="codigo"
+            type="text"
+            autocomplete="one-time-code"
+            placeholder="000000"
+            maxlength="6"
+            [value]="codigo()"
+            (input)="codigo.set($event.target.value)"
+            class="
+              w-full
+              text-center
+              text-2xl
+              font-semibold
+              letter-spacing
+              px-4 py-4
+              border-2 border-neutro-300
+              rounded-panel
+              focus:border-teal-500 focus:outline-none
+              text-neutro-700
+              transition-colors duration-150
+              placeholder:text-neutro-400
+            "
+          />
+          @if (erroresPorCampo()['codigo']?.[0]) {
+            <p class="text-xs text-peligro mt-2">{{ erroresPorCampo()['codigo']?.[0] }}</p>
+          }
+        </div>
+
+        <!-- Verify Button -->
+        <button
+          type="submit"
+          [disabled]="enviando()"
+          class="
+            py-3 px-6
+            bg-teal-500 hover:bg-teal-600
+            text-white font-medium
+            rounded-panel
+            transition-colors duration-200
+            disabled:opacity-50 disabled:cursor-not-allowed
+          "
+        >
+          @if (enviando()) {
+            Verificando...
+          } @else {
+            Verificar
+          }
+        </button>
+
+        <!-- Resend and Back Actions -->
+        <div class="flex items-center justify-between pt-2">
           <button
             type="button"
-            class="text-neutro-500 hover:underline"
             (click)="volverACredenciales()"
+            class="text-sm text-neutro-600 hover:text-neutro-700 font-medium transition-colors"
           >
-            Volver
+            ← Volver
           </button>
+
           @if (segundosParaReenviar() > 0) {
-            <span class="text-neutro-400">Reenviar en {{ segundosParaReenviar() }}s</span>
+            <span class="text-xs text-neutro-500 font-medium">
+              Reenviar en {{ segundosParaReenviar() }}s
+            </span>
           } @else {
             <button
               type="button"
-              class="text-marca-600 hover:underline disabled:cursor-not-allowed disabled:text-neutro-400"
               [disabled]="reenviando()"
               (click)="reenviarCodigo()"
+              class="text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors disabled:text-neutro-400 disabled:cursor-not-allowed"
             >
               Reenviar código
             </button>
