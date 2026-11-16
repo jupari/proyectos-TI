@@ -37,15 +37,18 @@ export class Login {
   }
 
   protected async enviar(): Promise<void> {
+    console.log('enviar() llamado con email:', this.email(), 'clave:', this.clave());
     this.enviando.set(true);
     this.mensajeError.set('');
     this.erroresPorCampo.set({});
     try {
       const loginToken = await this.auth.solicitarCodigo(this.email(), this.clave());
+      console.log('loginToken recibido:', loginToken);
       this.loginToken.set(loginToken);
       this.paso.set('codigo');
       this.iniciarEsperaReenvio();
     } catch (error) {
+      console.error('Error en enviar():', error);
       this.mostrarError(error);
     } finally {
       this.enviando.set(false);
