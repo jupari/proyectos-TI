@@ -22,6 +22,7 @@ import { Textarea } from '../../../shared/ui/textarea/textarea';
 import { ProyectosService } from '../../proyectos/data/proyectos.service';
 import { FiltrosTarea, TareaLista } from '../data/tareas.model';
 import { TareasService } from '../data/tareas.service';
+import { sincronizarQueryParams } from '../../../core/ui/query-params';
 
 @Component({
   selector: 'app-bandeja-tareas',
@@ -148,7 +149,7 @@ export class BandejaTareas {
         queryParams[clave] = String(valor);
       }
     }
-    void this.router.navigate([], { relativeTo: this.ruta, queryParams });
+    sincronizarQueryParams(this.router, this.ruta, queryParams);
   }
 
   protected aplicarFiltros(): void {

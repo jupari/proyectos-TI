@@ -27,6 +27,7 @@ import { ProyectosService } from '../../proyectos/data/proyectos.service';
 import { CompromisosService } from '../data/compromisos.service';
 import { FiltrosSeguimiento } from '../data/seguimientos.model';
 import { SeguimientosService } from '../data/seguimientos.service';
+import { sincronizarQueryParams } from '../../../core/ui/query-params';
 
 /** Tope de seguimientos que se traen de una vez para agrupar en el
  * cliente por proyecto (no hay endpoint de agregación en el backend).
@@ -182,7 +183,7 @@ export class ListaSeguimientos {
     if (this.proyecto()) queryParams['proyecto'] = this.proyecto()!;
     if (this.periodicidad()) queryParams['periodicidad'] = this.periodicidad()!;
     if (this.estado()) queryParams['estado'] = this.estado()!;
-    void this.router.navigate([], { relativeTo: this.ruta, queryParams });
+    sincronizarQueryParams(this.router, this.ruta, queryParams);
   }
 
   protected aplicarFiltros(): void {

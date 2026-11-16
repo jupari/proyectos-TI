@@ -9,6 +9,7 @@ import { Boton } from '../../../shared/ui/boton/boton';
 import { EstadoVacio } from '../../../shared/ui/estado-vacio/estado-vacio';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { TableroService } from '../data/tablero.service';
+import { sincronizarQueryParams } from '../../../core/ui/query-params';
 
 type Periodicidad = 'SEMANAL' | 'MENSUAL';
 
@@ -112,9 +113,9 @@ export class ProyectosPeriodoTablero {
   }
 
   private sincronizarUrl(): void {
-    void this.router.navigate([], {
-      relativeTo: this.ruta,
-      queryParams: { periodicidad: this.periodicidad(), fecha: aIso(this.fechaReferencia()) },
+    sincronizarQueryParams(this.router, this.ruta, {
+      periodicidad: this.periodicidad(),
+      fecha: aIso(this.fechaReferencia()),
     });
   }
 

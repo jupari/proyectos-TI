@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { RutaActualService } from '../../core/ui/ruta-actual.service';
 import { ContadorAprobacionesService } from '../../features/ejecucion/data/contador-aprobaciones.service';
 import { ITEMS_MENU } from '../menu.config';
 
@@ -19,10 +20,11 @@ function leerColapsado(): boolean {
   selector: 'app-sidebar',
   templateUrl: './sidebar.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink],
 })
 export class Sidebar {
   private readonly auth = inject(AuthService);
+  private readonly rutaActual = inject(RutaActualService);
   protected readonly contadorAprobaciones = inject(ContadorAprobacionesService);
 
   readonly colapsado = signal(leerColapsado());
@@ -37,6 +39,14 @@ export class Sidebar {
 
   constructor() {
     this.contadorAprobaciones.actualizar();
+  }
+
+  /** Un ítem está activo si la URL es su ruta o cuelga de ella; Ejecución
+   * agrupa todas sus subpantallas bajo `/ejecucion`. */
+  protected esActivo(ruta: string): boolean {
+    const base = ruta.startsWith('/ejecucion') ? '/ejecucion' : ruta;
+    const url = this.rutaActual.url().split(/[?#]/)[0];
+    return url === base || url.startsWith(`${base}/`);
   }
 
   protected contadorDe(ruta: string): number {

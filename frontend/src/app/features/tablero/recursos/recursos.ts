@@ -17,6 +17,7 @@ import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { ColumnaTabla, Tabla } from '../../../shared/ui/tabla/tabla';
 import { PerfilesRecursoService } from '../../admin/data/catalogos.service';
 import { TableroService } from '../data/tablero.service';
+import { sincronizarQueryParams } from '../../../core/ui/query-params';
 
 const MARCA_400 = () => colorTema('primario-400');
 const PELIGRO = '#dc2626';
@@ -113,7 +114,7 @@ export class RecursosTablero {
   private sincronizarUrl(): void {
     const queryParams: Record<string, string> = { desde: this.desde(), hasta: this.hasta() };
     if (this.perfil()) queryParams['perfil'] = this.perfil()!;
-    void this.router.navigate([], { relativeTo: this.ruta, queryParams });
+    sincronizarQueryParams(this.router, this.ruta, queryParams);
   }
 
   protected cargar(refrescar = false): void {

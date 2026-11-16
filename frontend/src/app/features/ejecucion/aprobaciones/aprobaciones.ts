@@ -17,6 +17,7 @@ import { RecursosService } from '../../recursos/data/recursos.service';
 import { ContadorAprobacionesService } from '../data/contador-aprobaciones.service';
 import { FiltrosRegistroEjecucion } from '../data/registros.service';
 import { RegistrosEjecucionService } from '../data/registros.service';
+import { sincronizarQueryParams } from '../../../core/ui/query-params';
 
 @Component({
   selector: 'app-aprobaciones',
@@ -134,7 +135,7 @@ export class Aprobaciones {
         queryParams[clave] = String(valor);
       }
     }
-    void this.router.navigate([], { relativeTo: this.ruta, queryParams });
+    sincronizarQueryParams(this.router, this.ruta, queryParams);
   }
 
   protected aplicarFiltros(): void {

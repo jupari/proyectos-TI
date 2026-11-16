@@ -15,6 +15,7 @@ import { CambioOrden, ColumnaTabla, Tabla } from '../../../shared/ui/tabla/tabla
 import { PerfilesRecursoService } from '../../admin/data/catalogos.service';
 import { FiltrosRecurso, RecursoLista } from '../data/recursos.model';
 import { RecursosService } from '../data/recursos.service';
+import { sincronizarQueryParams } from '../../../core/ui/query-params';
 
 @Component({
   selector: 'app-lista-recursos',
@@ -105,7 +106,7 @@ export class ListaRecursos {
     for (const [clave, valor] of Object.entries(filtros)) {
       if (valor !== undefined && valor !== '') queryParams[clave] = String(valor);
     }
-    void this.router.navigate([], { relativeTo: this.ruta, queryParams });
+    sincronizarQueryParams(this.router, this.ruta, queryParams);
 
     this.recursosService.listarRecursos(filtros).subscribe({
       next: (respuesta) => {

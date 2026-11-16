@@ -26,6 +26,7 @@ import { CambioOrden, ColumnaTabla, Tabla } from '../../../shared/ui/tabla/tabla
 import { AreasService, PortafoliosService } from '../../admin/data/catalogos.service';
 import { FiltrosProyecto, ProyectoLista } from '../data/proyectos.model';
 import { ProyectosService } from '../data/proyectos.service';
+import { sincronizarQueryParams } from '../../../core/ui/query-params';
 
 @Component({
   selector: 'app-lista-proyectos',
@@ -178,7 +179,7 @@ export class ListaProyectos {
         queryParams[clave === 'search' ? 'search' : clave] = String(valor);
       }
     }
-    void this.router.navigate([], { relativeTo: this.ruta, queryParams });
+    sincronizarQueryParams(this.router, this.ruta, queryParams);
   }
 
   protected aplicarFiltros(): void {

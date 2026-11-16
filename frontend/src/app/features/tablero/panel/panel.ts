@@ -27,6 +27,7 @@ import { CambioOrden, ColumnaTabla, Tabla } from '../../../shared/ui/tabla/tabla
 import { AreasService, PortafoliosService } from '../../admin/data/catalogos.service';
 import { UsuariosService } from '../../admin/data/usuarios.service';
 import { TableroService } from '../data/tablero.service';
+import { sincronizarQueryParams } from '../../../core/ui/query-params';
 
 // Paleta validada con la skill `dataviz` (fase 10): subconjunto de 4 pasos
 // de `marca` que pasa las seis comprobaciones (los 10 pasos completos no
@@ -368,7 +369,7 @@ export class PanelTablero {
     for (const [clave, valor] of Object.entries(filtros)) {
       if (valor !== undefined && valor !== '') queryParams[clave] = String(valor);
     }
-    void this.router.navigate([], { relativeTo: this.ruta, queryParams });
+    sincronizarQueryParams(this.router, this.ruta, queryParams);
   }
 
   protected cargarTodo(refrescar = false): void {

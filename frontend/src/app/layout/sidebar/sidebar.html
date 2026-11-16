@@ -10,7 +10,12 @@
           <a
             [routerLink]="item.ruta"
             [title]="colapsado() ? item.etiqueta : ''"
-            routerLinkActive="bg-primario-50 text-primario-700 border-l-4 border-primario-500 pl-2"
+            [attr.aria-current]="esActivo(item.ruta) ? 'page' : null"
+            [class.bg-primario-50]="esActivo(item.ruta)"
+            [class.text-primario-700]="esActivo(item.ruta)"
+            [class.border-l-4]="esActivo(item.ruta)"
+            [class.border-primario-500]="esActivo(item.ruta)"
+            [class.pl-2]="esActivo(item.ruta)"
             class="
               flex items-center gap-3
               rounded-panel px-3 py-2.5

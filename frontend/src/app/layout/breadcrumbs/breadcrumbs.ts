@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { filter } from 'rxjs';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+
+import { RutaActualService } from '../../core/ui/ruta-actual.service';
 
 interface MigaPan {
   etiqueta: string;
@@ -32,15 +33,9 @@ const ETIQUETAS_SEGMENTO: Record<string, string> = {
   imports: [RouterLink],
 })
 export class Breadcrumbs {
-  private readonly router = inject(Router);
+  private readonly ruta = inject(RutaActualService);
 
-  protected readonly migas = signal<MigaPan[]>(this.construir(this.router.url));
-
-  constructor() {
-    this.router.events.pipe(filter((evento) => evento instanceof NavigationEnd)).subscribe(() => {
-      this.migas.set(this.construir(this.router.url));
-    });
-  }
+  protected readonly migas = computed(() => this.construir(this.ruta.url()));
 
   private construir(url: string): MigaPan[] {
     const segmentos = url.split('?')[0].split('/').filter(Boolean);
