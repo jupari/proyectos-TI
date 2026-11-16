@@ -1,3 +1,50 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Design System Variables - HelloGov Style */
+:root {
+  /* Colores Teal (Primarios) */
+  --color-teal-50: #f0fdfb;
+  --color-teal-100: #e0f9f7;
+  --color-teal-200: #ccfbf1;
+  --color-teal-300: #99f6e4;
+  --color-teal-400: #5eead4;
+  --color-teal-500: #2dd4bf;
+  --color-teal-600: #14b8a6;
+  --color-teal-700: #0d9488;
+  --color-teal-800: #0f766e;
+  --color-teal-900: #134e4a;
+
+  /* Colores Neutros (Grises) */
+  --color-neutro-50: #f8fafc;
+  --color-neutro-100: #f1f5f9;
+  --color-neutro-200: #e2e8f0;
+  --color-neutro-300: #cbd5e1;
+  --color-neutro-400: #94a3b8;
+  --color-neutro-500: #64748b;
+  --color-neutro-600: #475569;
+  --color-neutro-700: #334155;
+  --color-neutro-800: #1e293b;
+  --color-neutro-900: #0f172a;
+
+  /* Colores de Estado */
+  --color-exito: #10b981;
+  --color-alerta: #f59e0b;
+  --color-peligro: #ef4444;
+
+  /* Semáforo */
+  --color-semaforo-verde: #10b981;
+  --color-semaforo-amarillo: #f59e0b;
+  --color-semaforo-rojo: #ef4444;
+
+  /* Sombras */
+  --shadow-tarjeta: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-focus: 0 0 0 3px rgba(45, 212, 191, 0.1), 0 0 0 1px rgba(45, 212, 191, 0.5);
+
+  /* Border Radius */
+  --radius-panel: 0.75rem;
+  --radius-input: 0.5rem;
+  --radius-full: 999px;
+}

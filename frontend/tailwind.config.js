@@ -4,17 +4,30 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        teal: {
+          50: "#f0fdfb",
+          100: "#e0f9f7",
+          200: "#ccfbf1",
+          300: "#99f6e4",
+          400: "#5eead4",
+          500: "#2dd4bf",
+          600: "#14b8a6",
+          700: "#0d9488",
+          800: "#0f766e",
+          900: "#134e4a",
+        },
+        // Mantener marca como alias para compatibilidad
         marca: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-          800: "#1e40af",
-          900: "#1e3a8a",
+          50: "#f0fdfb",
+          100: "#e0f9f7",
+          200: "#ccfbf1",
+          300: "#99f6e4",
+          400: "#5eead4",
+          500: "#2dd4bf",
+          600: "#14b8a6",
+          700: "#0d9488",
+          800: "#0f766e",
+          900: "#134e4a",
         },
         neutro: {
           50: "#f8fafc",
@@ -28,20 +41,23 @@ module.exports = {
           800: "#1e293b",
           900: "#0f172a",
         },
-        exito: "#16a34a",
-        alerta: "#d97706",
-        peligro: "#dc2626",
+        exito: "#10b981",
+        alerta: "#f59e0b",
+        peligro: "#ef4444",
         semaforo: {
-          verde: "#16a34a",
-          amarillo: "#eab308",
-          rojo: "#dc2626",
+          verde: "#10b981",
+          amarillo: "#f59e0b",
+          rojo: "#ef4444",
         },
       },
       borderRadius: {
         panel: "0.75rem",
+        input: "0.5rem",
       },
       boxShadow: {
         tarjeta: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        hover: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        focus: "0 0 0 3px rgba(45, 212, 191, 0.1), 0 0 0 1px rgba(45, 212, 191, 0.5)",
       },
       fontFamily: {
         sans: [
