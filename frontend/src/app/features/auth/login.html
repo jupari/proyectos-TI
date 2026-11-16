@@ -15,7 +15,7 @@
 
     <!-- Paso 1: Credenciales -->
     @if (paso() === 'credenciales') {
-      <form class="flex flex-col gap-6" (ngSubmit)="enviar()">
+      <form class="flex flex-col gap-6" (submit)="$event.preventDefault(); enviar()">
         <!-- Email Input -->
         <div>
           <label for="email" class="block text-sm font-medium text-neutro-700 mb-2">
@@ -27,7 +27,7 @@
             autocomplete="username"
             placeholder="tu@email.com"
             [value]="email()"
-            (input)="email.set($event.target.value)"
+            #emailInput (input)="email.set(emailInput.value)"
             class="
               w-full
               px-4 py-3
@@ -55,7 +55,7 @@
             autocomplete="current-password"
             placeholder="••••••••"
             [value]="clave()"
-            (input)="clave.set($event.target.value)"
+            #claveInput (input)="clave.set(claveInput.value)"
             class="
               w-full
               px-4 py-3
@@ -106,7 +106,7 @@
 
     <!-- Paso 2: Verificación de Código -->
     @else {
-      <form class="flex flex-col gap-6" (ngSubmit)="confirmarCodigo()">
+      <form class="flex flex-col gap-6" (submit)="$event.preventDefault(); confirmarCodigo()">
         <!-- Instructions -->
         <div class="rounded-panel bg-teal-50 p-4 border border-teal-100">
           <h2 class="text-sm font-semibold text-teal-900 mb-2">Verifica tu identidad</h2>
@@ -127,7 +127,7 @@
             placeholder="000000"
             maxlength="6"
             [value]="codigo()"
-            (input)="codigo.set($event.target.value)"
+            #codigoInput (input)="codigo.set(codigoInput.value)"
             class="
               w-full
               text-center
