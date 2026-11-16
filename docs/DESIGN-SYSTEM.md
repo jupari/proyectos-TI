@@ -517,3 +517,18 @@ Los colores salen de variables CSS (`frontend/src/styles.css`) como canales RGB,
 - No usar `text-primario-*` o `bg-primario-700` como fondo de botón con texto blanco: usar `bg-boton`.
 - **Gráficos (Chart.js)** no heredan CSS: pasar una función `() => colorTema('primario-400')` como color del dataset; `app-grafico` se redibuja al cambiar de tema.
 - Para añadir un tema: agregar un bloque `[data-tema="x"]` y su variante `[data-modo="oscuro"][data-tema="x"]` en `styles.css` y una entrada en `TEMAS`.
+
+## 14. Pantallas responsive
+
+Tres tipos de pantalla, definidos en `PantallaService` (`core/ui/pantalla.service.ts`) con los breakpoints `md` y `lg` de Tailwind:
+
+| Tipo | Ancho | Menú lateral | Barra superior |
+|---|---|---|---|
+| Móvil | < 768 px | Cajón que se abre con el botón de hamburguesa; se cierra al navegar o tocar el fondo | Hamburguesa, logo, lupa (despliega el buscador), tema, avatar |
+| Tableta | 768–1023 px | Riel de iconos, se expande con «Contraer/Expandir menú» | Buscador visible, sin nombre de usuario |
+| Escritorio | ≥ 1024 px | Menú completo, colapsable (se recuerda) | Completa |
+
+- Espaciado del contenido: `p-3` (móvil), `sm:p-4`, `lg:p-6`.
+- Encabezados de página con `flex-wrap` para que los botones bajen de línea.
+- Las tablas conservan `overflow-x-auto`; las pestañas hacen scroll horizontal.
+- Probar siempre los tres anchos (p. ej. 390, 820 y 1280 px) en modo claro y oscuro.

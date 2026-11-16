@@ -1,13 +1,41 @@
-<header class="flex h-14 items-center justify-between border-b border-neutro-200 bg-surface px-4">
-  <div class="flex items-center gap-3">
+<header class="relative flex h-14 items-center justify-between gap-2 border-b border-neutro-200 bg-surface px-3 sm:px-4">
+  <div class="flex items-center gap-2 sm:gap-3">
+    <button
+      type="button"
+      class="
+        flex h-9 w-9 items-center justify-center rounded-panel text-neutro-600 md:hidden
+        hover:bg-primario-50 hover:text-primario-700
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario-500
+      "
+      aria-label="Abrir menú"
+      aria-controls="menu-lateral"
+      [attr.aria-expanded]="pantalla.menuMovilAbierto()"
+      (click)="pantalla.menuMovilAbierto.set(true)"
+    >
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
     <span class="text-lg font-semibold text-primario-600">Seguimiento TI</span>
   </div>
 
-  <div class="flex-1 px-6">
+  <div
+    class="sm:static sm:flex-1 sm:px-6"
+    [class.hidden]="!busquedaMovilAbierta()"
+    [class.sm:block]="true"
+    [class.absolute]="busquedaMovilAbierta()"
+    [class.inset-x-0]="busquedaMovilAbierta()"
+    [class.top-0]="busquedaMovilAbierta()"
+    [class.z-30]="busquedaMovilAbierta()"
+    [class.bg-surface]="busquedaMovilAbierta()"
+    [class.px-3]="busquedaMovilAbierta()"
+    [class.py-2]="busquedaMovilAbierta()"
+  >
     <div class="relative mx-auto max-w-md" data-busqueda>
       <label class="block">
         <span class="sr-only">Buscar proyectos, tareas o recursos</span>
         <input
+          #campoBusqueda
           type="search"
           autocomplete="off"
           placeholder="Buscar proyectos, tareas o recursos…"
@@ -60,7 +88,23 @@
     </div>
   </div>
 
-  <app-selector-tema class="mr-2" />
+  <div class="flex items-center gap-1 sm:gap-2">
+  <button
+    type="button"
+    class="
+      flex h-9 w-9 items-center justify-center rounded-panel text-neutro-600 sm:hidden
+      hover:bg-primario-50 hover:text-primario-700
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario-500
+    "
+    aria-label="Buscar"
+    data-lupa
+    (click)="abrirBusquedaMovil()"
+  >
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+    </svg>
+  </button>
+  <app-selector-tema />
 
   <div class="relative" data-menu-usuario>
     <button
@@ -122,5 +166,6 @@
         </button>
       </div>
     }
+  </div>
   </div>
 </header>

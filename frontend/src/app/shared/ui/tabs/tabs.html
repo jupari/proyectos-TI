@@ -1,4 +1,4 @@
-<div role="tablist" class="flex gap-1 border-b border-neutro-200">
+<div role="tablist" class="flex gap-1 overflow-x-auto border-b border-neutro-200">
   @for (pestana of pestanas(); track pestana.id; let i = $index) {
     <button
       type="button"
@@ -6,7 +6,7 @@
       [id]="idBoton(pestana.id)"
       [attr.aria-selected]="pestana.id === activa()"
       [tabindex]="pestana.id === activa() ? 0 : -1"
-      class="-mb-px border-b-2 px-4 py-2 text-sm font-medium focus-visible:outline-none
+      class="-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium focus-visible:outline-none
         focus-visible:ring-2 focus-visible:ring-primario-500 rounded-t"
       [class.border-primario-600]="pestana.id === activa()"
       [class.text-primario-700]="pestana.id === activa()"

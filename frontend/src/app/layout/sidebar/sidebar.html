@@ -1,8 +1,30 @@
+@if (pantalla.menuMovilAbierto()) {
+  <div class="fixed inset-0 z-30 bg-black/50 md:hidden" aria-hidden="true" (click)="cerrarMovil()"></div>
+}
 <aside
-  class="flex h-full flex-col border-r border-neutro-200 bg-neutro-50 transition-[width] duration-200"
-  [class.w-56]="!colapsado()"
-  [class.w-16]="colapsado()"
+  id="menu-lateral"
+  class="
+    fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-neutro-200 bg-neutro-50
+    transition-[transform,width] duration-200
+    md:static md:z-auto md:h-full md:translate-x-0
+  "
+  [class.-translate-x-full]="!pantalla.menuMovilAbierto()"
+  [class.translate-x-0]="pantalla.menuMovilAbierto()"
+  [class.md:w-56]="!colapsado()"
+  [class.md:w-16]="colapsado()"
+  [attr.aria-label]="'Menú principal'"
 >
+  <div class="flex h-14 items-center justify-between border-b border-neutro-200 px-4 md:hidden">
+    <span class="text-lg font-semibold text-primario-600">Seguimiento TI</span>
+    <button
+      type="button"
+      class="rounded-panel p-2 text-neutro-500 hover:bg-primario-50 hover:text-primario-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario-500"
+      aria-label="Cerrar menú"
+      (click)="cerrarMovil()"
+    >
+      ✕
+    </button>
+  </div>
   <nav class="flex-1 overflow-y-auto py-4">
     <ul class="flex flex-col gap-2 px-3">
       @for (item of items(); track item.ruta) {
@@ -40,7 +62,7 @@
       }
     </ul>
   </nav>
-  <div class="border-t border-neutro-200 p-3">
+  <div class="hidden border-t border-neutro-200 p-3 md:block">
     <button
       type="button"
       class="
