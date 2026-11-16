@@ -4,27 +4,60 @@
   </div>
 
   <div class="flex-1 px-6">
-    <label class="relative mx-auto block max-w-md">
-      <span class="sr-only">Buscar</span>
-      <input
-        type="search"
-        placeholder="Buscar (próximamente)"
-        disabled
-        title="La búsqueda global llega en una fase posterior"
-        class="
-          w-full
-          rounded-panel
-          border border-neutro-200
-          bg-neutro-50
-          px-3 py-1.5
-          text-sm
-          text-neutro-400
-          placeholder:text-neutro-400
-          disabled:cursor-not-allowed
-          transition-colors duration-150
-        "
-      />
-    </label>
+    <div class="relative mx-auto max-w-md" data-busqueda>
+      <label class="block">
+        <span class="sr-only">Buscar proyectos, tareas o recursos</span>
+        <input
+          type="search"
+          autocomplete="off"
+          placeholder="Buscar proyectos, tareas o recursos…"
+          role="combobox"
+          aria-expanded="{{ panelBusquedaAbierto() }}"
+          aria-controls="resultados-busqueda"
+          [value]="texto()"
+          (input)="alEscribir($any($event.target).value)"
+          (focus)="texto().trim().length >= 2 && panelBusquedaAbierto.set(true)"
+          (keydown)="alTeclaBusqueda($event)"
+          class="
+            w-full rounded-panel border border-neutro-200 bg-neutro-50
+            px-3 py-1.5 text-sm text-neutro-800 placeholder:text-neutro-400
+            transition-colors duration-150
+            focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30
+          "
+        />
+      </label>
+
+      @if (panelBusquedaAbierto()) {
+        <ul
+          id="resultados-busqueda"
+          role="listbox"
+          class="absolute left-0 right-0 top-full z-30 mt-1 max-h-96 overflow-y-auto rounded-panel border border-neutro-200 bg-white py-1 shadow-hover"
+        >
+          @if (buscando()) {
+            <li class="px-4 py-3 text-sm text-neutro-500">Buscando…</li>
+          } @else if (resultados().length === 0) {
+            <li class="px-4 py-3 text-sm text-neutro-500">Sin resultados para "{{ texto() }}".</li>
+          } @else {
+            @for (resultado of resultados(); track resultado.tipo + resultado.ruta; let i = $index) {
+              <li role="option" [attr.aria-selected]="i === indiceActivo()">
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors hover:bg-teal-50"
+                  [class.bg-teal-50]="i === indiceActivo()"
+                  (click)="irA(resultado)"
+                >
+                  <span class="w-16 shrink-0 rounded-full bg-teal-50 px-2 py-0.5 text-center text-xs font-medium text-teal-800">
+                    {{ resultado.tipo }}
+                  </span>
+                  <span class="flex-1 truncate text-neutro-800">{{ resultado.titulo }}</span>
+                  <span class="shrink-0 text-xs text-neutro-400">{{ resultado.detalle }}</span>
+                </button>
+              </li>
+            }
+          }
+        </ul>
+      }
+    </div>
   </div>
 
   <div class="relative" data-menu-usuario>

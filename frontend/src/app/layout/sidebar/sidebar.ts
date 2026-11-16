@@ -5,6 +5,16 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ContadorAprobacionesService } from '../../features/ejecucion/data/contador-aprobaciones.service';
 import { ITEMS_MENU } from '../menu.config';
 
+const CLAVE_COLAPSADO = 'sp_menu_colapsado';
+
+function leerColapsado(): boolean {
+  try {
+    return localStorage.getItem(CLAVE_COLAPSADO) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 @Component({
   selector: 'app-sidebar',
   templateUrl: './sidebar.html',
@@ -15,7 +25,7 @@ export class Sidebar {
   private readonly auth = inject(AuthService);
   protected readonly contadorAprobaciones = inject(ContadorAprobacionesService);
 
-  readonly colapsado = signal(false);
+  readonly colapsado = signal(leerColapsado());
 
   protected readonly items = computed(() =>
     ITEMS_MENU.filter((item) => {
@@ -35,5 +45,10 @@ export class Sidebar {
 
   protected alternarColapso(): void {
     this.colapsado.update((valor) => !valor);
+    try {
+      localStorage.setItem(CLAVE_COLAPSADO, String(this.colapsado()));
+    } catch {
+      // almacenamiento no disponible: el estado solo vive en memoria
+    }
   }
 }

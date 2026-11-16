@@ -1,5 +1,5 @@
 <aside
-  class="flex h-full flex-col border-r border-neutro-200 bg-neutro-50 transition-all"
+  class="flex h-full flex-col border-r border-neutro-200 bg-neutro-50 transition-[width] duration-200"
   [class.w-56]="!colapsado()"
   [class.w-16]="colapsado()"
 >
@@ -9,6 +9,7 @@
         <li>
           <a
             [routerLink]="item.ruta"
+            [title]="colapsado() ? item.etiqueta : ''"
             routerLinkActive="bg-teal-50 text-teal-700 border-l-4 border-teal-500 pl-2"
             class="
               flex items-center gap-3
@@ -34,20 +35,39 @@
       }
     </ul>
   </nav>
-  <button
-    type="button"
-    class="
-      border-t border-neutro-200
-      px-3 py-2.5
-      text-left text-sm
-      text-neutro-600
-      transition-colors duration-150
-      hover:bg-teal-50
-      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500
-    "
-    [attr.aria-label]="colapsado() ? 'Expandir menú' : 'Colapsar menú'"
-    (click)="alternarColapso()"
-  >
-    {{ colapsado() ? '»' : '« Colapsar' }}
-  </button>
+  <div class="border-t border-neutro-200 p-3">
+    <button
+      type="button"
+      class="
+        flex w-full items-center gap-3 rounded-panel px-3 py-2.5
+        text-sm font-medium text-neutro-600
+        transition-colors duration-150
+        hover:bg-teal-50 hover:text-teal-700
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500
+      "
+      [class.justify-center]="colapsado()"
+      [attr.aria-label]="colapsado() ? 'Expandir menú' : 'Contraer menú'"
+      [attr.aria-expanded]="!colapsado()"
+      [title]="colapsado() ? 'Expandir menú' : 'Contraer menú'"
+      (click)="alternarColapso()"
+    >
+      <svg
+        class="h-5 w-5 shrink-0 transition-transform duration-200"
+        [class.rotate-180]="colapsado()"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M11 17l-5-5 5-5" />
+        <path d="M18 17l-5-5 5-5" />
+      </svg>
+      @if (!colapsado()) {
+        <span>Contraer menú</span>
+      }
+    </button>
+  </div>
 </aside>

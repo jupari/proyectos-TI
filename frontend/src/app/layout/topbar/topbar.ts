@@ -2,6 +2,10 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { BusquedaGlobalService, ResultadoBusqueda } from './busqueda-global.service';
+
+const MIN_CARACTERES = 2;
+const ESPERA_MS = 300;
 
 @Component({
   selector: 'app-topbar',
@@ -15,6 +19,15 @@ import { AuthService } from '../../core/auth/auth.service';
 export class Topbar {
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly busquedaGlobal = inject(BusquedaGlobalService);
+
+  protected readonly texto = signal('');
+  protected readonly resultados = signal<ResultadoBusqueda[]>([]);
+  protected readonly buscando = signal(false);
+  protected readonly panelBusquedaAbierto = signal(false);
+  protected readonly indiceActivo = signal(-1);
+  private temporizador?: ReturnType<typeof setTimeout>;
+  private consultaVigente = 0;
 
   protected readonly menuAbierto = signal(false);
 
@@ -27,6 +40,60 @@ export class Topbar {
     if (!objetivo.closest('[data-menu-usuario]')) {
       this.menuAbierto.set(false);
     }
+    if (!objetivo.closest('[data-busqueda]')) {
+      this.panelBusquedaAbierto.set(false);
+    }
+  }
+
+  protected alEscribir(valor: string): void {
+    this.texto.set(valor);
+    this.indiceActivo.set(-1);
+    clearTimeout(this.temporizador);
+    const consulta = valor.trim();
+    if (consulta.length < MIN_CARACTERES) {
+      this.consultaVigente++;
+      this.resultados.set([]);
+      this.buscando.set(false);
+      this.panelBusquedaAbierto.set(false);
+      return;
+    }
+    this.panelBusquedaAbierto.set(true);
+    this.buscando.set(true);
+    this.temporizador = setTimeout(() => void this.ejecutarBusqueda(consulta), ESPERA_MS);
+  }
+
+  private async ejecutarBusqueda(consulta: string): Promise<void> {
+    const numero = ++this.consultaVigente;
+    const resultados = await this.busquedaGlobal.buscar(consulta);
+    if (numero !== this.consultaVigente) return;
+    this.resultados.set(resultados);
+    this.buscando.set(false);
+  }
+
+  protected alTeclaBusqueda(evento: KeyboardEvent): void {
+    const total = this.resultados().length;
+    if (evento.key === 'Escape') {
+      this.panelBusquedaAbierto.set(false);
+    } else if (evento.key === 'ArrowDown' && total > 0) {
+      evento.preventDefault();
+      this.indiceActivo.update((i) => (i + 1) % total);
+    } else if (evento.key === 'ArrowUp' && total > 0) {
+      evento.preventDefault();
+      this.indiceActivo.update((i) => (i <= 0 ? total - 1 : i - 1));
+    } else if (evento.key === 'Enter') {
+      const elegido = this.resultados()[this.indiceActivo()] ?? this.resultados()[0];
+      if (elegido) {
+        evento.preventDefault();
+        void this.irA(elegido);
+      }
+    }
+  }
+
+  protected async irA(resultado: ResultadoBusqueda): Promise<void> {
+    this.panelBusquedaAbierto.set(false);
+    this.texto.set('');
+    this.resultados.set([]);
+    await this.router.navigateByUrl(resultado.ruta);
   }
 
   protected async salir(): Promise<void> {
