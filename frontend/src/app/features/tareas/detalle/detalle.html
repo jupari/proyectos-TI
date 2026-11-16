@@ -35,7 +35,7 @@
         }
       </app-card>
       <app-card titulo="Horas (ejecutadas / estimadas)">
-        <p class="text-xl font-bold text-teal-900">
+        <p class="text-xl font-bold text-primario-900">
           {{ tarea()!.horas_ejecutadas | horas }} / {{ tarea()!.horas_estimadas | horas }}
         </p>
       </app-card>
@@ -73,7 +73,7 @@
     <app-card titulo="Subtareas">
       @if (tarea()!.subtareas.length > 0) {
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+          <thead class="border-b border-primario-100 text-xs uppercase tracking-wide text-primario-800">
             <tr>
               <th class="py-2 font-semibold">Código</th><th class="py-2 font-semibold">Nombre</th><th class="py-2 font-semibold">Responsable</th>
               <th class="py-2 font-semibold">Estado</th><th class="py-2 font-semibold">Avance</th>
@@ -83,7 +83,7 @@
             @for (subtarea of tarea()!.subtareas; track subtarea.id) {
               <tr>
                 <td class="py-2">
-                  <a [routerLink]="['/tareas', subtarea.id]" class="text-teal-700 hover:underline">
+                  <a [routerLink]="['/tareas', subtarea.id]" class="text-primario-700 hover:underline">
                     {{ subtarea.codigo }}
                   </a>
                 </td>
@@ -109,13 +109,13 @@
       </div>
 
       @if (fechaInicioSugerida()) {
-        <p class="mb-3 rounded-panel bg-teal-50 px-3 py-2 text-sm text-teal-700">
+        <p class="mb-3 rounded-panel bg-primario-50 px-3 py-2 text-sm text-primario-700">
           Sugerencia: inicio {{ fechaInicioSugerida() | fechaCorta }} — fin
           {{ fechaFinSugerida() | fechaCorta }}.
         </p>
       }
 
-      <h3 class="mb-1 text-sm font-semibold text-teal-800">Depende de (entrantes)</h3>
+      <h3 class="mb-1 text-sm font-semibold text-primario-800">Depende de (entrantes)</h3>
       @if (tarea()!.dependencias_entrantes.length > 0) {
         <ul class="mb-4 divide-y divide-neutro-100 text-sm">
           @for (dep of tarea()!.dependencias_entrantes; track dep.id) {
@@ -133,7 +133,7 @@
         <p class="mb-4 text-sm text-neutro-400">Sin dependencias entrantes.</p>
       }
 
-      <h3 class="mb-1 text-sm font-semibold text-teal-800">Predecesora de (salientes)</h3>
+      <h3 class="mb-1 text-sm font-semibold text-primario-800">Predecesora de (salientes)</h3>
       @if (tarea()!.dependencias_salientes.length > 0) {
         <ul class="divide-y divide-neutro-100 text-sm">
           @for (dep of tarea()!.dependencias_salientes; track dep.id) {

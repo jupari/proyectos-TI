@@ -10,9 +10,9 @@
     [attr.aria-controls]="id + '-listbox'"
     aria-haspopup="listbox"
     [disabled]="deshabilitado()"
-    class="flex items-center justify-between gap-2 rounded-panel border border-neutro-300 bg-white
-      px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-teal-500
-      focus:border-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
+    class="flex items-center justify-between gap-2 rounded-panel border border-neutro-300 bg-surface
+      px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-primario-500
+      focus:border-primario-500 disabled:cursor-not-allowed disabled:opacity-50"
     [class.border-peligro]="!!error()"
     (click)="alternar()"
     (keydown)="alTeclaBoton($event)"
@@ -45,7 +45,7 @@
 
   @if (abierto()) {
     <div
-      class="absolute z-10 top-full mt-1 w-full rounded-panel border border-neutro-200 bg-white shadow-tarjeta"
+      class="absolute z-10 top-full mt-1 w-full rounded-panel border border-neutro-200 bg-surface shadow-tarjeta"
     >
       @if (conBusqueda()) {
         <input
@@ -71,8 +71,8 @@
             tabindex="-1"
             [attr.aria-selected]="opcion.valor === valor()"
             class="cursor-pointer px-3 py-2 text-sm hover:bg-neutro-50"
-            [class.bg-teal-50]="i === indiceActivo()"
-            [class.text-teal-700]="opcion.valor === valor()"
+            [class.bg-primario-50]="i === indiceActivo()"
+            [class.text-primario-700]="opcion.valor === valor()"
             (click)="seleccionar(opcion)"
             (keydown.enter)="seleccionar(opcion)"
           >

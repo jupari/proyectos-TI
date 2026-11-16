@@ -495,3 +495,25 @@ Usar **Material Icons** o similar:
 **Versión**: 1.0 (HelloGov-inspired)
 **Última actualización**: 2026-11-16
 **Mantener actualizado**: Cambios de colores, componentes nuevos o mejoras documentar aquí
+
+---
+
+## 13. Temas de color y modo claro/oscuro
+
+Los colores salen de variables CSS (`frontend/src/styles.css`) como canales RGB, por lo que Tailwind puede aplicar opacidad (`bg-primario-50/60`).
+
+| Token Tailwind | Uso |
+|---|---|
+| `primario-50…900` | Escala del color del tema (antes `teal-*`/`marca-*`) |
+| `boton`, `boton-hover` | Fondo de botones primarios, switch y selección (siempre con texto blanco) |
+| `surface` | Fondo de tarjetas, modales y menús (reemplaza `bg-white`) |
+| `neutro-50…900` | Grises; en modo oscuro se invierten |
+
+- **Temas** (atributo `data-tema` en `<html>`): turquesa (por defecto), azul, violeta, rosa, naranja, grafito.
+- **Modo** (`data-modo`): `claro`, `oscuro` o `sistema` (sigue `prefers-color-scheme`).
+- `TemaService` (`core/tema/tema.service.ts`) aplica y persiste la elección en `localStorage` (`sp_tema`, `sp_modo`); un script en `index.html` la aplica antes de pintar para evitar parpadeos.
+- Selector de usuario: icono de paleta en la barra superior (`layout/topbar/selector-tema`).
+- En modo oscuro la escala `primario` se reasigna: 50–200 son tintes oscuros y 600–900 son tonos claros, de modo que `text-primario-800` sea siempre legible sobre `bg-primario-50`.
+- No usar `text-primario-*` o `bg-primario-700` como fondo de botón con texto blanco: usar `bg-boton`.
+- **Gráficos (Chart.js)** no heredan CSS: pasar una función `() => colorTema('primario-400')` como color del dataset; `app-grafico` se redibuja al cambiar de tema.
+- Para añadir un tema: agregar un bloque `[data-tema="x"]` y su variante `[data-modo="oscuro"][data-tema="x"]` en `styles.css` y una entrada en `TEMAS`.

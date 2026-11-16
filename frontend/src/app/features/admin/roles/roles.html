@@ -4,9 +4,9 @@
     <app-boton (clic)="abrirNuevo()">+ Nuevo rol</app-boton>
   </div>
 
-  <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-white shadow-tarjeta">
+  <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-surface shadow-tarjeta">
     <table class="w-full text-left text-sm">
-      <thead class="border-b border-teal-100 bg-teal-50 text-xs uppercase tracking-wide text-teal-900">
+      <thead class="border-b border-primario-100 bg-primario-50 text-xs uppercase tracking-wide text-primario-900">
         <tr>
           <th class="px-4 py-3 font-semibold">Código</th>
           <th class="px-4 py-3 font-semibold">Descripción</th>
@@ -32,7 +32,7 @@
           </tr>
         } @else {
           @for (rol of roles(); track rol.id) {
-            <tr class="transition-colors hover:bg-teal-50/60">
+            <tr class="transition-colors hover:bg-primario-50/60">
               <td class="px-4 py-3 font-medium text-neutro-800">{{ rol.codigo }}</td>
               <td class="px-4 py-3 text-neutro-700">{{ rol.descripcion }}</td>
               <td class="px-4 py-3 text-neutro-600">{{ rol.orden }}</td>
@@ -44,7 +44,7 @@
                 }
               </td>
               <td class="flex justify-end gap-3 px-4 py-3">
-                <button type="button" class="text-teal-700 hover:text-teal-800 hover:underline" (click)="abrirEditar(rol)">
+                <button type="button" class="text-primario-700 hover:text-primario-800 hover:underline" (click)="abrirEditar(rol)">
                   Editar
                 </button>
                 @if (!rol.es_sistema) {

@@ -4,7 +4,7 @@
   <div class="flex flex-col gap-5">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-wider text-teal-700">
+        <p class="text-xs font-semibold uppercase tracking-wider text-primario-700">
           {{ proyecto()!.codigo }}
         </p>
         <h1 class="text-2xl font-bold text-neutro-900">{{ proyecto()!.nombre }}</h1>
@@ -33,14 +33,14 @@
     @if (pestanaActiva() === 'resumen') {
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <app-card titulo="Horas plan vs. ejecutadas">
-          <p class="text-xl font-bold text-teal-900">
+          <p class="text-xl font-bold text-primario-900">
             {{ proyecto()!.resumen_ejecucion.horas_ejecutadas | horas }} /
             {{ proyecto()!.resumen_ejecucion.horas_planeadas | horas }}
           </p>
           <p class="text-sm text-neutro-500">{{ proyecto()!.resumen_ejecucion.pct_horas | porcentaje }}</p>
         </app-card>
         <app-card titulo="Dinero plan vs. ejecutado">
-          <p class="text-xl font-bold text-teal-900">
+          <p class="text-xl font-bold text-primario-900">
             {{ proyecto()!.resumen_ejecucion.costo_ejecutado | moneda }} /
             {{ proyecto()!.resumen_ejecucion.costo_planeado | moneda }}
           </p>
@@ -148,7 +148,7 @@
           }
         </div>
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+          <thead class="border-b border-primario-100 text-xs uppercase tracking-wide text-primario-800">
             <tr>
               <th class="py-2 font-semibold">#</th><th class="py-2 font-semibold">Nombre</th><th class="py-2 font-semibold">Peso</th>
               <th class="py-2 font-semibold">Inicio plan</th><th class="py-2 font-semibold">Fin plan</th><th class="py-2 font-semibold">Estado</th>
@@ -237,7 +237,7 @@
           }
         </div>
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+          <thead class="border-b border-primario-100 text-xs uppercase tracking-wide text-primario-800">
             <tr>
               <th class="py-2 font-semibold">Nombre</th><th class="py-2 font-semibold">Fecha plan</th><th class="py-2 font-semibold">Fecha real</th>
               <th class="py-2 font-semibold">Estado</th><th class="py-2 font-semibold">Entregable</th><th class="py-2 font-semibold"></th>
@@ -280,7 +280,7 @@
           }
         </div>
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+          <thead class="border-b border-primario-100 text-xs uppercase tracking-wide text-primario-800">
             <tr>
               <th class="py-2 font-semibold">Categoría</th><th class="py-2 font-semibold">Descripción</th>
               <th class="py-2 font-semibold">Planeado</th><th class="py-2 font-semibold">Ejecutado</th><th class="py-2 font-semibold"></th>
@@ -336,7 +336,7 @@
           }
         </div>
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+          <thead class="border-b border-primario-100 text-xs uppercase tracking-wide text-primario-800">
             <tr>
               <th class="py-2 font-semibold">Recurso</th><th class="py-2 font-semibold">Rol</th>
               <th class="py-2 font-semibold">Desde</th><th class="py-2 font-semibold">Hasta</th>
@@ -446,7 +446,7 @@
               class="grid gap-y-1"
               [style.grid-template-columns]="'180px repeat(' + periodosCronograma().length + ', minmax(48px, 1fr))'"
             >
-              <div class="sticky left-0 z-10 bg-white" [style.grid-row]="1" [style.grid-column]="1"></div>
+              <div class="sticky left-0 z-10 bg-surface" [style.grid-row]="1" [style.grid-column]="1"></div>
               @for (periodo of periodosCronograma(); track periodo.etiqueta; let i = $index) {
                 <div
                   class="border-b border-neutro-200 pb-1 text-center text-[11px] text-neutro-400"
@@ -459,7 +459,7 @@
 
               @for (hito of proyecto()!.hitos; track hito.id; let i = $index) {
                 <div
-                  class="sticky left-0 z-10 bg-white text-[11px] text-neutro-400"
+                  class="sticky left-0 z-10 bg-surface text-[11px] text-neutro-400"
                   [style.grid-row]="2 + i"
                   [style.grid-column]="1"
                 >
@@ -477,7 +477,7 @@
 
               @for (fila of filasCronograma(); track fila.tarea_id; let i = $index) {
                 <div
-                  class="sticky left-0 z-10 truncate bg-white pr-2 text-xs text-neutro-700"
+                  class="sticky left-0 z-10 truncate bg-surface pr-2 text-xs text-neutro-700"
                   [style.grid-row]="2 + proyecto()!.hitos.length + i"
                   [style.grid-column]="1"
                   [style.padding-left.px]="12 + (fila.nivel - 1) * 12"
@@ -486,13 +486,13 @@
                   {{ fila.codigo }} · {{ fila.nombre }}
                 </div>
                 <div
-                  class="relative h-5 rounded bg-teal-100"
+                  class="relative h-5 rounded bg-primario-100"
                   [style.grid-row]="2 + proyecto()!.hitos.length + i"
                   [style.grid-column]="columnaInicioPlan(fila) + ' / ' + columnaFinPlan(fila)"
                   [title]="tituloDependencias(fila)"
                 >
                   <span
-                    class="absolute inset-y-0 left-0 rounded bg-teal-500"
+                    class="absolute inset-y-0 left-0 rounded bg-primario-500"
                     [style.width.%]="numero(fila.avance)"
                   ></span>
                 </div>
@@ -524,19 +524,19 @@
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <app-card titulo="Horas plan vs. ejecutadas">
-          <p class="text-xl font-bold text-teal-900">
+          <p class="text-xl font-bold text-primario-900">
             {{ proyecto()!.resumen_ejecucion.horas_ejecutadas | horas }} /
             {{ proyecto()!.resumen_ejecucion.horas_planeadas | horas }}
           </p>
         </app-card>
         <app-card titulo="Dinero plan vs. ejecutado">
-          <p class="text-xl font-bold text-teal-900">
+          <p class="text-xl font-bold text-primario-900">
             {{ proyecto()!.resumen_ejecucion.costo_ejecutado | moneda }} /
             {{ proyecto()!.resumen_ejecucion.costo_planeado | moneda }}
           </p>
         </app-card>
         <app-card titulo="% avance presupuestal">
-          <p class="text-xl font-bold text-teal-900">
+          <p class="text-xl font-bold text-primario-900">
             {{ proyecto()!.resumen_ejecucion.pct_dinero | porcentaje }}
           </p>
         </app-card>
@@ -544,7 +544,7 @@
           <app-semaforo [valor]="esValorSemaforo(proyecto()!.resumen_ejecucion.semaforo)" />
         </app-card>
         <app-card titulo="Desviación presupuestal">
-          <p class="text-xl font-bold text-teal-900">
+          <p class="text-xl font-bold text-primario-900">
             {{ proyecto()!.resumen_ejecucion.desviacion_presupuestal | moneda }}
           </p>
         </app-card>
@@ -555,7 +555,7 @@
           <p class="text-sm text-neutro-500">Cargando…</p>
         } @else {
           <table class="w-full text-left text-sm">
-            <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+            <thead class="border-b border-primario-100 text-xs uppercase tracking-wide text-primario-800">
               <tr>
                 <th class="py-2 font-semibold">Recurso</th><th class="py-2 font-semibold">Horas plan</th><th class="py-2 font-semibold">Horas ejec.</th>
                 <th class="py-2 font-semibold">Diferencia</th><th class="py-2 font-semibold">Costo plan</th><th class="py-2 font-semibold">Costo ejec.</th>
@@ -588,7 +588,7 @@
       <app-card titulo="Plan vs. ejecutado por mes">
         @if (!cargandoEjecucion()) {
           <table class="w-full text-left text-sm">
-            <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+            <thead class="border-b border-primario-100 text-xs uppercase tracking-wide text-primario-800">
               <tr>
                 <th class="py-2 font-semibold">Mes</th><th class="py-2 font-semibold">Horas plan</th><th class="py-2 font-semibold">Horas ejec.</th>
                 <th class="py-2 font-semibold">Costo plan</th><th class="py-2 font-semibold">Costo ejec.</th><th class="py-2 font-semibold">% consumo</th>
@@ -623,7 +623,7 @@
           }
         </div>
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+          <thead class="border-b border-primario-100 text-xs uppercase tracking-wide text-primario-800">
             <tr>
               <th class="py-2 font-semibold">Rubro</th><th class="py-2 font-semibold">Fecha</th><th class="py-2 font-semibold">Monto</th>
               <th class="py-2 font-semibold">Proveedor</th><th class="py-2 font-semibold">Documento</th><th class="py-2 font-semibold">Estado</th>
@@ -646,7 +646,7 @@
                     @if (gasto.estado_aprobacion === 'BORRADOR' || gasto.estado_aprobacion === 'RECHAZADO') {
                       <button
                         type="button"
-                        class="text-teal-700 hover:underline"
+                        class="text-primario-700 hover:underline"
                         [disabled]="procesandoGasto()"
                         (click)="enviarGasto(gasto)"
                       >
@@ -712,7 +712,7 @@
             @for (s of seguimientosProyecto(); track s.id) {
               <a
                 [routerLink]="['/seguimientos', s.id]"
-                class="flex flex-col gap-2 rounded-panel border border-neutro-200 p-4 hover:border-teal-400"
+                class="flex flex-col gap-2 rounded-panel border border-neutro-200 p-4 hover:border-primario-400"
               >
                 <div class="flex items-center justify-between">
                   <span class="text-sm font-medium text-neutro-800">
@@ -960,7 +960,7 @@
 
       @if (idTareaEnEdicion()) {
         <div class="border-t border-neutro-200 pt-4">
-          <h3 class="mb-2 text-sm font-semibold text-teal-800">Dependencias</h3>
+          <h3 class="mb-2 text-sm font-semibold text-primario-800">Dependencias</h3>
           <ul class="mb-3 divide-y divide-neutro-100 text-sm">
             @for (dep of dependenciasEntrantes(); track dep.id) {
               <li class="flex items-center justify-between py-1.5">

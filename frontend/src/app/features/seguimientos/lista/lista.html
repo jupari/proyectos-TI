@@ -6,7 +6,7 @@
     }
   </div>
 
-  <div class="grid grid-cols-1 gap-3 rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta sm:grid-cols-2 lg:grid-cols-4">
+  <div class="grid grid-cols-1 gap-3 rounded-panel border border-neutro-200 bg-surface p-4 shadow-tarjeta sm:grid-cols-2 lg:grid-cols-4">
     <app-select
       etiqueta="Proyecto"
       [opciones]="opcionesProyectos()"
@@ -49,7 +49,7 @@
       <div class="text-right">
         <button
           type="button"
-          class="font-medium text-teal-700 hover:underline"
+          class="font-medium text-primario-700 hover:underline"
           (click)="abrirDetalle(s)"
         >
           Detalle
@@ -59,17 +59,17 @@
   </ng-template>
 
   @if (cargando()) {
-    <div class="rounded-panel border border-neutro-200 bg-white p-6 text-sm text-neutro-500 shadow-tarjeta">
+    <div class="rounded-panel border border-neutro-200 bg-surface p-6 text-sm text-neutro-500 shadow-tarjeta">
       Cargando…
     </div>
   } @else if (grupos().length === 0) {
-    <div class="rounded-panel border border-neutro-200 bg-white p-6 shadow-tarjeta">
+    <div class="rounded-panel border border-neutro-200 bg-surface p-6 shadow-tarjeta">
       <app-estado-vacio mensaje="No hay seguimientos que coincidan con los filtros." />
     </div>
   } @else {
     <div class="flex flex-col gap-3">
       @for (grupo of grupos(); track grupo.proyecto) {
-        <div class="rounded-panel border border-neutro-200 bg-white p-4 shadow-tarjeta">
+        <div class="rounded-panel border border-neutro-200 bg-surface p-4 shadow-tarjeta">
           <div class="flex items-start justify-between gap-2">
             <a [routerLink]="['/proyectos', grupo.proyecto]" class="font-semibold text-neutro-800 hover:underline">
               {{ grupo.proyecto_codigo }} — {{ grupo.proyecto_nombre }}
@@ -77,7 +77,7 @@
             @if (grupo.historial.length > 0) {
               <button
                 type="button"
-                class="shrink-0 text-xs font-medium text-teal-700 hover:underline"
+                class="shrink-0 text-xs font-medium text-primario-700 hover:underline"
                 (click)="alternarExpandido(grupo.proyecto)"
               >
                 {{ estaExpandido(grupo.proyecto) ? 'Ocultar' : 'Ver' }} histórico ({{ grupo.historial.length }})
@@ -187,9 +187,9 @@
             [ngTemplateOutletContext]="{
               titulo: 'Acciones siguientes',
               texto: s.acciones_siguientes,
-              clasesCaja: 'border-teal-200 bg-teal-50',
-              clasesIcono: 'bg-teal-100 text-teal-700',
-              clasesTitulo: 'text-teal-700',
+              clasesCaja: 'border-primario-200 bg-primario-50',
+              clasesIcono: 'bg-primario-100 text-primario-700',
+              clasesTitulo: 'text-primario-700',
               camino: 'M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3'
             }"
           />
@@ -263,7 +263,7 @@
                     <span class="text-neutro-500">{{ d.categoria | etiquetaEnum: ETIQUETAS_CATEGORIA_DOCUMENTO }}</span>
                     <button
                       type="button"
-                      class="font-medium text-teal-700 hover:underline"
+                      class="font-medium text-primario-700 hover:underline"
                       (click)="descargarAdjunto(d)"
                     >
                       Descargar

@@ -1,6 +1,6 @@
-<header class="flex h-14 items-center justify-between border-b border-neutro-200 bg-white px-4">
+<header class="flex h-14 items-center justify-between border-b border-neutro-200 bg-surface px-4">
   <div class="flex items-center gap-3">
-    <span class="text-lg font-semibold text-teal-600">Seguimiento TI</span>
+    <span class="text-lg font-semibold text-primario-600">Seguimiento TI</span>
   </div>
 
   <div class="flex-1 px-6">
@@ -22,7 +22,7 @@
             w-full rounded-panel border border-neutro-200 bg-neutro-50
             px-3 py-1.5 text-sm text-neutro-800 placeholder:text-neutro-400
             transition-colors duration-150
-            focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/30
+            focus:border-primario-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-primario-500/30
           "
         />
       </label>
@@ -31,7 +31,7 @@
         <ul
           id="resultados-busqueda"
           role="listbox"
-          class="absolute left-0 right-0 top-full z-30 mt-1 max-h-96 overflow-y-auto rounded-panel border border-neutro-200 bg-white py-1 shadow-hover"
+          class="absolute left-0 right-0 top-full z-30 mt-1 max-h-96 overflow-y-auto rounded-panel border border-neutro-200 bg-surface py-1 shadow-hover"
         >
           @if (buscando()) {
             <li class="px-4 py-3 text-sm text-neutro-500">Buscando…</li>
@@ -42,11 +42,11 @@
               <li role="option" [attr.aria-selected]="i === indiceActivo()">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors hover:bg-teal-50"
-                  [class.bg-teal-50]="i === indiceActivo()"
+                  class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors hover:bg-primario-50"
+                  [class.bg-primario-50]="i === indiceActivo()"
                   (click)="irA(resultado)"
                 >
-                  <span class="w-16 shrink-0 rounded-full bg-teal-50 px-2 py-0.5 text-center text-xs font-medium text-teal-800">
+                  <span class="w-16 shrink-0 rounded-full bg-primario-50 px-2 py-0.5 text-center text-xs font-medium text-primario-800">
                     {{ resultado.tipo }}
                   </span>
                   <span class="flex-1 truncate text-neutro-800">{{ resultado.titulo }}</span>
@@ -60,6 +60,8 @@
     </div>
   </div>
 
+  <app-selector-tema class="mr-2" />
+
   <div class="relative" data-menu-usuario>
     <button
       type="button"
@@ -68,14 +70,14 @@
         rounded-panel px-2 py-1.5
         text-sm
         transition-colors duration-150
-        hover:bg-teal-50
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500
+        hover:bg-primario-50
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario-500
       "
       [attr.aria-expanded]="menuAbierto()"
       aria-haspopup="menu"
       (click)="alternarMenu()"
     >
-      <span class="flex h-8 w-8 items-center justify-center rounded-full bg-teal-100 text-sm font-semibold text-teal-700">
+      <span class="flex h-8 w-8 items-center justify-center rounded-full bg-primario-100 text-sm font-semibold text-primario-700">
         {{ auth.usuario()?.nombres?.charAt(0) ?? '?' }}
       </span>
       <span class="hidden flex-col text-left sm:flex">
@@ -90,14 +92,14 @@
         class="
           absolute right-0 top-full mt-1 w-56
           rounded-panel border border-neutro-200
-          bg-white py-1
+          bg-surface py-1
           shadow-hover
         "
       >
         <a
           role="menuitem"
           routerLink="/perfil"
-          class="block px-4 py-2 text-sm text-neutro-700 transition-colors duration-150 hover:bg-teal-50"
+          class="block px-4 py-2 text-sm text-neutro-700 transition-colors duration-150 hover:bg-primario-50"
           (click)="menuAbierto.set(false)"
         >
           Mi perfil
@@ -105,7 +107,7 @@
         <a
           role="menuitem"
           routerLink="/auth/cambiar-clave"
-          class="block px-4 py-2 text-sm text-neutro-700 transition-colors duration-150 hover:bg-teal-50"
+          class="block px-4 py-2 text-sm text-neutro-700 transition-colors duration-150 hover:bg-primario-50"
           (click)="menuAbierto.set(false)"
         >
           Cambiar contraseña

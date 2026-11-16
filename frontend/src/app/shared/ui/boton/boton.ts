@@ -4,11 +4,11 @@ export type VarianteBoton = 'primario' | 'secundario' | 'peligro' | 'fantasma';
 export type TamanoBoton = 'sm' | 'md';
 
 const CLASES_VARIANTE: Record<VarianteBoton, string> = {
-  primario: 'bg-teal-700 text-white shadow-tarjeta hover:bg-teal-800 focus-visible:ring-teal-500',
+  primario: 'bg-boton text-white shadow-tarjeta hover:bg-boton-hover focus-visible:ring-primario-500',
   secundario:
-    'bg-white text-neutro-700 border border-neutro-300 hover:bg-teal-50 hover:border-teal-300 focus-visible:ring-teal-500',
+    'bg-surface text-neutro-700 border border-neutro-300 hover:bg-primario-50 hover:border-primario-300 focus-visible:ring-primario-500',
   peligro: 'bg-peligro text-white hover:brightness-90 focus-visible:ring-peligro',
-  fantasma: 'bg-transparent text-neutro-700 hover:bg-teal-50 hover:text-teal-800 focus-visible:ring-teal-500',
+  fantasma: 'bg-transparent text-neutro-700 hover:bg-primario-50 hover:text-primario-800 focus-visible:ring-primario-500',
 };
 
 const CLASES_TAMANO: Record<TamanoBoton, string> = {

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { SelectorTema } from './selector-tema';
 import { BusquedaGlobalService, ResultadoBusqueda } from './busqueda-global.service';
 
 const MIN_CARACTERES = 2;
@@ -11,7 +12,7 @@ const ESPERA_MS = 300;
   selector: 'app-topbar',
   templateUrl: './topbar.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, SelectorTema],
   host: {
     '(document:click)': 'alClicFuera($event)',
   },

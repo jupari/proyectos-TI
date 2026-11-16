@@ -2,8 +2,8 @@
   @if (etiqueta()) {
     <label [for]="id" class="text-sm font-medium text-neutro-700">{{ etiqueta() }}</label>
   }
-  <div class="flex items-stretch overflow-hidden rounded-panel border border-neutro-300 bg-white
-    focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-teal-500"
+  <div class="flex items-stretch overflow-hidden rounded-panel border border-neutro-300 bg-surface
+    focus-within:ring-2 focus-within:ring-primario-500 focus-within:border-primario-500"
     [class.border-peligro]="!!error()"
   >
     @if (prefijo()) {
@@ -27,7 +27,7 @@
       <button
         type="button"
         class="flex items-center px-3 text-neutro-400 hover:text-neutro-600 focus-visible:outline-none
-          focus-visible:ring-2 focus-visible:ring-teal-500"
+          focus-visible:ring-2 focus-visible:ring-primario-500"
         [attr.aria-label]="mostrarClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
         (click)="alternarMostrarClave()"
       >

@@ -1,5 +1,5 @@
 <div
-  class="flex items-center gap-2 border-b border-neutro-100 py-2 transition-colors hover:bg-teal-50/60"
+  class="flex items-center gap-2 border-b border-neutro-100 py-2 transition-colors hover:bg-primario-50/60"
   [style.padding-left.px]="nivel() * 20"
 >
   @if (nodo().subtareas.length > 0) {
@@ -14,10 +14,10 @@
     <span class="w-4"></span>
   }
 
-  <a [routerLink]="['/tareas', nodo().id]" class="w-28 shrink-0 text-teal-700 hover:underline">
+  <a [routerLink]="['/tareas', nodo().id]" class="w-28 shrink-0 text-primario-700 hover:underline">
     {{ nodo().codigo }}
   </a>
-  <button type="button" class="flex-1 truncate text-left hover:text-teal-700 hover:underline" (click)="alEditar()(nodo().id)">
+  <button type="button" class="flex-1 truncate text-left hover:text-primario-700 hover:underline" (click)="alEditar()(nodo().id)">
     {{ nodo().nombre }}
   </button>
   <app-badge [valor]="nodo().estado" class="shrink-0" />

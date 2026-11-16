@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ChartData, ChartOptions } from 'chart.js';
+import { ChartData, ChartOptions, ScriptableContext } from 'chart.js';
+import { colorTema } from '../../../shared/ui/grafico/colores-tema';
 
 import {
   ETIQUETAS_ESTADO_PROYECTO,
@@ -31,8 +32,8 @@ import { TableroService } from '../data/tablero.service';
 // de `marca` que pasa las seis comprobaciones (los 10 pasos completos no
 // pasan el piso de contraste del extremo claro). Nunca colores por defecto
 // de Chart.js.
-const MARCA_400 = '#2dd4bf';
-const MARCA_900 = '#0f766e';
+const MARCA_400 = () => colorTema('primario-400');
+const MARCA_900 = () => colorTema('primario-800');
 const SEMAFORO_VERDE = '#16a34a';
 const SEMAFORO_AMARILLO = '#eab308';
 const SEMAFORO_ROJO = '#dc2626';
@@ -279,7 +280,7 @@ export class PanelTablero {
         {
           label: '% ocupación promedio',
           data: datos.map((d) => d.promedio),
-          backgroundColor: datos.map((d) => (d.promedio > 100 ? PELIGRO : MARCA_400)),
+          backgroundColor: (contexto: ScriptableContext<'bar'>) => ((datos[contexto.dataIndex]?.promedio ?? 0) > 100 ? PELIGRO : MARCA_400()),
         },
       ],
     };

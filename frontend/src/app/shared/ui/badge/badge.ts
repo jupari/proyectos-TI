@@ -21,7 +21,7 @@ const CLASES_POR_CATEGORIA: Record<CategoriaBadge, string> = {
   exito: 'bg-exito/10 text-exito',
   alerta: 'bg-alerta/10 text-alerta',
   peligro: 'bg-peligro/10 text-peligro',
-  info: 'bg-teal-50 text-teal-800',
+  info: 'bg-primario-50 text-primario-800',
   neutro: 'bg-neutro-100 text-neutro-700',
 };
 

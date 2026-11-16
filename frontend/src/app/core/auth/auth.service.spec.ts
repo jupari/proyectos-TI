@@ -20,6 +20,7 @@ const USUARIO_DEMO: UsuarioActual = {
   avatar_url: null,
   proveedor_auth: 'LOCAL',
   debe_cambiar_clave: false,
+  is_active: true,
   roles: ['LIDER'],
   permisos_ui: ['proyectos.ver'],
   proyectos_liderados: [],

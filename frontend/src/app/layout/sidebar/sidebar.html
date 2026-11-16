@@ -10,15 +10,15 @@
           <a
             [routerLink]="item.ruta"
             [title]="colapsado() ? item.etiqueta : ''"
-            routerLinkActive="bg-teal-50 text-teal-700 border-l-4 border-teal-500 pl-2"
+            routerLinkActive="bg-primario-50 text-primario-700 border-l-4 border-primario-500 pl-2"
             class="
               flex items-center gap-3
               rounded-panel px-3 py-2.5
               text-sm font-medium
               text-neutro-700
               transition-colors duration-150
-              hover:bg-teal-100
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-teal-500
+              hover:bg-primario-100
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primario-500
             "
           >
             <span aria-hidden="true" class="text-lg">{{ item.icono }}</span>
@@ -42,8 +42,8 @@
         flex w-full items-center gap-3 rounded-panel px-3 py-2.5
         text-sm font-medium text-neutro-600
         transition-colors duration-150
-        hover:bg-teal-50 hover:text-teal-700
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500
+        hover:bg-primario-50 hover:text-primario-700
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario-500
       "
       [class.justify-center]="colapsado()"
       [attr.aria-label]="colapsado() ? 'Expandir menú' : 'Contraer menú'"

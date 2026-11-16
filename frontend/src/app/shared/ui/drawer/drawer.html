@@ -1,14 +1,14 @@
 @if (abierto()) {
   <div class="fixed inset-0 z-40 flex justify-end">
     <!-- Solo cierra por clic de mouse; Esc y el botón "Cerrar" cubren el teclado. -->
-    <div class="absolute inset-0 bg-neutro-900/50" aria-hidden="true" (click)="alClicFondo()"></div>
+    <div class="absolute inset-0 bg-black/50" aria-hidden="true" (click)="alClicFondo()"></div>
     <div
       #contenedor
       role="dialog"
       aria-modal="true"
       [attr.aria-label]="titulo()"
       tabindex="-1"
-      class="relative z-10 flex h-full w-full flex-col bg-white shadow-tarjeta focus:outline-none"
+      class="relative z-10 flex h-full w-full flex-col bg-surface shadow-tarjeta focus:outline-none"
       [class]="clasesTamano()"
       (keydown)="alTeclaTab($event)"
     >
@@ -18,7 +18,7 @@
           type="button"
           aria-label="Cerrar"
           class="rounded p-1 text-neutro-400 hover:bg-neutro-100 hover:text-neutro-700
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario-500"
           (click)="cerrar.emit()"
         >
           ✕

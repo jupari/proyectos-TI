@@ -1,7 +1,7 @@
-<div class="overflow-hidden rounded-panel border border-neutro-200 bg-white shadow-tarjeta">
+<div class="overflow-hidden rounded-panel border border-neutro-200 bg-surface shadow-tarjeta">
   <div class="overflow-x-auto">
     <table class="w-full text-left text-sm">
-      <thead class="border-b border-teal-100 bg-teal-50 text-xs uppercase tracking-wide text-teal-900">
+      <thead class="border-b border-primario-100 bg-primario-50 text-xs uppercase tracking-wide text-primario-900">
         <tr>
           @if (seleccionable()) {
             <th class="w-10 px-4 py-3">
@@ -18,8 +18,8 @@
               @if (columna.ordenable) {
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1 hover:text-teal-700 focus-visible:outline-none
-                    focus-visible:ring-2 focus-visible:ring-teal-500 rounded"
+                  class="inline-flex items-center gap-1 hover:text-primario-700 focus-visible:outline-none
+                    focus-visible:ring-2 focus-visible:ring-primario-500 rounded"
                   (click)="alOrdenar(columna)"
                 >
                   {{ columna.titulo }}
@@ -54,7 +54,7 @@
           </tr>
         } @else {
           @for (fila of filas(); track fila.id) {
-            <tr class="transition-colors hover:bg-teal-50/60">
+            <tr class="transition-colors hover:bg-primario-50/60">
               @if (seleccionable()) {
                 <td class="px-4 py-3">
                   <input

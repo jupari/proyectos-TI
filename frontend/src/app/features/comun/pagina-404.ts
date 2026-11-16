@@ -8,7 +8,7 @@ import { RouterLink } from '@angular/router';
       <span class="text-5xl font-bold text-neutro-300">404</span>
       <h1 class="text-lg font-semibold text-neutro-800">Página no encontrada</h1>
       <p class="text-sm text-neutro-500">La ruta que busca no existe.</p>
-      <a routerLink="/tablero" class="text-sm font-medium text-teal-700 hover:underline">
+      <a routerLink="/tablero" class="text-sm font-medium text-primario-700 hover:underline">
         Volver al tablero
       </a>
     </div>

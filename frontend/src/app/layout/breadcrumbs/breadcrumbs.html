@@ -3,7 +3,7 @@
     @for (miga of migas(); track miga.ruta; let ultimo = $last) {
       <li class="flex items-center gap-1">
         @if (!ultimo) {
-          <a [routerLink]="miga.ruta" class="hover:text-teal-700 hover:underline">{{ miga.etiqueta }}</a>
+          <a [routerLink]="miga.ruta" class="hover:text-primario-700 hover:underline">{{ miga.etiqueta }}</a>
           <span aria-hidden="true">/</span>
         } @else {
           <span class="font-medium text-neutro-700">{{ miga.etiqueta }}</span>

@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ChartData, ChartOptions } from 'chart.js';
+import { ChartData, ChartOptions, ScriptableContext } from 'chart.js';
+import { colorTema } from '../../../shared/ui/grafico/colores-tema';
+
 
 import { OcupacionRecurso } from '../../../core/models';
 import { ToastService } from '../../../core/ui/toast.service';
@@ -16,7 +18,7 @@ import { ColumnaTabla, Tabla } from '../../../shared/ui/tabla/tabla';
 import { PerfilesRecursoService } from '../../admin/data/catalogos.service';
 import { TableroService } from '../data/tablero.service';
 
-const MARCA_400 = '#2dd4bf';
+const MARCA_400 = () => colorTema('primario-400');
 const PELIGRO = '#dc2626';
 
 interface FilaOcupacion extends OcupacionRecurso {
@@ -64,7 +66,7 @@ export class RecursosTablero {
         {
           label: '% ocupación',
           data: filas.map((fila) => fila.pct_ocupacion ?? 0),
-          backgroundColor: filas.map((fila) => ((fila.pct_ocupacion ?? 0) > 100 ? PELIGRO : MARCA_400)),
+          backgroundColor: (contexto: ScriptableContext<'bar'>) => ((filas[contexto.dataIndex]?.pct_ocupacion ?? 0) > 100 ? PELIGRO : MARCA_400()),
         },
       ],
     };

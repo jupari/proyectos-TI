@@ -1,10 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <title>Seguimiento de Proyectos de TI</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Aplica tema y modo guardados antes de pintar, para evitar el parpadeo claro->oscuro.
+    (function () {
+      try {
+        var tema = localStorage.getItem('sp_tema') || 'turquesa';
+        var modo = localStorage.getItem('sp_modo') || 'sistema';
+        var oscuro = modo === 'oscuro' || (modo === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-tema', tema);
+        document.documentElement.setAttribute('data-modo', oscuro ? 'oscuro' : 'claro');
+      } catch (e) {}
+    })();
+  </script>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>

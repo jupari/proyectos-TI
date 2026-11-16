@@ -13,7 +13,7 @@ const CLASES_POR_TIPO: Record<TipoToast, string> = {
   exito: 'border-exito/30 text-exito',
   alerta: 'border-alerta/30 text-alerta',
   error: 'border-peligro/30 text-peligro',
-  info: 'border-teal-300 text-teal-700',
+  info: 'border-primario-300 text-primario-700',
 };
 
 /** Pila de notificaciones; se monta una sola vez en el shell y lee

@@ -1,8 +1,8 @@
 <div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-neutro-50 to-neutro-100 px-4 py-6">
-  <div class="w-full max-w-md rounded-panel bg-white p-8 shadow-hover">
+  <div class="w-full max-w-md rounded-panel bg-surface p-8 shadow-hover">
     <!-- Header -->
     <div class="mb-8">
-      <h1 class="text-3xl font-bold text-teal-600 mb-2">Seguimiento TI</h1>
+      <h1 class="text-3xl font-bold text-primario-600 mb-2">Seguimiento TI</h1>
       <p class="text-sm text-neutro-600">Sistema de control de proyectos</p>
     </div>
 
@@ -32,7 +32,7 @@
               w-full
               px-4 py-3
               border-b-2 border-neutro-300
-              focus:border-teal-500 focus:outline-none
+              focus:border-primario-500 focus:outline-none
               text-neutro-700
               transition-colors duration-150
               placeholder:text-neutro-400
@@ -60,7 +60,7 @@
               w-full
               px-4 py-3
               border-b-2 border-neutro-300
-              focus:border-teal-500 focus:outline-none
+              focus:border-primario-500 focus:outline-none
               text-neutro-700
               transition-colors duration-150
               placeholder:text-neutro-400
@@ -78,7 +78,7 @@
           [disabled]="enviando()"
           class="
             py-3 px-6
-            bg-teal-500 hover:bg-teal-600
+            bg-boton hover:bg-boton-hover
             text-white font-medium
             rounded-panel
             transition-colors duration-200
@@ -96,7 +96,7 @@
         <div class="text-center">
           <a
             routerLink="/auth/recuperar"
-            class="text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors"
+            class="text-sm text-primario-600 hover:text-primario-700 font-medium transition-colors"
           >
             ¿Olvidó su contraseña?
           </a>
@@ -108,9 +108,9 @@
     @else {
       <form class="flex flex-col gap-6" (submit)="$event.preventDefault(); confirmarCodigo()">
         <!-- Instructions -->
-        <div class="rounded-panel bg-teal-50 p-4 border border-teal-100">
-          <h2 class="text-sm font-semibold text-teal-900 mb-2">Verifica tu identidad</h2>
-          <p class="text-sm text-teal-800">
+        <div class="rounded-panel bg-primario-50 p-4 border border-primario-100">
+          <h2 class="text-sm font-semibold text-primario-900 mb-2">Verifica tu identidad</h2>
+          <p class="text-sm text-primario-800">
             Hemos enviado un código de verificación a <strong>{{ email() }}</strong>
           </p>
         </div>
@@ -137,7 +137,7 @@
               px-4 py-4
               border-2 border-neutro-300
               rounded-panel
-              focus:border-teal-500 focus:outline-none
+              focus:border-primario-500 focus:outline-none
               text-neutro-700
               transition-colors duration-150
               placeholder:text-neutro-400
@@ -154,7 +154,7 @@
           [disabled]="enviando()"
           class="
             py-3 px-6
-            bg-teal-500 hover:bg-teal-600
+            bg-boton hover:bg-boton-hover
             text-white font-medium
             rounded-panel
             transition-colors duration-200
@@ -187,7 +187,7 @@
               type="button"
               [disabled]="reenviando()"
               (click)="reenviarCodigo()"
-              class="text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors disabled:text-neutro-400 disabled:cursor-not-allowed"
+              class="text-sm text-primario-600 hover:text-primario-700 font-medium transition-colors disabled:text-neutro-400 disabled:cursor-not-allowed"
             >
               Reenviar código
             </button>

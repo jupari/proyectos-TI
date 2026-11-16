@@ -14,9 +14,9 @@
     />
   </div>
 
-  <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-white shadow-tarjeta">
+  <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-surface shadow-tarjeta">
     <table class="w-full text-left text-sm">
-      <thead class="border-b border-teal-100 bg-teal-50 text-xs uppercase tracking-wide text-teal-900">
+      <thead class="border-b border-primario-100 bg-primario-50 text-xs uppercase tracking-wide text-primario-900">
         <tr>
           <th class="px-4 py-3 font-semibold">Nombre</th>
           <th class="px-4 py-3 font-semibold">Correo</th>
@@ -43,7 +43,7 @@
           </tr>
         } @else {
           @for (usuario of usuarios(); track usuario.id) {
-            <tr class="transition-colors hover:bg-teal-50/60">
+            <tr class="transition-colors hover:bg-primario-50/60">
               <td class="px-4 py-3 text-neutro-800">{{ usuario.nombres }} {{ usuario.apellidos }}</td>
               <td class="px-4 py-3 text-neutro-600">{{ usuario.email }}</td>
               <td class="px-4 py-3">
@@ -63,7 +63,7 @@
                 />
               </td>
               <td class="px-4 py-3 text-right">
-                <button type="button" class="text-sm font-medium text-teal-700 hover:text-teal-800 hover:underline" (click)="abrirEditar(usuario)">
+                <button type="button" class="text-sm font-medium text-primario-700 hover:text-primario-800 hover:underline" (click)="abrirEditar(usuario)">
                   Editar
                 </button>
               </td>

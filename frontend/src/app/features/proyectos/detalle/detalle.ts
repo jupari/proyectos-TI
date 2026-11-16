@@ -3,6 +3,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ChartData, ChartOptions } from 'chart.js';
+import { colorTema } from '../../../shared/ui/grafico/colores-tema';
+
 
 import { AuthService } from '../../../core/auth/auth.service';
 import {
@@ -1184,8 +1186,8 @@ export class DetalleProyecto {
 
   protected readonly resumenTareas = signal<ResumenTareasTablero | null>(null);
 
-  private readonly MARCA_400 = '#2dd4bf';
-  private readonly MARCA_900 = '#0f766e';
+  private readonly MARCA_400 = () => colorTema('primario-400');
+  private readonly MARCA_900 = () => colorTema('primario-800');
   private readonly SEMAFORO: Record<string, string> = {
     PENDIENTE: '#94a3b8',
     EN_PROGRESO: '#2dd4bf',

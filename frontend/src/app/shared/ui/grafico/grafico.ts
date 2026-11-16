@@ -5,17 +5,20 @@ import {
   ElementRef,
   OnDestroy,
   effect,
+  inject,
   input,
   viewChild,
 } from '@angular/core';
 import { Chart, ChartData, ChartOptions, ChartType, registerables } from 'chart.js';
 
+import { TemaService } from '../../../core/tema/tema.service';
+import { colorTema } from './colores-tema';
+
 Chart.register(...registerables);
 
-// Tokens de `tailwind.config.js` (fase 04), no los valores por defecto de
+// Tokens del tema (`src/styles.css`), no los valores por defecto de
 // Chart.js: texto en `neutro-700`, rejilla en `neutro-200`, tipografía `Inter`.
-Chart.defaults.color = '#334155';
-Chart.defaults.borderColor = '#e2e8f0';
+// Texto y rejilla dependen del modo claro/oscuro: se fijan en cada redibujo.
 Chart.defaults.font.family = "'Inter', ui-sans-serif, system-ui, sans-serif";
 // Especificaciones de marca de la skill `dataviz`: barras finas con esquina
 // redondeada solo en el extremo del dato, líneas de 2px, marcadores >= 8px.
@@ -50,6 +53,7 @@ export class Grafico implements AfterViewInit, OnDestroy {
   readonly filasTabla = input<readonly (readonly (string | number)[])[]>([]);
   readonly aspectRatio = input('16 / 9');
 
+  private readonly tema = inject(TemaService);
   private readonly lienzo = viewChild<ElementRef<HTMLCanvasElement>>('lienzo');
   private instancia: Chart | null = null;
   private vistaLista = false;
@@ -76,9 +80,14 @@ export class Grafico implements AfterViewInit, OnDestroy {
     const tipo = this.tipo();
     const datos = this.datos();
     const opciones = this.opciones();
+    // Dependencia explícita: un cambio de tema o de modo redibuja el gráfico.
+    this.tema.version();
     if (!this.vistaLista) return;
     const lienzo = this.lienzo()?.nativeElement;
     if (!lienzo) return;
+
+    Chart.defaults.color = colorTema('neutro-700');
+    Chart.defaults.borderColor = colorTema('neutro-200');
 
     this.instancia?.destroy();
     this.instancia = new Chart(lienzo, {

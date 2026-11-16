@@ -8,8 +8,8 @@
       <div class="flex justify-end">
         <app-boton (clic)="abrirNuevo('areas')">+ Nueva área</app-boton>
       </div>
-      <table class="w-full rounded-panel border border-neutro-200 bg-white text-left text-sm shadow-tarjeta">
-        <thead class="border-b border-teal-100 bg-teal-50 text-xs uppercase tracking-wide text-teal-900">
+      <table class="w-full rounded-panel border border-neutro-200 bg-surface text-left text-sm shadow-tarjeta">
+        <thead class="border-b border-primario-100 bg-primario-50 text-xs uppercase tracking-wide text-primario-900">
           <tr><th class="px-4 py-3 font-semibold">Código</th><th class="px-4 py-3 font-semibold">Nombre</th><th class="px-4 py-3 font-semibold"></th></tr>
         </thead>
         <tbody class="divide-y divide-neutro-100">
@@ -18,7 +18,7 @@
               <td class="px-4 py-2">{{ area.codigo }}</td>
               <td class="px-4 py-2">{{ area.nombre }}</td>
               <td class="flex justify-end gap-3 px-4 py-3">
-                <button type="button" class="text-teal-700 hover:text-teal-800 hover:underline" (click)="abrirEditar('areas', area)">Editar</button>
+                <button type="button" class="text-primario-700 hover:text-primario-800 hover:underline" (click)="abrirEditar('areas', area)">Editar</button>
                 <button type="button" class="text-peligro hover:underline" (click)="eliminar('areas', area)">Desactivar</button>
               </td>
             </tr>
@@ -35,8 +35,8 @@
       <div class="flex justify-end">
         <app-boton (clic)="abrirNuevo('portafolios')">+ Nuevo portafolio</app-boton>
       </div>
-      <table class="w-full rounded-panel border border-neutro-200 bg-white text-left text-sm shadow-tarjeta">
-        <thead class="border-b border-teal-100 bg-teal-50 text-xs uppercase tracking-wide text-teal-900">
+      <table class="w-full rounded-panel border border-neutro-200 bg-surface text-left text-sm shadow-tarjeta">
+        <thead class="border-b border-primario-100 bg-primario-50 text-xs uppercase tracking-wide text-primario-900">
           <tr><th class="px-4 py-3 font-semibold">Código</th><th class="px-4 py-3 font-semibold">Nombre</th><th class="px-4 py-3 font-semibold"></th></tr>
         </thead>
         <tbody class="divide-y divide-neutro-100">
@@ -45,7 +45,7 @@
               <td class="px-4 py-2">{{ portafolio.codigo }}</td>
               <td class="px-4 py-2">{{ portafolio.nombre }}</td>
               <td class="flex justify-end gap-3 px-4 py-3">
-                <button type="button" class="text-teal-700 hover:text-teal-800 hover:underline" (click)="abrirEditar('portafolios', portafolio)">Editar</button>
+                <button type="button" class="text-primario-700 hover:text-primario-800 hover:underline" (click)="abrirEditar('portafolios', portafolio)">Editar</button>
                 <button type="button" class="text-peligro hover:underline" (click)="eliminar('portafolios', portafolio)">Desactivar</button>
               </td>
             </tr>
@@ -62,8 +62,8 @@
       <div class="flex justify-end">
         <app-boton (clic)="abrirNuevo('perfiles')">+ Nuevo perfil</app-boton>
       </div>
-      <table class="w-full rounded-panel border border-neutro-200 bg-white text-left text-sm shadow-tarjeta">
-        <thead class="border-b border-teal-100 bg-teal-50 text-xs uppercase tracking-wide text-teal-900">
+      <table class="w-full rounded-panel border border-neutro-200 bg-surface text-left text-sm shadow-tarjeta">
+        <thead class="border-b border-primario-100 bg-primario-50 text-xs uppercase tracking-wide text-primario-900">
           <tr><th class="px-4 py-3 font-semibold">Código</th><th class="px-4 py-3 font-semibold">Nombre</th><th class="px-4 py-3 font-semibold">Tarifa</th><th class="px-4 py-3 font-semibold"></th></tr>
         </thead>
         <tbody class="divide-y divide-neutro-100">
@@ -73,7 +73,7 @@
               <td class="px-4 py-2">{{ perfil.nombre }}</td>
               <td class="px-4 py-2">{{ perfil.tarifa_hora_referencia }} {{ perfil.moneda }}</td>
               <td class="flex justify-end gap-3 px-4 py-3">
-                <button type="button" class="text-teal-700 hover:text-teal-800 hover:underline" (click)="abrirEditar('perfiles', perfil)">Editar</button>
+                <button type="button" class="text-primario-700 hover:text-primario-800 hover:underline" (click)="abrirEditar('perfiles', perfil)">Editar</button>
                 <button type="button" class="text-peligro hover:underline" (click)="eliminar('perfiles', perfil)">Desactivar</button>
               </td>
             </tr>

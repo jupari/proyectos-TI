@@ -121,7 +121,7 @@
       @if (seguimiento()) {
         <app-card titulo="5. Compromisos">
           <table class="w-full text-left text-sm">
-            <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+            <thead class="border-b border-primario-100 text-xs uppercase tracking-wide text-primario-800">
               <tr>
                 <th class="py-2 font-semibold">Descripción</th><th class="py-2 font-semibold">Responsable</th>
                 <th class="py-2 font-semibold">Fecha</th><th class="py-2 font-semibold">Estado</th><th class="py-2 font-semibold"></th>
@@ -165,13 +165,13 @@
                       Quitar
                     </button>
                     @if (fila.tarea_codigo) {
-                      <a [routerLink]="['/tareas', fila.tarea]" class="ml-2 text-xs text-teal-700 hover:underline">
+                      <a [routerLink]="['/tareas', fila.tarea]" class="ml-2 text-xs text-primario-700 hover:underline">
                         Ver tarea {{ fila.tarea_codigo }}
                       </a>
                     } @else if (fila.id && (fila.estado === 'ABIERTO' || fila.estado === 'VENCIDO')) {
                       <button
                         type="button"
-                        class="ml-2 text-xs text-teal-700 hover:underline"
+                        class="ml-2 text-xs text-primario-700 hover:underline"
                         (click)="abrirConversion($index)"
                       >
                         Convertir en tarea
@@ -193,7 +193,7 @@
           <input type="file" (change)="alSeleccionarAdjunto($event)" [disabled]="subiendoAdjunto()" />
           @if (subiendoAdjunto()) {
             <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutro-100">
-              <div class="h-full bg-teal-500" [style.width.%]="progresoAdjunto()"></div>
+              <div class="h-full bg-primario-500" [style.width.%]="progresoAdjunto()"></div>
             </div>
           }
         </app-card>
@@ -215,7 +215,7 @@
     @if (precarga()) {
       <aside class="flex w-full flex-col gap-4 lg:w-80">
         <app-card titulo="Ayuda para redactar">
-          <button type="button" class="mb-3 text-sm font-medium text-teal-700 hover:underline" (click)="insertarEnLogros()">
+          <button type="button" class="mb-3 text-sm font-medium text-primario-700 hover:underline" (click)="insertarEnLogros()">
             Insertar en Logros
           </button>
           <p class="text-xs font-medium uppercase text-neutro-400">Tareas completadas</p>

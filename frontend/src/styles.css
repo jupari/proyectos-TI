@@ -2,49 +2,217 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design System Variables - HelloGov Style */
+/* Sistema de temas: cada tema define la escala `primario` y el color de botón;
+   el modo oscuro (data-modo="oscuro") reasigna neutros, superficie y tintes.
+   Los valores son canales RGB para que Tailwind pueda aplicar opacidad (/60). */
+
 :root {
-  /* Colores Teal (Primarios) */
-  --color-teal-50: #f0fdfb;
-  --color-teal-100: #e0f9f7;
-  --color-teal-200: #ccfbf1;
-  --color-teal-300: #99f6e4;
-  --color-teal-400: #5eead4;
-  --color-teal-500: #2dd4bf;
-  --color-teal-600: #14b8a6;
-  --color-teal-700: #0d9488;
-  --color-teal-800: #0f766e;
-  --color-teal-900: #134e4a;
+  color-scheme: light;
+  --surface: 255 255 255;
+  --neutro-50: 248 250 252;
+  --neutro-100: 241 245 249;
+  --neutro-200: 226 232 240;
+  --neutro-300: 203 213 225;
+  --neutro-400: 148 163 184;
+  --neutro-500: 100 116 139;
+  --neutro-600: 71 85 105;
+  --neutro-700: 51 65 85;
+  --neutro-800: 30 41 59;
+  --neutro-900: 15 23 42;
+}
 
-  /* Colores Neutros (Grises) */
-  --color-neutro-50: #f8fafc;
-  --color-neutro-100: #f1f5f9;
-  --color-neutro-200: #e2e8f0;
-  --color-neutro-300: #cbd5e1;
-  --color-neutro-400: #94a3b8;
-  --color-neutro-500: #64748b;
-  --color-neutro-600: #475569;
-  --color-neutro-700: #334155;
-  --color-neutro-800: #1e293b;
-  --color-neutro-900: #0f172a;
+[data-modo="oscuro"] {
+  color-scheme: dark;
+  --surface: 17 24 39;
+  --neutro-50: 11 17 32;
+  --neutro-100: 30 41 59;
+  --neutro-200: 51 65 85;
+  --neutro-300: 71 85 105;
+  --neutro-400: 100 116 139;
+  --neutro-500: 148 163 184;
+  --neutro-600: 178 190 205;
+  --neutro-700: 203 213 225;
+  --neutro-800: 226 232 240;
+  --neutro-900: 241 245 249;
+}
 
-  /* Colores de Estado */
-  --color-exito: #10b981;
-  --color-alerta: #f59e0b;
-  --color-peligro: #ef4444;
+:root, [data-tema="turquesa"] {
+  --primario-50: 240 253 251;
+  --primario-100: 224 249 247;
+  --primario-200: 204 251 241;
+  --primario-300: 153 246 228;
+  --primario-400: 94 234 212;
+  --primario-500: 45 212 191;
+  --primario-600: 20 184 166;
+  --primario-700: 13 148 136;
+  --primario-800: 15 118 110;
+  --primario-900: 19 78 74;
+  --boton: 13 148 136;
+  --boton-hover: 15 118 110;
+}
+[data-modo="oscuro"][data-tema="turquesa"] {
+  --primario-50: 19 78 74;
+  --primario-100: 15 118 110;
+  --primario-200: 13 148 136;
+  --primario-300: 20 184 166;
+  --primario-400: 45 212 191;
+  --primario-500: 45 212 191;
+  --primario-600: 94 234 212;
+  --primario-700: 153 246 228;
+  --primario-800: 204 251 241;
+  --primario-900: 224 249 247;
+  --boton: 13 148 136;
+  --boton-hover: 15 118 110;
+}
 
-  /* Semáforo */
-  --color-semaforo-verde: #10b981;
-  --color-semaforo-amarillo: #f59e0b;
-  --color-semaforo-rojo: #ef4444;
+[data-tema="azul"] {
+  --primario-50: 239 246 255;
+  --primario-100: 219 234 254;
+  --primario-200: 191 219 254;
+  --primario-300: 147 197 253;
+  --primario-400: 96 165 250;
+  --primario-500: 59 130 246;
+  --primario-600: 37 99 235;
+  --primario-700: 29 78 216;
+  --primario-800: 30 64 175;
+  --primario-900: 30 58 138;
+  --boton: 29 78 216;
+  --boton-hover: 30 64 175;
+}
+[data-modo="oscuro"][data-tema="azul"] {
+  --primario-50: 30 58 138;
+  --primario-100: 30 64 175;
+  --primario-200: 29 78 216;
+  --primario-300: 37 99 235;
+  --primario-400: 59 130 246;
+  --primario-500: 59 130 246;
+  --primario-600: 96 165 250;
+  --primario-700: 147 197 253;
+  --primario-800: 191 219 254;
+  --primario-900: 219 234 254;
+  --boton: 37 99 235;
+  --boton-hover: 29 78 216;
+}
 
-  /* Sombras */
-  --shadow-tarjeta: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-focus: 0 0 0 3px rgba(45, 212, 191, 0.1), 0 0 0 1px rgba(45, 212, 191, 0.5);
+[data-tema="violeta"] {
+  --primario-50: 245 243 255;
+  --primario-100: 237 233 254;
+  --primario-200: 221 214 254;
+  --primario-300: 196 181 253;
+  --primario-400: 167 139 250;
+  --primario-500: 139 92 246;
+  --primario-600: 124 58 237;
+  --primario-700: 109 40 217;
+  --primario-800: 91 33 182;
+  --primario-900: 76 29 149;
+  --boton: 109 40 217;
+  --boton-hover: 91 33 182;
+}
+[data-modo="oscuro"][data-tema="violeta"] {
+  --primario-50: 76 29 149;
+  --primario-100: 91 33 182;
+  --primario-200: 109 40 217;
+  --primario-300: 124 58 237;
+  --primario-400: 139 92 246;
+  --primario-500: 139 92 246;
+  --primario-600: 167 139 250;
+  --primario-700: 196 181 253;
+  --primario-800: 221 214 254;
+  --primario-900: 237 233 254;
+  --boton: 124 58 237;
+  --boton-hover: 109 40 217;
+}
 
-  /* Border Radius */
-  --radius-panel: 0.75rem;
-  --radius-input: 0.5rem;
-  --radius-full: 999px;
+[data-tema="rosa"] {
+  --primario-50: 255 241 242;
+  --primario-100: 255 228 230;
+  --primario-200: 254 205 211;
+  --primario-300: 253 164 175;
+  --primario-400: 251 113 133;
+  --primario-500: 244 63 94;
+  --primario-600: 225 29 72;
+  --primario-700: 190 18 60;
+  --primario-800: 159 18 57;
+  --primario-900: 136 19 55;
+  --boton: 190 18 60;
+  --boton-hover: 159 18 57;
+}
+[data-modo="oscuro"][data-tema="rosa"] {
+  --primario-50: 136 19 55;
+  --primario-100: 159 18 57;
+  --primario-200: 190 18 60;
+  --primario-300: 225 29 72;
+  --primario-400: 244 63 94;
+  --primario-500: 244 63 94;
+  --primario-600: 251 113 133;
+  --primario-700: 253 164 175;
+  --primario-800: 254 205 211;
+  --primario-900: 255 228 230;
+  --boton: 225 29 72;
+  --boton-hover: 190 18 60;
+}
+
+[data-tema="naranja"] {
+  --primario-50: 255 247 237;
+  --primario-100: 255 237 213;
+  --primario-200: 254 215 170;
+  --primario-300: 253 186 116;
+  --primario-400: 251 146 60;
+  --primario-500: 249 115 22;
+  --primario-600: 234 88 12;
+  --primario-700: 194 65 12;
+  --primario-800: 154 52 18;
+  --primario-900: 124 45 18;
+  --boton: 194 65 12;
+  --boton-hover: 154 52 18;
+}
+[data-modo="oscuro"][data-tema="naranja"] {
+  --primario-50: 124 45 18;
+  --primario-100: 154 52 18;
+  --primario-200: 194 65 12;
+  --primario-300: 234 88 12;
+  --primario-400: 249 115 22;
+  --primario-500: 249 115 22;
+  --primario-600: 251 146 60;
+  --primario-700: 253 186 116;
+  --primario-800: 254 215 170;
+  --primario-900: 255 237 213;
+  --boton: 194 65 12;
+  --boton-hover: 154 52 18;
+}
+
+[data-tema="grafito"] {
+  --primario-50: 248 250 252;
+  --primario-100: 241 245 249;
+  --primario-200: 226 232 240;
+  --primario-300: 203 213 225;
+  --primario-400: 148 163 184;
+  --primario-500: 100 116 139;
+  --primario-600: 71 85 105;
+  --primario-700: 51 65 85;
+  --primario-800: 30 41 59;
+  --primario-900: 15 23 42;
+  --boton: 51 65 85;
+  --boton-hover: 30 41 59;
+}
+[data-modo="oscuro"][data-tema="grafito"] {
+  --primario-50: 15 23 42;
+  --primario-100: 30 41 59;
+  --primario-200: 51 65 85;
+  --primario-300: 71 85 105;
+  --primario-400: 100 116 139;
+  --primario-500: 100 116 139;
+  --primario-600: 148 163 184;
+  --primario-700: 203 213 225;
+  --primario-800: 226 232 240;
+  --primario-900: 241 245 249;
+  --boton: 71 85 105;
+  --boton-hover: 51 65 85;
+}
+
+* { --tw-ring-offset-color: rgb(var(--surface)); }
+
+body {
+  background-color: rgb(var(--surface));
+  color: rgb(var(--neutro-800));
 }
