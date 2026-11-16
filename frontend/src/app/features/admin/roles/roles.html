@@ -1,50 +1,50 @@
 <div class="flex flex-col gap-4">
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <h1 class="text-lg font-semibold text-neutro-800">Roles</h1>
+    <h1 class="text-2xl font-bold text-neutro-900">Roles</h1>
     <app-boton (clic)="abrirNuevo()">+ Nuevo rol</app-boton>
   </div>
 
   <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-white shadow-tarjeta">
     <table class="w-full text-left text-sm">
-      <thead class="bg-neutro-50 text-neutro-600">
+      <thead class="border-b border-teal-100 bg-teal-50 text-xs uppercase tracking-wide text-teal-900">
         <tr>
-          <th class="px-3 py-2">Código</th>
-          <th class="px-3 py-2">Descripción</th>
-          <th class="px-3 py-2">Orden</th>
-          <th class="px-3 py-2">Tipo</th>
-          <th class="px-3 py-2"></th>
+          <th class="px-4 py-3 font-semibold">Código</th>
+          <th class="px-4 py-3 font-semibold">Descripción</th>
+          <th class="px-4 py-3 font-semibold">Orden</th>
+          <th class="px-4 py-3 font-semibold">Tipo</th>
+          <th class="px-4 py-3 font-semibold"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-neutro-100">
         @if (cargando()) {
           @for (indice of [0, 1, 2]; track indice) {
             <tr>
-              <td class="px-3 py-3" colspan="5">
+              <td class="px-4 py-3" colspan="5">
                 <div class="h-4 w-full animate-pulse rounded bg-neutro-100"></div>
               </td>
             </tr>
           }
         } @else if (roles().length === 0) {
           <tr>
-            <td class="px-3 py-6" colspan="5">
+            <td class="px-4 py-6" colspan="5">
               <app-estado-vacio mensaje="No hay roles registrados." />
             </td>
           </tr>
         } @else {
           @for (rol of roles(); track rol.id) {
-            <tr class="hover:bg-neutro-50">
-              <td class="px-3 py-3 font-medium text-neutro-800">{{ rol.codigo }}</td>
-              <td class="px-3 py-3 text-neutro-700">{{ rol.descripcion }}</td>
-              <td class="px-3 py-3 text-neutro-600">{{ rol.orden }}</td>
-              <td class="px-3 py-3">
+            <tr class="transition-colors hover:bg-teal-50/60">
+              <td class="px-4 py-3 font-medium text-neutro-800">{{ rol.codigo }}</td>
+              <td class="px-4 py-3 text-neutro-700">{{ rol.descripcion }}</td>
+              <td class="px-4 py-3 text-neutro-600">{{ rol.orden }}</td>
+              <td class="px-4 py-3">
                 @if (rol.es_sistema) {
                   <app-badge valor="SISTEMA" etiqueta="Del sistema" />
                 } @else {
                   <app-badge valor="PERSONALIZADO" etiqueta="Personalizado" />
                 }
               </td>
-              <td class="flex justify-end gap-3 px-3 py-3">
-                <button type="button" class="text-marca-600 hover:underline" (click)="abrirEditar(rol)">
+              <td class="flex justify-end gap-3 px-4 py-3">
+                <button type="button" class="text-teal-700 hover:text-teal-800 hover:underline" (click)="abrirEditar(rol)">
                   Editar
                 </button>
                 @if (!rol.es_sistema) {

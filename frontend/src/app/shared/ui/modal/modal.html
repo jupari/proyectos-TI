@@ -1,30 +1,30 @@
 @if (abierto()) {
   <div class="fixed inset-0 z-40 flex items-center justify-center p-4">
     <!-- Solo cierra por clic de mouse; Esc y el botón "Cerrar" cubren el teclado. -->
-    <div class="absolute inset-0 bg-neutro-900/50" aria-hidden="true" (click)="alClicFondo()"></div>
+    <div class="absolute inset-0 bg-neutro-900/60 backdrop-blur-sm" aria-hidden="true" (click)="alClicFondo()"></div>
     <div
       #contenedor
       role="dialog"
       aria-modal="true"
       [attr.aria-label]="titulo()"
       tabindex="-1"
-      class="relative z-10 w-full rounded-panel bg-white shadow-tarjeta focus:outline-none"
+      class="relative z-10 w-full rounded-panel bg-white shadow-hover focus:outline-none"
       [class]="clasesTamano()"
       (keydown)="alTeclaTab($event)"
     >
-      <div class="flex items-center justify-between border-b border-neutro-100 px-4 py-3">
+      <div class="flex items-center justify-between border-b border-neutro-100 bg-neutro-50 px-5 py-4">
         <h2 class="text-base font-semibold text-neutro-800">{{ titulo() }}</h2>
         <button
           type="button"
           aria-label="Cerrar"
-          class="rounded p-1 text-neutro-400 hover:bg-neutro-100 hover:text-neutro-700
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marca-500"
+          class="rounded p-1 text-neutro-400 hover:bg-teal-50 hover:text-teal-700
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
           (click)="cerrar.emit()"
         >
           ✕
         </button>
       </div>
-      <div class="max-h-[70vh] overflow-y-auto px-4 py-4">
+      <div class="max-h-[70vh] overflow-y-auto px-5 py-5">
         <ng-content />
       </div>
       <div class="flex justify-end gap-2 border-t border-neutro-100 px-4 py-3 empty:hidden">

@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-4">
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <h1 class="text-lg font-semibold text-neutro-800">Usuarios</h1>
+    <h1 class="text-2xl font-bold text-neutro-900">Usuarios</h1>
     <app-boton (clic)="abrirNuevo()">+ Nuevo usuario</app-boton>
   </div>
 
@@ -16,37 +16,37 @@
 
   <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-white shadow-tarjeta">
     <table class="w-full text-left text-sm">
-      <thead class="bg-neutro-50 text-neutro-600">
+      <thead class="border-b border-teal-100 bg-teal-50 text-xs uppercase tracking-wide text-teal-900">
         <tr>
-          <th class="px-3 py-2">Nombre</th>
-          <th class="px-3 py-2">Correo</th>
-          <th class="px-3 py-2">Roles</th>
-          <th class="px-3 py-2">Proveedor</th>
-          <th class="px-3 py-2 text-center">Activo</th>
-          <th class="px-3 py-2"></th>
+          <th class="px-4 py-3 font-semibold">Nombre</th>
+          <th class="px-4 py-3 font-semibold">Correo</th>
+          <th class="px-4 py-3 font-semibold">Roles</th>
+          <th class="px-4 py-3 font-semibold">Proveedor</th>
+          <th class="px-4 py-3 font-semibold text-center">Activo</th>
+          <th class="px-4 py-3 font-semibold"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-neutro-100">
         @if (cargando()) {
           @for (indice of [0, 1, 2]; track indice) {
             <tr>
-              <td class="px-3 py-3" colspan="6">
+              <td class="px-4 py-3" colspan="6">
                 <div class="h-4 w-full animate-pulse rounded bg-neutro-100"></div>
               </td>
             </tr>
           }
         } @else if (usuarios().length === 0) {
           <tr>
-            <td class="px-3 py-6" colspan="6">
+            <td class="px-4 py-6" colspan="6">
               <app-estado-vacio mensaje="No hay usuarios que coincidan con la búsqueda." />
             </td>
           </tr>
         } @else {
           @for (usuario of usuarios(); track usuario.id) {
-            <tr class="hover:bg-neutro-50">
-              <td class="px-3 py-3 text-neutro-800">{{ usuario.nombres }} {{ usuario.apellidos }}</td>
-              <td class="px-3 py-3 text-neutro-600">{{ usuario.email }}</td>
-              <td class="px-3 py-3">
+            <tr class="transition-colors hover:bg-teal-50/60">
+              <td class="px-4 py-3 text-neutro-800">{{ usuario.nombres }} {{ usuario.apellidos }}</td>
+              <td class="px-4 py-3 text-neutro-600">{{ usuario.email }}</td>
+              <td class="px-4 py-3">
                 <div class="flex flex-wrap gap-1">
                   @for (rol of usuario.roles; track rol) {
                     <app-badge [valor]="rol" />
@@ -55,15 +55,15 @@
                   }
                 </div>
               </td>
-              <td class="px-3 py-3 text-neutro-600">{{ usuario.proveedor_auth }}</td>
-              <td class="px-3 py-3 text-center">
+              <td class="px-4 py-3 text-neutro-600">{{ usuario.proveedor_auth }}</td>
+              <td class="px-4 py-3 text-center">
                 <app-switch
                   [ngModel]="usuario.is_active"
                   (ngModelChange)="alternarActivo(usuario)"
                 />
               </td>
-              <td class="px-3 py-3 text-right">
-                <button type="button" class="text-sm font-medium text-marca-600 hover:underline" (click)="abrirEditar(usuario)">
+              <td class="px-4 py-3 text-right">
+                <button type="button" class="text-sm font-medium text-teal-700 hover:text-teal-800 hover:underline" (click)="abrirEditar(usuario)">
                   Editar
                 </button>
               </td>

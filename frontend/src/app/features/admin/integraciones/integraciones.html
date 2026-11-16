@@ -1,5 +1,5 @@
 <div class="flex flex-col gap-4">
-  <h1 class="text-lg font-semibold text-neutro-800">Integraciones</h1>
+  <h1 class="text-2xl font-bold text-neutro-900">Integraciones</h1>
 
   <app-card titulo="Importar horas desde Jira/Tempo ahora">
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -38,7 +38,7 @@
       <div class="mt-4 flex flex-col gap-3 border-t border-neutro-100 pt-4">
         <div class="flex flex-wrap gap-4 text-sm">
           <span class="font-medium text-exito">Creados: {{ r.creados }}</span>
-          <span class="font-medium text-marca-600">Actualizados: {{ r.actualizados }}</span>
+          <span class="font-medium text-teal-600">Actualizados: {{ r.actualizados }}</span>
           <span class="font-medium text-neutro-500">Omitidos: {{ r.omitidos.length }}</span>
           <span class="font-medium text-peligro">Errores: {{ r.errores.length }}</span>
         </div>
@@ -48,21 +48,21 @@
             <table class="w-full text-left text-sm">
               <thead class="bg-neutro-50 text-neutro-500">
                 <tr>
-                  <th class="px-3 py-2">Fecha</th>
-                  <th class="px-3 py-2">Persona</th>
-                  <th class="px-3 py-2">Proyecto</th>
-                  <th class="px-3 py-2 text-right">Horas</th>
-                  <th class="px-3 py-2"></th>
+                  <th class="px-4 py-3 font-semibold">Fecha</th>
+                  <th class="px-4 py-3 font-semibold">Persona</th>
+                  <th class="px-4 py-3 font-semibold">Proyecto</th>
+                  <th class="px-4 py-3 font-semibold text-right">Horas</th>
+                  <th class="px-4 py-3 font-semibold"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-neutro-100">
                 @for (fila of r.detalle; track $index) {
                   <tr>
-                    <td class="px-3 py-2">{{ fila.fecha | fechaCorta }}</td>
-                    <td class="px-3 py-2">{{ fila.recurso_nombre }}</td>
-                    <td class="px-3 py-2">{{ fila.proyecto_codigo }} — {{ fila.proyecto_nombre }}</td>
-                    <td class="px-3 py-2 text-right">{{ fila.horas | horas }}</td>
-                    <td class="px-3 py-2 text-xs text-neutro-400">
+                    <td class="px-4 py-2">{{ fila.fecha | fechaCorta }}</td>
+                    <td class="px-4 py-2">{{ fila.recurso_nombre }}</td>
+                    <td class="px-4 py-2">{{ fila.proyecto_codigo }} — {{ fila.proyecto_nombre }}</td>
+                    <td class="px-4 py-2 text-right">{{ fila.horas | horas }}</td>
+                    <td class="px-4 py-2 text-xs text-neutro-400">
                       {{ fila.accion === 'creado' ? 'Nuevo' : 'Actualizado' }}
                     </td>
                   </tr>
@@ -120,18 +120,18 @@
           <table class="w-full text-left text-sm">
             <thead class="bg-neutro-50 text-neutro-500">
               <tr>
-                <th class="px-3 py-2">Persona en Jira</th>
-                <th class="px-3 py-2 text-right">Worklogs</th>
-                <th class="px-3 py-2">Asociar a</th>
-                <th class="px-3 py-2"></th>
+                <th class="px-4 py-3 font-semibold">Persona en Jira</th>
+                <th class="px-4 py-3 font-semibold text-right">Worklogs</th>
+                <th class="px-4 py-3 font-semibold">Asociar a</th>
+                <th class="px-4 py-3 font-semibold"></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-neutro-100">
               @for (persona of personas; track persona.jira_account_id) {
                 <tr>
-                  <td class="px-3 py-2">{{ persona.nombre }}</td>
-                  <td class="px-3 py-2 text-right">{{ persona.worklogs }}</td>
-                  <td class="px-3 py-2">
+                  <td class="px-4 py-2">{{ persona.nombre }}</td>
+                  <td class="px-4 py-2 text-right">{{ persona.worklogs }}</td>
+                  <td class="px-4 py-2">
                     <app-select
                       etiqueta=""
                       [opciones]="opcionesRecursos()"
@@ -139,7 +139,7 @@
                       (ngModelChange)="elegirRecursoPara(persona.jira_account_id, $event)"
                     />
                   </td>
-                  <td class="px-3 py-2">
+                  <td class="px-4 py-2">
                     <app-boton
                       [cargando]="asociandoCuenta() === persona.jira_account_id"
                       (clic)="asociar(persona)"

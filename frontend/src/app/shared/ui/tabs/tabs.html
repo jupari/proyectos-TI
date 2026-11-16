@@ -7,9 +7,9 @@
       [attr.aria-selected]="pestana.id === activa()"
       [tabindex]="pestana.id === activa() ? 0 : -1"
       class="-mb-px border-b-2 px-4 py-2 text-sm font-medium focus-visible:outline-none
-        focus-visible:ring-2 focus-visible:ring-marca-500 rounded-t"
-      [class.border-marca-600]="pestana.id === activa()"
-      [class.text-marca-700]="pestana.id === activa()"
+        focus-visible:ring-2 focus-visible:ring-teal-500 rounded-t"
+      [class.border-teal-600]="pestana.id === activa()"
+      [class.text-teal-700]="pestana.id === activa()"
       [class.border-transparent]="pestana.id !== activa()"
       [class.text-neutro-500]="pestana.id !== activa()"
       (click)="seleccionar(pestana.id)"

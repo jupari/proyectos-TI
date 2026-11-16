@@ -4,11 +4,11 @@ export type VarianteBoton = 'primario' | 'secundario' | 'peligro' | 'fantasma';
 export type TamanoBoton = 'sm' | 'md';
 
 const CLASES_VARIANTE: Record<VarianteBoton, string> = {
-  primario: 'bg-marca-600 text-white hover:bg-marca-700 focus-visible:ring-marca-500',
+  primario: 'bg-teal-700 text-white shadow-tarjeta hover:bg-teal-800 focus-visible:ring-teal-500',
   secundario:
-    'bg-white text-neutro-700 border border-neutro-300 hover:bg-neutro-50 focus-visible:ring-marca-500',
+    'bg-white text-neutro-700 border border-neutro-300 hover:bg-teal-50 hover:border-teal-300 focus-visible:ring-teal-500',
   peligro: 'bg-peligro text-white hover:brightness-90 focus-visible:ring-peligro',
-  fantasma: 'bg-transparent text-neutro-700 hover:bg-neutro-100 focus-visible:ring-marca-500',
+  fantasma: 'bg-transparent text-neutro-700 hover:bg-teal-50 hover:text-teal-800 focus-visible:ring-teal-500',
 };
 
 const CLASES_TAMANO: Record<TamanoBoton, string> = {
@@ -35,7 +35,7 @@ export class Boton {
 
   protected readonly clases = computed(
     () =>
-      `inline-flex items-center justify-center rounded-panel font-medium transition-colors ` +
+      `inline-flex items-center justify-center rounded-panel font-medium transition-colors duration-150 ` +
       `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ` +
       `disabled:opacity-50 disabled:cursor-not-allowed ` +
       `${CLASES_VARIANTE[this.variante()]} ${CLASES_TAMANO[this.tamano()]} ` +
