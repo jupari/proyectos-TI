@@ -31,8 +31,8 @@ import { TableroService } from '../data/tablero.service';
 // de `marca` que pasa las seis comprobaciones (los 10 pasos completos no
 // pasan el piso de contraste del extremo claro). Nunca colores por defecto
 // de Chart.js.
-const MARCA_400 = '#60a5fa';
-const MARCA_900 = '#1e3a8a';
+const MARCA_400 = '#2dd4bf';
+const MARCA_900 = '#0f766e';
 const SEMAFORO_VERDE = '#16a34a';
 const SEMAFORO_AMARILLO = '#eab308';
 const SEMAFORO_ROJO = '#dc2626';

@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-4">
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <h1 class="text-lg font-semibold text-neutro-800">Tablero de control</h1>
+    <h1 class="text-2xl font-bold text-neutro-900">Tablero de control</h1>
     <div class="flex items-center gap-3 text-sm text-neutro-500">
       @if (calculadoHaceSegundos()) {
         <span>Calculado {{ calculadoHaceSegundos() }}</span>
@@ -94,38 +94,38 @@
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <a [routerLink]="['/proyectos']" [queryParams]="{ estado: 'EJECUCION' }" class="block">
         <app-card titulo="Proyectos activos">
-          <p class="text-2xl font-semibold text-neutro-800">
+          <p class="text-3xl font-bold text-teal-900">
             {{ resumen()!.por_estado['EJECUCION'] ?? 0 }}
           </p>
         </app-card>
       </a>
       <a [routerLink]="['/proyectos']" [queryParams]="{ semaforo: 'ROJO' }" class="block">
         <app-card titulo="En riesgo">
-          <p class="text-2xl font-semibold text-peligro">{{ resumen()!.proyectos_en_riesgo }}</p>
+          <p class="text-3xl font-bold text-peligro">{{ resumen()!.proyectos_en_riesgo }}</p>
         </app-card>
       </a>
       <app-card titulo="Horas ejec. / plan.">
-        <p class="text-lg font-semibold text-neutro-800">
+        <p class="text-xl font-bold text-teal-900">
           {{ resumen()!.horas_ejecutadas | horas }} / {{ resumen()!.horas_planeadas | horas }}
         </p>
         <p class="text-sm text-neutro-500">{{ resumen()!.pct_horas | porcentaje }}</p>
       </app-card>
       <app-card titulo="Dinero ejec. / plan.">
-        <p class="text-lg font-semibold text-neutro-800">
+        <p class="text-xl font-bold text-teal-900">
           {{ resumen()!.costo_ejecutado | moneda }} / {{ resumen()!.costo_planeado | moneda }}
         </p>
         <p class="text-sm text-neutro-500">{{ resumen()!.pct_dinero | porcentaje }}</p>
       </app-card>
       <a routerLink="/ejecucion/aprobaciones" class="block">
         <app-card titulo="Horas pend. aprobación">
-          <p class="text-2xl font-semibold text-neutro-800">
+          <p class="text-3xl font-bold text-teal-900">
             {{ resumen()!.horas_pendientes_aprobacion | horas }}
           </p>
         </app-card>
       </a>
       <a routerLink="/seguimientos" class="block">
         <app-card titulo="Compromisos vencidos">
-          <p class="text-2xl font-semibold text-neutro-800">{{ resumen()!.compromisos_vencidos }}</p>
+          <p class="text-3xl font-bold text-teal-900">{{ resumen()!.compromisos_vencidos }}</p>
         </app-card>
       </a>
     </div>
@@ -239,7 +239,7 @@
       <app-semaforo [valor]="esValorSemaforo(fila.resumen_ejecucion.semaforo)" [mostrarTexto]="false" />
     </ng-template>
     <ng-template #colAcciones let-fila>
-      <a [routerLink]="['/proyectos', fila.id]" class="text-sm font-medium text-marca-600 hover:underline">
+      <a [routerLink]="['/proyectos', fila.id]" class="text-sm font-medium text-teal-700 hover:underline">
         Ver
       </a>
     </ng-template>

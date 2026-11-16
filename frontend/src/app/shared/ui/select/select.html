@@ -11,8 +11,8 @@
     aria-haspopup="listbox"
     [disabled]="deshabilitado()"
     class="flex items-center justify-between gap-2 rounded-panel border border-neutro-300 bg-white
-      px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-marca-500
-      focus:border-marca-500 disabled:cursor-not-allowed disabled:opacity-50"
+      px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-teal-500
+      focus:border-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
     [class.border-peligro]="!!error()"
     (click)="alternar()"
     (keydown)="alTeclaBoton($event)"
@@ -71,8 +71,8 @@
             tabindex="-1"
             [attr.aria-selected]="opcion.valor === valor()"
             class="cursor-pointer px-3 py-2 text-sm hover:bg-neutro-50"
-            [class.bg-marca-50]="i === indiceActivo()"
-            [class.text-marca-700]="opcion.valor === valor()"
+            [class.bg-teal-50]="i === indiceActivo()"
+            [class.text-teal-700]="opcion.valor === valor()"
             (click)="seleccionar(opcion)"
             (keydown.enter)="seleccionar(opcion)"
           >

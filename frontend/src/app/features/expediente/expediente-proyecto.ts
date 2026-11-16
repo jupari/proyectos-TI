@@ -10,7 +10,7 @@ import { PanelExpediente } from './panel/panel-expediente';
   selector: 'app-expediente-proyecto',
   template: `
     <div class="flex flex-col gap-4">
-      <a [routerLink]="['/proyectos', id]" class="text-sm text-marca-600 hover:underline">
+      <a [routerLink]="['/proyectos', id]" class="text-sm text-teal-700 hover:underline">
         ← Volver al proyecto
       </a>
       <app-panel-expediente [proyectoId]="id" />

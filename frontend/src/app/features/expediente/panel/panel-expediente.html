@@ -20,8 +20,8 @@
     @if (pestanaActiva() === 'documentos') {
       <div
         class="rounded-panel border-2 border-dashed p-6 text-center text-sm"
-        [class.border-marca-400]="arrastrando()"
-        [class.bg-marca-50]="arrastrando()"
+        [class.border-teal-400]="arrastrando()"
+        [class.bg-teal-50]="arrastrando()"
         [class.border-neutro-300]="!arrastrando()"
         (dragover)="alArrastrarEncima($event)"
         (dragleave)="alSalirDeArrastre()"
@@ -34,14 +34,14 @@
             [ngModel]="categoriaNueva()"
             (ngModelChange)="categoriaNueva.set($event)"
           />
-          <label class="cursor-pointer rounded-panel bg-marca-600 px-3 py-1.5 text-sm text-white hover:bg-marca-700">
+          <label class="cursor-pointer rounded-panel bg-teal-700 px-3 py-1.5 text-sm text-white hover:bg-teal-700">
             Elegir archivos
             <input type="file" multiple class="hidden" (change)="alSeleccionarArchivos($event)" />
           </label>
         </div>
         @if (subiendo()) {
           <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutro-100">
-            <div class="h-full bg-marca-500 transition-all" [style.width.%]="progreso()"></div>
+            <div class="h-full bg-teal-500 transition-all" [style.width.%]="progreso()"></div>
           </div>
         }
       </div>
@@ -68,10 +68,10 @@
                 <td class="py-2">{{ doc.creado_por_nombre ?? '—' }}</td>
                 <td class="py-2">{{ doc.creado_en | fechaCorta }}</td>
                 <td class="py-2 text-right">
-                  <button type="button" class="mr-2 text-marca-600 hover:underline" (click)="descargar(doc)">
+                  <button type="button" class="mr-2 text-teal-700 hover:underline" (click)="descargar(doc)">
                     Descargar
                   </button>
-                  <label class="mr-2 cursor-pointer text-marca-600 hover:underline">
+                  <label class="mr-2 cursor-pointer text-teal-700 hover:underline">
                     Nueva versión
                     <input type="file" class="hidden" (change)="subirNuevaVersion(doc, $event)" />
                   </label>

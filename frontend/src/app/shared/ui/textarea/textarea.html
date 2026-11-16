@@ -12,8 +12,8 @@
     [attr.aria-invalid]="error() ? 'true' : null"
     [attr.aria-describedby]="ayuda() || error() ? id + '-ayuda' : null"
     class="w-full rounded-panel border border-neutro-300 bg-white px-3 py-2 text-sm text-neutro-900
-      placeholder:text-neutro-400 focus:outline-none focus:ring-2 focus:ring-marca-500
-      focus:border-marca-500 disabled:cursor-not-allowed disabled:opacity-50"
+      placeholder:text-neutro-400 focus:outline-none focus:ring-2 focus:ring-teal-500
+      focus:border-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
     [class.border-peligro]="!!error()"
     (input)="alEscribir($event)"
     (blur)="alTocar()"

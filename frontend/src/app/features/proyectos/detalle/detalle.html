@@ -7,7 +7,7 @@
         <p class="text-xs font-medium uppercase tracking-wide text-neutro-400">
           {{ proyecto()!.codigo }}
         </p>
-        <h1 class="text-xl font-semibold text-neutro-900">{{ proyecto()!.nombre }}</h1>
+        <h1 class="text-2xl font-bold text-neutro-900">{{ proyecto()!.nombre }}</h1>
         <div class="mt-2 flex items-center gap-2">
           <app-badge
             [valor]="proyecto()!.estado"
@@ -486,13 +486,13 @@
                   {{ fila.codigo }} · {{ fila.nombre }}
                 </div>
                 <div
-                  class="relative h-5 rounded bg-marca-100"
+                  class="relative h-5 rounded bg-teal-100"
                   [style.grid-row]="2 + proyecto()!.hitos.length + i"
                   [style.grid-column]="columnaInicioPlan(fila) + ' / ' + columnaFinPlan(fila)"
                   [title]="tituloDependencias(fila)"
                 >
                   <span
-                    class="absolute inset-y-0 left-0 rounded bg-marca-500"
+                    class="absolute inset-y-0 left-0 rounded bg-teal-500"
                     [style.width.%]="numero(fila.avance)"
                   ></span>
                 </div>
@@ -646,7 +646,7 @@
                     @if (gasto.estado_aprobacion === 'BORRADOR' || gasto.estado_aprobacion === 'RECHAZADO') {
                       <button
                         type="button"
-                        class="text-marca-600 hover:underline"
+                        class="text-teal-700 hover:underline"
                         [disabled]="procesandoGasto()"
                         (click)="enviarGasto(gasto)"
                       >
@@ -712,7 +712,7 @@
             @for (s of seguimientosProyecto(); track s.id) {
               <a
                 [routerLink]="['/seguimientos', s.id]"
-                class="flex flex-col gap-2 rounded-panel border border-neutro-200 p-4 hover:border-marca-400"
+                class="flex flex-col gap-2 rounded-panel border border-neutro-200 p-4 hover:border-teal-400"
               >
                 <div class="flex items-center justify-between">
                   <span class="text-sm font-medium text-neutro-800">

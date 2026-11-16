@@ -10,7 +10,7 @@
           </a>
           · {{ tarea()!.codigo }}
         </p>
-        <h1 class="text-xl font-semibold text-neutro-900">{{ tarea()!.nombre }}</h1>
+        <h1 class="text-2xl font-bold text-neutro-900">{{ tarea()!.nombre }}</h1>
         <div class="mt-2 flex items-center gap-2">
           <app-badge
             [valor]="tarea()!.estado"
@@ -83,7 +83,7 @@
             @for (subtarea of tarea()!.subtareas; track subtarea.id) {
               <tr>
                 <td class="py-2">
-                  <a [routerLink]="['/tareas', subtarea.id]" class="text-marca-600 hover:underline">
+                  <a [routerLink]="['/tareas', subtarea.id]" class="text-teal-700 hover:underline">
                     {{ subtarea.codigo }}
                   </a>
                 </td>
@@ -109,7 +109,7 @@
       </div>
 
       @if (fechaInicioSugerida()) {
-        <p class="mb-3 rounded-panel bg-marca-50 px-3 py-2 text-sm text-marca-700">
+        <p class="mb-3 rounded-panel bg-teal-50 px-3 py-2 text-sm text-teal-700">
           Sugerencia: inicio {{ fechaInicioSugerida() | fechaCorta }} — fin
           {{ fechaFinSugerida() | fechaCorta }}.
         </p>

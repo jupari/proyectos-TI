@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-4">
   <div class="flex items-center justify-between">
-    <h1 class="text-lg font-semibold text-neutro-800">Recursos</h1>
+    <h1 class="text-2xl font-bold text-neutro-900">Recursos</h1>
     @if (puedeCrear()) {
       <app-boton routerLink="/recursos/nuevo">+ Nuevo recurso</app-boton>
     }
@@ -53,7 +53,7 @@
     <app-badge [valor]="fila.activo ? 'ACTIVO' : 'INACTIVO'" [etiqueta]="fila.activo ? 'Activo' : 'Inactivo'" />
   </ng-template>
   <ng-template #colAcciones let-fila>
-    <a [routerLink]="['/recursos', fila.id]" class="text-sm font-medium text-marca-600 hover:underline">Ver</a>
+    <a [routerLink]="['/recursos', fila.id]" class="text-sm font-medium text-teal-700 hover:underline">Ver</a>
   </ng-template>
 
   <app-tabla

@@ -4,7 +4,7 @@
   <div class="flex flex-col gap-5 lg:flex-row">
     <div class="flex flex-1 flex-col gap-5">
       <div class="flex items-center justify-between">
-        <h1 class="text-lg font-semibold text-neutro-800">
+        <h1 class="text-2xl font-bold text-neutro-900">
           {{ esNuevo ? 'Nuevo seguimiento' : 'Seguimiento' }}
         </h1>
         @if (seguimiento()) {
@@ -165,13 +165,13 @@
                       Quitar
                     </button>
                     @if (fila.tarea_codigo) {
-                      <a [routerLink]="['/tareas', fila.tarea]" class="ml-2 text-xs text-marca-600 hover:underline">
+                      <a [routerLink]="['/tareas', fila.tarea]" class="ml-2 text-xs text-teal-700 hover:underline">
                         Ver tarea {{ fila.tarea_codigo }}
                       </a>
                     } @else if (fila.id && (fila.estado === 'ABIERTO' || fila.estado === 'VENCIDO')) {
                       <button
                         type="button"
-                        class="ml-2 text-xs text-marca-600 hover:underline"
+                        class="ml-2 text-xs text-teal-700 hover:underline"
                         (click)="abrirConversion($index)"
                       >
                         Convertir en tarea
@@ -193,7 +193,7 @@
           <input type="file" (change)="alSeleccionarAdjunto($event)" [disabled]="subiendoAdjunto()" />
           @if (subiendoAdjunto()) {
             <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutro-100">
-              <div class="h-full bg-marca-500" [style.width.%]="progresoAdjunto()"></div>
+              <div class="h-full bg-teal-500" [style.width.%]="progresoAdjunto()"></div>
             </div>
           }
         </app-card>
@@ -215,7 +215,7 @@
     @if (precarga()) {
       <aside class="flex w-full flex-col gap-4 lg:w-80">
         <app-card titulo="Ayuda para redactar">
-          <button type="button" class="mb-3 text-sm font-medium text-marca-600 hover:underline" (click)="insertarEnLogros()">
+          <button type="button" class="mb-3 text-sm font-medium text-teal-700 hover:underline" (click)="insertarEnLogros()">
             Insertar en Logros
           </button>
           <p class="text-xs font-medium uppercase text-neutro-400">Tareas completadas</p>

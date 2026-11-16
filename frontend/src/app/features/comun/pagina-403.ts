@@ -8,7 +8,7 @@ import { RouterLink } from '@angular/router';
       <span class="text-5xl font-bold text-neutro-300">403</span>
       <h1 class="text-lg font-semibold text-neutro-800">No tiene permiso para ver esta página</h1>
       <p class="text-sm text-neutro-500">Si considera que es un error, contacte al administrador.</p>
-      <a routerLink="/tablero" class="text-sm font-medium text-marca-700 hover:underline">
+      <a routerLink="/tablero" class="text-sm font-medium text-teal-700 hover:underline">
         Volver al tablero
       </a>
     </div>

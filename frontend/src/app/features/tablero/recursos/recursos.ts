@@ -16,7 +16,7 @@ import { ColumnaTabla, Tabla } from '../../../shared/ui/tabla/tabla';
 import { PerfilesRecursoService } from '../../admin/data/catalogos.service';
 import { TableroService } from '../data/tablero.service';
 
-const MARCA_400 = '#60a5fa';
+const MARCA_400 = '#2dd4bf';
 const PELIGRO = '#dc2626';
 
 interface FilaOcupacion extends OcupacionRecurso {
