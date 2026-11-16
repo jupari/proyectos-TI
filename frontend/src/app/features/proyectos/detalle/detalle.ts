@@ -1184,11 +1184,11 @@ export class DetalleProyecto {
 
   protected readonly resumenTareas = signal<ResumenTareasTablero | null>(null);
 
-  private readonly MARCA_400 = '#60a5fa';
-  private readonly MARCA_900 = '#1e3a8a';
+  private readonly MARCA_400 = '#2dd4bf';
+  private readonly MARCA_900 = '#0f766e';
   private readonly SEMAFORO: Record<string, string> = {
     PENDIENTE: '#94a3b8',
-    EN_PROGRESO: '#60a5fa',
+    EN_PROGRESO: '#2dd4bf',
     BLOQUEADA: '#dc2626',
     EN_REVISION: '#eab308',
     COMPLETADA: '#16a34a',

@@ -48,9 +48,9 @@
   } @else {
     <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-white">
       <table class="w-full text-left text-sm">
-        <thead class="border-b border-neutro-200 text-neutro-500">
+        <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
           <tr>
-            <th class="sticky left-0 bg-white px-3 py-2">Proyecto / tarea</th>
+            <th class="sticky left-0 bg-white px-3 py-2 font-semibold">Proyecto / tarea</th>
             @for (dia of dias(); track dia.getTime()) {
               <th class="px-2 py-2 text-center">{{ etiquetaDia(dia) }}</th>
             }

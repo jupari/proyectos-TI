@@ -1,7 +1,7 @@
 <div class="fixed top-4 right-4 z-50 flex w-80 flex-col gap-2" aria-live="polite" role="status">
   @for (mensaje of servicio.mensajes(); track mensaje.id) {
     <div
-      class="flex items-start gap-2 rounded-panel border bg-white px-3 py-2 shadow-tarjeta"
+      class="flex items-start gap-2 rounded-panel border bg-white px-3 py-2 shadow-hover"
       [class]="clase[mensaje.tipo]"
     >
       <span class="font-bold" aria-hidden="true">{{ icono[mensaje.tipo] }}</span>

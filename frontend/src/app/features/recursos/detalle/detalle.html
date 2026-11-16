@@ -48,12 +48,12 @@
           }
         </div>
         <table class="w-full text-left text-sm">
-          <thead class="text-neutro-500">
+          <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
             <tr>
-              <th class="py-1">Valor/hora</th>
-              <th class="py-1">Valor/mes</th>
-              <th class="py-1">Vigente desde</th>
-              <th class="py-1">Vigente hasta</th>
+              <th class="py-2 font-semibold">Valor/hora</th>
+              <th class="py-2 font-semibold">Valor/mes</th>
+              <th class="py-2 font-semibold">Vigente desde</th>
+              <th class="py-2 font-semibold">Vigente hasta</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-neutro-100">
@@ -78,8 +78,8 @@
           <p class="text-sm text-neutro-500">Cargando…</p>
         } @else {
           <table class="w-full text-left text-sm">
-            <thead class="text-neutro-500">
-              <tr><th class="py-1">Mes</th><th class="py-1">Horas planeadas</th><th class="py-1">Capacidad</th><th class="py-1">Ocupación</th></tr>
+            <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
+              <tr><th class="py-2 font-semibold">Mes</th><th class="py-2 font-semibold">Horas planeadas</th><th class="py-2 font-semibold">Capacidad</th><th class="py-2 font-semibold">Ocupación</th></tr>
             </thead>
             <tbody class="divide-y divide-neutro-100">
               @for (mes of carga(); track mes.mes) {

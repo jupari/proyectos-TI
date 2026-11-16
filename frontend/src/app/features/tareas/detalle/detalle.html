@@ -35,7 +35,7 @@
         }
       </app-card>
       <app-card titulo="Horas (ejecutadas / estimadas)">
-        <p class="text-lg font-semibold text-neutro-800">
+        <p class="text-xl font-bold text-teal-900">
           {{ tarea()!.horas_ejecutadas | horas }} / {{ tarea()!.horas_estimadas | horas }}
         </p>
       </app-card>
@@ -73,10 +73,10 @@
     <app-card titulo="Subtareas">
       @if (tarea()!.subtareas.length > 0) {
         <table class="w-full text-left text-sm">
-          <thead class="text-neutro-500">
+          <thead class="border-b border-teal-100 text-xs uppercase tracking-wide text-teal-800">
             <tr>
-              <th class="py-1">Código</th><th class="py-1">Nombre</th><th class="py-1">Responsable</th>
-              <th class="py-1">Estado</th><th class="py-1">Avance</th>
+              <th class="py-2 font-semibold">Código</th><th class="py-2 font-semibold">Nombre</th><th class="py-2 font-semibold">Responsable</th>
+              <th class="py-2 font-semibold">Estado</th><th class="py-2 font-semibold">Avance</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-neutro-100">
@@ -115,7 +115,7 @@
         </p>
       }
 
-      <h3 class="mb-1 text-sm font-medium text-neutro-600">Depende de (entrantes)</h3>
+      <h3 class="mb-1 text-sm font-semibold text-teal-800">Depende de (entrantes)</h3>
       @if (tarea()!.dependencias_entrantes.length > 0) {
         <ul class="mb-4 divide-y divide-neutro-100 text-sm">
           @for (dep of tarea()!.dependencias_entrantes; track dep.id) {
@@ -133,7 +133,7 @@
         <p class="mb-4 text-sm text-neutro-400">Sin dependencias entrantes.</p>
       }
 
-      <h3 class="mb-1 text-sm font-medium text-neutro-600">Predecesora de (salientes)</h3>
+      <h3 class="mb-1 text-sm font-semibold text-teal-800">Predecesora de (salientes)</h3>
       @if (tarea()!.dependencias_salientes.length > 0) {
         <ul class="divide-y divide-neutro-100 text-sm">
           @for (dep of tarea()!.dependencias_salientes; track dep.id) {
