@@ -238,9 +238,9 @@ Bloque `resumen_ejecucion` que se reutiliza en varias respuestas:
 | proyectos | L C E B | L C E | L E *propios* | L *asignados* | L |
 | fases, hitos, rubros | L C E B | L C E | L C E *propios* | L | L |
 | recursos, tarifas | L C E B | L C E | L | L | L |
-| asignaciones | L C E B | L C E | L C E *propios* | L *propias* | L |
-| tareas | L C E B | L C E | L C E *propios* | L C E *propias* | L |
-| registros de ejecución | L C E B A | L C E A | L C E A *propios* | L C E *propios* | L |
+| asignaciones | L C E B | L C E | L C E *propios* | L *del proyecto* | L |
+| tareas | L C E B | L C E | L C E *propios* | L *del proyecto* · C E *propias* | L |
+| registros de ejecución | L C E B A | L C E A | L C E A *propios* | L *del proyecto* · C E *propios* | L |
 | gastos ejecutados | L C E B A | L C E A | L C *propios* | — | L |
 | seguimientos | L C E B A | L C E A | L C E A *propios* | L | L |
 | documentos del expediente | L C E B | L C E | L C E *propios* | L C *propios* | L |

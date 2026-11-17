@@ -164,7 +164,7 @@ def test_recurso_solo_ve_proyectos_con_asignacion_activa(roles):
     assert proyecto_no_asignado not in proyectos
 
 
-def test_recurso_solo_ve_sus_propias_tareas_aunque_esten_en_proyecto_asignado(roles):
+def test_recurso_ve_todas_las_tareas_de_su_proyecto_y_ninguna_de_otros(roles):
     titular = crear_usuario_con_rol("RECURSO")
     recurso = RecursoFactory(usuario=titular)
     proyecto = ProyectoFactory()
@@ -172,14 +172,15 @@ def test_recurso_solo_ve_sus_propias_tareas_aunque_esten_en_proyecto_asignado(ro
 
     tarea_propia = TareaFactory(proyecto=proyecto, responsable=recurso)
     tarea_de_otro = TareaFactory(proyecto=proyecto)
+    tarea_de_proyecto_ajeno = TareaFactory(proyecto=ProyectoFactory())
 
     tareas = _VistaFalsa(titular).filtrar_por_rol(Tarea.objects.all())
 
-    assert list(tareas) == [tarea_propia]
-    assert tarea_de_otro not in tareas
+    assert set(tareas) == {tarea_propia, tarea_de_otro}
+    assert tarea_de_proyecto_ajeno not in tareas
 
 
-def test_recurso_solo_ve_sus_propios_registros_de_ejecucion(roles):
+def test_recurso_ve_todos_los_registros_de_ejecucion_de_su_proyecto(roles):
     titular = crear_usuario_con_rol("RECURSO")
     recurso = RecursoFactory(usuario=titular)
     otro_recurso = RecursoFactory()
@@ -192,22 +193,18 @@ def test_recurso_solo_ve_sus_propios_registros_de_ejecucion(roles):
 
     registros = _VistaFalsa(titular).filtrar_por_rol(RegistroEjecucion.objects.all())
 
-    assert list(registros) == [registro_propio]
-    assert registro_de_otro not in registros
+    assert set(registros) == {registro_propio, registro_de_otro}
 
 
-def test_recurso_pide_registro_ajeno_por_id_da_doesnotexist_no_permissionerror(roles):
+def test_recurso_pide_registro_de_proyecto_ajeno_por_id_da_doesnotexist(roles):
     """Equivale a que la API responda 404 y no 403: con el queryset ya
     filtrado por `filtrar_por_rol`, `get_object()` de DRF hace
-    `get_queryset().get(pk=...)`, que para un registro ajeno (que sí existe)
-    lanza `DoesNotExist` → 404, nunca una comprobación de permiso → 403."""
+    `get_queryset().get(pk=...)`, que para un registro de un proyecto donde no
+    está asignado (que sí existe) lanza `DoesNotExist` → 404."""
     titular = crear_usuario_con_rol("RECURSO")
     recurso = RecursoFactory(usuario=titular)
-    otro_recurso = RecursoFactory()
-    proyecto = ProyectoFactory()
-    AsignacionRecursoFactory(proyecto=proyecto, recurso=recurso)
-    AsignacionRecursoFactory(proyecto=proyecto, recurso=otro_recurso)
-    registro_ajeno = RegistroEjecucionFactory(proyecto=proyecto, recurso=otro_recurso)
+    AsignacionRecursoFactory(proyecto=ProyectoFactory(), recurso=recurso)
+    registro_ajeno = RegistroEjecucionFactory(proyecto=ProyectoFactory())
 
     queryset_filtrado = _VistaFalsa(titular).filtrar_por_rol(RegistroEjecucion.objects.all())
 

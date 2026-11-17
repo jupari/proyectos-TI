@@ -108,7 +108,7 @@ def test_recurso_no_puede_reasignar_el_responsable_a_otro(roles, cliente):
     assert respuesta.status_code == 400
 
 
-def test_recurso_no_ve_la_tarea_de_otro_recurso_del_mismo_proyecto(roles, cliente):
+def test_recurso_ve_pero_no_edita_la_tarea_de_otro_recurso_del_mismo_proyecto(roles, cliente):
     titular = crear_usuario_con_rol("RECURSO")
     recurso = RecursoFactory(usuario=titular)
     otro_recurso = RecursoFactory()
@@ -118,9 +118,18 @@ def test_recurso_no_ve_la_tarea_de_otro_recurso_del_mismo_proyecto(roles, client
     tarea_ajena = TareaFactory(proyecto=proyecto, responsable=otro_recurso)
     cliente.force_authenticate(user=titular)
 
-    respuesta = cliente.get(f"/api/v1/tareas/{tarea_ajena.id}/")
+    assert cliente.get(f"/api/v1/tareas/{tarea_ajena.id}/").status_code == 200
+    respuesta = cliente.patch(f"/api/v1/tareas/{tarea_ajena.id}/", {"nombre": "X"}, format="json")
+    assert respuesta.status_code == 403
 
-    assert respuesta.status_code == 404
+
+def test_recurso_no_ve_tareas_de_proyectos_donde_no_esta_asignado(roles, cliente):
+    titular = crear_usuario_con_rol("RECURSO")
+    AsignacionRecursoFactory(proyecto=ProyectoFactory(), recurso=RecursoFactory(usuario=titular))
+    tarea_ajena = TareaFactory(proyecto=ProyectoFactory())
+    cliente.force_authenticate(user=titular)
+
+    assert cliente.get(f"/api/v1/tareas/{tarea_ajena.id}/").status_code == 404
 
 
 # --- creación durante ejecución -------------------------------------------------

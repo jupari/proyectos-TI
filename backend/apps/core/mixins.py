@@ -6,9 +6,9 @@ from apps.core.roles import ROLES_ALCANCE_TOTAL, codigos_roles_de, prefijo_proye
 class MixinAlcancePorRol:
     """Acota el queryset de un `ViewSet` al alcance del rol del usuario
     (PLAN.md §5): ADMIN/PMO/CONSULTA ven todo; LIDER solo lo de sus
-    proyectos (como gerente o líder técnico); RECURSO solo lo de los
-    proyectos donde tiene una asignación activa, y además solo sus propias
-    tareas y registros de ejecución. Un usuario sin rol no ve nada.
+    proyectos (como gerente o líder técnico); RECURSO todo lo de los
+    proyectos donde tiene una asignación activa (y nada de los demás). Un
+    usuario sin rol no ve nada.
     """
 
     def filtrar_por_rol(self, queryset):
@@ -42,16 +42,13 @@ class MixinAlcancePorRol:
         if prefijo is None:
             return queryset.none()
 
-        base = queryset.filter(
+        # Lectura a nivel de proyecto: quien está asignado ve todas las
+        # actividades (tareas, registros, asignaciones...) de ese proyecto, no
+        # solo las suyas. Qué puede *modificar* lo deciden las clases de
+        # permiso (`PermisoTarea`, `PermisoRegistroEjecucion`): solo lo propio.
+        return queryset.filter(
             **{
                 f"{prefijo}asignaciones__recurso": recurso,
                 f"{prefijo}asignaciones__activo": True,
             }
         ).distinct()
-
-        nombre_modelo = queryset.model.__name__
-        if nombre_modelo == "Tarea":
-            return base.filter(responsable=recurso)
-        if nombre_modelo in ("RegistroEjecucion", "AsignacionRecurso"):
-            return base.filter(recurso=recurso)
-        return base
