@@ -58,6 +58,7 @@ import { TareasService } from '../../tareas/data/tareas.service';
 import { FilaComparativoEjecucion, ProyectoDetalle } from '../data/proyectos.model';
 import { HitosService, ProyectosService, RubrosPresupuestoService } from '../data/proyectos.service';
 import { columnaDeFecha, construirPeriodosMes, construirPeriodosSemana, PeriodoCronograma, rangoFechasDe } from './cronograma.utils';
+import { HistorialSeguimientos } from './historial-seguimientos/historial-seguimientos';
 import { LineaTiempo } from './linea-tiempo/linea-tiempo';
 import { NodoArbolTareaFila } from './nodo-arbol-tarea';
 
@@ -110,6 +111,7 @@ const PESTANAS: PestanaTab[] = [
     Input,
     NodoArbolTareaFila,
     LineaTiempo,
+    HistorialSeguimientos,
     PanelExpediente,
     Grafico,
     EstadoVacio,
@@ -1257,29 +1259,6 @@ export class DetalleProyecto {
     plugins: { legend: { display: false } },
     scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
   };
-
-  protected readonly graficoAvanceSeguimientos = computed<ChartData>(() => {
-    const seguimientos = [...this.seguimientosProyecto()].sort((a, b) =>
-      a.periodo_inicio.localeCompare(b.periodo_inicio),
-    );
-    return {
-      labels: seguimientos.map((s) => s.periodo_inicio),
-      datasets: [
-        {
-          label: 'Avance reportado',
-          data: seguimientos.map((s) => Number(s.avance_reportado)),
-          borderColor: this.MARCA_900,
-          backgroundColor: 'transparent',
-        },
-      ],
-    };
-  });
-
-  protected readonly filasTablaAvanceSeguimientos = computed(() =>
-    [...this.seguimientosProyecto()]
-      .sort((a, b) => a.periodo_inicio.localeCompare(b.periodo_inicio))
-      .map((s) => [s.periodo_inicio, s.avance_reportado]),
-  );
 
   private cargarResumenTareas(): void {
     this.tableroService.tareas({ proyecto: this.id }).subscribe({
