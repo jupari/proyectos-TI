@@ -694,6 +694,9 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
 
                 es_creacion = existente is None
                 registro = existente or RegistroEjecucion(origen=OrigenRegistro.JIRA)
+                # `objects` incluye los borrados lógicos: si el registro del día había
+                # sido eliminado, se reactiva en vez de quedar "actualizado" e invisible.
+                registro.activo = True
                 registro.id_externo = id_externo
                 registro.proyecto = proyecto
                 registro.tarea = tarea

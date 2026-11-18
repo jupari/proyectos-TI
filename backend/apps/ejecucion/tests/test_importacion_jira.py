@@ -141,6 +141,18 @@ def test_reimportar_mismo_worklog_actualiza_no_duplica():
     assert registro.horas == Decimal("8")
 
 
+def test_reimportar_reactiva_el_registro_borrado_logicamente():
+    _preparar_proyecto_recurso_tarea()
+    with patch(RUTA_CLIENTE, return_value=_cliente_mock([_worklog()])):
+        importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+    RegistroEjecucion.objects.update(activo=False)
+
+    with patch(RUTA_CLIENTE, return_value=_cliente_mock([_worklog()])):
+        importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+
+    assert RegistroEjecucion.objects.filter(origen=OrigenRegistro.JIRA, activo=True).count() == 1
+
+
 def test_dos_worklogs_mismo_dia_y_tarea_suman_horas_en_un_registro():
     """Tempo permite varias entradas de tiempo el mismo día sobre la misma
     tarea (p. ej. mañana y tarde); el modelo guarda un registro por día/
