@@ -258,7 +258,12 @@
           <tbody class="divide-y divide-neutro-100">
             @for (hito of proyecto()!.hitos; track hito.id) {
               <tr [class.text-peligro]="hito.estado === 'INCUMPLIDO'">
-                <td class="py-2">{{ hito.nombre }}</td>
+                <td class="py-2">
+                  {{ hito.nombre }}
+                  @if (hito.descripcion) {
+                    <p class="text-xs font-normal text-neutro-500">{{ hito.descripcion }}</p>
+                  }
+                </td>
                 <td class="py-2">{{ hito.fecha_plan | fechaCorta }}</td>
                 <td class="py-2">{{ hito.fecha_real | fechaCorta }}</td>
                 <td class="py-2"><app-badge [valor]="hito.estado" /></td>

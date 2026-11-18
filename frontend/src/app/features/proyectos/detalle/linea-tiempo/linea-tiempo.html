@@ -157,9 +157,9 @@
                   <div class="mb-2 flex items-center justify-between">
                     <h4 class="text-xs font-bold uppercase tracking-wider text-neutro-500">
                       Entregables
-                      @if (item.hito.entregables.length > 0) {
+                      @if (entregablesDe(item.hito).length > 0) {
                         <span class="ml-1 font-semibold normal-case text-neutro-400">
-                          ({{ entregablesListos(item.hito) }}/{{ item.hito.entregables.length }})
+                          ({{ entregablesListos(item.hito) }}/{{ entregablesDe(item.hito).length }})
                         </span>
                       }
                     </h4>
@@ -170,7 +170,7 @@
                   </div>
 
                   <ul class="flex flex-col gap-1.5">
-                    @for (entregable of item.hito.entregables; track entregable.id) {
+                    @for (entregable of entregablesDe(item.hito); track entregable.id) {
                       <li class="flex items-center gap-3 rounded-input bg-neutro-50 px-3 py-2">
                         <button type="button"
                           class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors disabled:cursor-default"

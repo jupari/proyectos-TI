@@ -80,8 +80,13 @@ export class LineaTiempo {
     return hitoVencido(hito, this.hoy);
   }
 
+  /** Tolera respuestas sin `entregables` (API aún sin actualizar). */
+  protected entregablesDe(hito: Hito): EntregableHito[] {
+    return hito.entregables ?? [];
+  }
+
   protected entregablesListos(hito: Hito): number {
-    return hito.entregables.filter((e) => e.estado !== 'PENDIENTE').length;
+    return this.entregablesDe(hito).filter((e) => e.estado !== 'PENDIENTE').length;
   }
 
   protected claseMarcadorFase(fase: FaseProyecto): string {
