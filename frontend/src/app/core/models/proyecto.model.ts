@@ -1,5 +1,5 @@
 import { ModeloBase } from './comun.model';
-import { CategoriaRubro, EstadoFase, EstadoHito, EstadoProyecto, Prioridad, Semaforo } from './enums';
+import { CategoriaRubro, EstadoEntregable, EstadoFase, EstadoHito, EstadoProyecto, Prioridad, Semaforo } from './enums';
 
 export interface Proyecto extends ModeloBase {
   codigo: string;
@@ -37,6 +37,15 @@ export interface FaseProyecto extends ModeloBase {
   estado: EstadoFase;
 }
 
+export interface EntregableHito extends ModeloBase {
+  proyecto: string;
+  hito: string;
+  nombre: string;
+  descripcion: string;
+  estado: EstadoEntregable;
+  fecha_entrega: string | null;
+}
+
 export interface Hito extends ModeloBase {
   proyecto: string;
   nombre: string;
@@ -46,6 +55,8 @@ export interface Hito extends ModeloBase {
   estado: EstadoHito;
   criterio_cumplimiento: string;
   es_entregable: boolean;
+  /** Productos a entregar para dar el hito por cumplido (solo los activos). */
+  entregables: EntregableHito[];
 }
 
 export interface RubroPresupuesto extends ModeloBase {

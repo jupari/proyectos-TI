@@ -14,8 +14,9 @@ from apps.core.views import ViewSetBase
 from apps.tablero.services import resumen_ejecucion as calcular_resumen_ejecucion
 
 from .filters import FiltroProyecto
-from .models import FaseProyecto, Hito, Proyecto, RubroPresupuesto
+from .models import EntregableHito, FaseProyecto, Hito, Proyecto, RubroPresupuesto
 from .serializers import (
+    EntregableHitoSerializer,
     FaseProyectoSerializer,
     HitoSerializer,
     ProyectoDetalleSerializer,
@@ -62,7 +63,7 @@ class ProyectoViewSet(MixinAlcancePorRol, ViewSetBase):
         if self.request.query_params.get("activo") != "false":
             queryset = queryset.filter(activo=True)
         if self.action == "retrieve":
-            queryset = queryset.prefetch_related("fases", "hitos", "rubros")
+            queryset = queryset.prefetch_related("fases", "hitos__entregables", "rubros")
         return self.filtrar_por_rol(queryset)
 
     def get_serializer_class(self):
@@ -186,7 +187,9 @@ class ProyectoViewSet(MixinAlcancePorRol, ViewSetBase):
     @action(detail=True, methods=["get"])
     def hitos(self, request, pk=None):
         proyecto = self.get_object()
-        serializer = HitoSerializer(proyecto.hitos.filter(activo=True), many=True)
+        serializer = HitoSerializer(
+            proyecto.hitos.filter(activo=True).prefetch_related("entregables"), many=True
+        )
         return Response(serializer.data)
 
     @extend_schema(
@@ -396,6 +399,15 @@ class HitoViewSet(ViewSetBase):
     permission_classes = [EsLiderDelProyectoOLectura]
     filterset_fields = ["proyecto", "estado", "es_entregable"]
     ordering_fields = ["fecha_plan"]
+
+
+class EntregableHitoViewSet(ViewSetBase):
+    queryset = EntregableHito.objects.select_related("proyecto", "hito")
+    serializer_lectura_class = EntregableHitoSerializer
+    serializer_escritura_class = EntregableHitoSerializer
+    permission_classes = [EsLiderDelProyectoOLectura]
+    filterset_fields = ["proyecto", "hito", "estado"]
+    ordering_fields = ["creado_en"]
 
 
 class RubroPresupuestoViewSet(ViewSetBase):

@@ -5,6 +5,7 @@ from django.db.models import Q
 from apps.catalogos.models import Area, Portafolio
 from apps.core.choices import (
     CategoriaRubro,
+    EstadoEntregable,
     EstadoFase,
     EstadoHito,
     EstadoProyecto,
@@ -124,6 +125,30 @@ class Hito(ModeloBase):
 
     def __str__(self):
         return f"{self.proyecto.codigo} — {self.nombre}"
+
+
+class EntregableHito(ModeloBase):
+    """Producto concreto que se debe entregar para dar un hito por cumplido
+    (acta, manual, módulo desplegado...). `proyecto` se repite aquí (igual que
+    en `Hito`) para que el alcance por rol y la bitácora lo resuelvan sin
+    pasar por el hito; el serializer garantiza que coincida con `hito.proyecto`."""
+
+    proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="entregables")
+    hito = models.ForeignKey(Hito, on_delete=models.CASCADE, related_name="entregables")
+    nombre = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True)
+    estado = models.CharField(
+        max_length=20, choices=EstadoEntregable.choices, default=EstadoEntregable.PENDIENTE
+    )
+    fecha_entrega = models.DateField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "entregable de hito"
+        verbose_name_plural = "entregables de hito"
+        ordering = ["hito", "creado_en"]
+
+    def __str__(self):
+        return f"{self.hito.nombre} — {self.nombre}"
 
 
 class RubroPresupuesto(ModeloBase):

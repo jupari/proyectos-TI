@@ -1,0 +1,224 @@
+<div class="flex flex-col gap-6">
+  <!-- Resumen gerencial -->
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="rounded-panel border border-neutro-200 bg-surface p-4 shadow-tarjeta">
+      <p class="text-xs font-semibold uppercase tracking-wide text-neutro-500">Fases</p>
+      <p class="mt-1 text-3xl font-bold text-primario-900">
+        {{ resumen().fasesCompletadas }}<span class="text-lg font-semibold text-neutro-400"> / {{ resumen().fasesTotal }}</span>
+      </p>
+      <p class="text-xs text-neutro-500">completadas</p>
+    </div>
+    <div class="rounded-panel border border-neutro-200 bg-surface p-4 shadow-tarjeta">
+      <p class="text-xs font-semibold uppercase tracking-wide text-neutro-500">Hitos</p>
+      <p class="mt-1 text-3xl font-bold text-primario-900">
+        {{ resumen().hitosCumplidos }}<span class="text-lg font-semibold text-neutro-400"> / {{ resumen().hitosTotal }}</span>
+      </p>
+      <p class="text-xs" [class.text-peligro]="resumen().hitosVencidos > 0" [class.text-neutro-500]="resumen().hitosVencidos === 0">
+        @if (resumen().hitosVencidos > 0) {
+          {{ resumen().hitosVencidos }} vencido(s) o incumplido(s)
+        } @else {
+          cumplidos, sin vencidos
+        }
+      </p>
+    </div>
+    <div class="rounded-panel border border-neutro-200 bg-surface p-4 shadow-tarjeta">
+      <p class="text-xs font-semibold uppercase tracking-wide text-neutro-500">Entregables</p>
+      <p class="mt-1 text-3xl font-bold text-primario-900">
+        {{ resumen().entregablesListos }}<span class="text-lg font-semibold text-neutro-400"> / {{ resumen().entregablesTotal }}</span>
+      </p>
+      <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-neutro-100" role="progressbar"
+        [attr.aria-valuenow]="pctEntregables()" aria-valuemin="0" aria-valuemax="100" aria-label="Entregables entregados">
+        <div class="h-full rounded-full bg-primario-500" [style.width.%]="pctEntregables()"></div>
+      </div>
+    </div>
+    <div class="rounded-panel border border-neutro-200 bg-surface p-4 shadow-tarjeta">
+      <p class="text-xs font-semibold uppercase tracking-wide text-neutro-500">Próximo hito</p>
+      @if (resumen().proximoHito; as proximo) {
+        <p class="mt-1 truncate text-base font-bold text-primario-900" [title]="proximo.nombre">{{ proximo.nombre }}</p>
+        <p class="text-xs text-neutro-500">{{ proximo.fecha_plan | fechaCorta }}</p>
+      } @else {
+        <p class="mt-1 text-base font-semibold text-neutro-400">Sin hitos pendientes</p>
+      }
+    </div>
+  </div>
+
+  <!-- Línea de tiempo -->
+  <section class="rounded-panel border border-neutro-200 bg-surface p-4 shadow-tarjeta sm:p-6" aria-label="Línea de tiempo del proyecto">
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-primario-100 pb-3">
+      <h2 class="text-lg font-bold text-neutro-900">Línea de tiempo</h2>
+      <div class="flex flex-wrap items-center gap-3 text-xs text-neutro-500">
+        <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded-full bg-primario-500"></span>Fase</span>
+        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rotate-45 border-2 border-primario-400 bg-surface"></span>Hito</span>
+        @if (puedeEditar()) {
+          <app-boton tamano="sm" (clic)="nuevoHito.emit()">+ Nuevo hito</app-boton>
+        }
+      </div>
+    </div>
+
+    @if (resumen().fasesTotal + resumen().hitosTotal === 0) {
+      <p class="py-6 text-center text-sm text-neutro-400">
+        Aún no hay fases ni hitos. Defínelos en las pestañas «Fases» y «Hitos» para ver la línea de tiempo.
+      </p>
+    } @else {
+      <ol class="relative pl-10 sm:pl-12">
+        <span class="absolute bottom-2 left-4 top-2 w-0.5 -translate-x-1/2 bg-neutro-200" aria-hidden="true"></span>
+
+        @for (item of items(); track item.tipo + item.fecha + ($index)) {
+          @if (item.tipo === 'hoy') {
+            <li class="relative pb-6">
+              <span class="absolute -left-10 top-0 flex h-8 w-8 items-center justify-center sm:-left-12" aria-hidden="true">
+                <span class="h-3 w-3 rounded-full bg-primario-600 ring-4 ring-primario-100"></span>
+              </span>
+              <div class="flex items-center gap-3">
+                <span class="rounded-full bg-primario-600 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
+                  Hoy · {{ item.fecha | fechaCorta }}
+                </span>
+                <span class="h-px flex-1 bg-primario-200"></span>
+              </div>
+            </li>
+          } @else if (item.tipo === 'fase') {
+            <li class="relative pb-6">
+              <span class="absolute -left-10 top-0 flex h-8 w-8 items-center justify-center rounded-full shadow-tarjeta sm:-left-12"
+                [class]="claseMarcadorFase(item.fase)" aria-hidden="true">
+                @if (item.fase.estado === 'COMPLETADA') {
+                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                } @else {
+                  <span class="text-xs font-bold">{{ item.fase.orden }}</span>
+                }
+              </span>
+              <div class="rounded-panel border border-neutro-200 bg-neutro-50 p-4">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-primario-700">Fase {{ item.fase.orden }}</p>
+                    <h3 class="text-base font-bold text-neutro-900">{{ item.fase.nombre }}</h3>
+                  </div>
+                  <app-badge [valor]="item.fase.estado" [etiqueta]="ETIQUETAS_FASE[item.fase.estado]" />
+                </div>
+                <p class="mt-1 text-sm text-neutro-600">
+                  {{ item.fase.fecha_inicio_plan | fechaCorta }} — {{ item.fase.fecha_fin_plan | fechaCorta }}
+                  <span class="ml-2 text-neutro-400">·</span>
+                  <span class="ml-2">Peso {{ item.fase.peso }}%</span>
+                </p>
+                <div class="mt-3 flex items-center gap-3">
+                  <div class="h-2 flex-1 overflow-hidden rounded-full bg-neutro-200" role="progressbar"
+                    [attr.aria-valuenow]="avance(item.fase)" aria-valuemin="0" aria-valuemax="100" aria-label="Avance de la fase">
+                    <div class="h-full rounded-full" [class.bg-exito]="item.fase.estado === 'COMPLETADA'"
+                      [class.bg-primario-500]="item.fase.estado !== 'COMPLETADA'" [style.width.%]="avance(item.fase)"></div>
+                  </div>
+                  <span class="w-10 text-right text-xs font-semibold text-neutro-600">{{ avance(item.fase) }}%</span>
+                </div>
+              </div>
+            </li>
+          } @else {
+            <li class="relative pb-6">
+              <span class="absolute -left-10 top-0 flex h-8 w-8 items-center justify-center sm:-left-12" aria-hidden="true">
+                <span class="h-4 w-4 rotate-45 border-2 shadow-tarjeta" [class]="claseMarcadorHito(item.hito)"></span>
+              </span>
+              <div class="rounded-panel border bg-surface p-4 shadow-tarjeta"
+                [class.border-peligro]="vencido(item.hito) || item.hito.estado === 'INCUMPLIDO'"
+                [class.border-neutro-200]="!(vencido(item.hito) || item.hito.estado === 'INCUMPLIDO')">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-primario-700">
+                      Hito @if (item.hito.es_entregable) { · Entrega }
+                    </p>
+                    <h3 class="text-base font-bold text-neutro-900">{{ item.hito.nombre }}</h3>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    @if (vencido(item.hito)) {
+                      <app-badge valor="VENCIDO" etiqueta="Vencido" />
+                    } @else {
+                      <app-badge [valor]="item.hito.estado" [etiqueta]="ETIQUETAS_HITO[item.hito.estado]" />
+                    }
+                    @if (puedeEditar()) {
+                      <app-boton variante="fantasma" tamano="sm" (clic)="editarHito.emit(item.hito)">Editar</app-boton>
+                    }
+                  </div>
+                </div>
+
+                <p class="mt-1 text-sm text-neutro-600">
+                  Plan {{ item.hito.fecha_plan | fechaCorta }}
+                  @if (item.hito.fecha_real) {
+                    <span class="ml-2 text-neutro-400">·</span>
+                    <span class="ml-2">Real {{ item.hito.fecha_real | fechaCorta }}</span>
+                  }
+                </p>
+                @if (item.hito.descripcion) {
+                  <p class="mt-2 text-sm text-neutro-700">{{ item.hito.descripcion }}</p>
+                }
+                @if (item.hito.criterio_cumplimiento) {
+                  <p class="mt-2 rounded-input bg-primario-50 px-3 py-2 text-xs text-primario-900">
+                    <span class="font-semibold">Criterio de cumplimiento:</span> {{ item.hito.criterio_cumplimiento }}
+                  </p>
+                }
+
+                <!-- Entregables del hito -->
+                <div class="mt-4 border-t border-neutro-100 pt-3">
+                  <div class="mb-2 flex items-center justify-between">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-neutro-500">
+                      Entregables
+                      @if (item.hito.entregables.length > 0) {
+                        <span class="ml-1 font-semibold normal-case text-neutro-400">
+                          ({{ entregablesListos(item.hito) }}/{{ item.hito.entregables.length }})
+                        </span>
+                      }
+                    </h4>
+                    @if (puedeEditar() && hitoAgregando() !== item.hito.id) {
+                      <button type="button" class="text-xs font-semibold text-primario-700 hover:underline"
+                        (click)="abrirAgregar(item.hito)">+ Agregar entregable</button>
+                    }
+                  </div>
+
+                  <ul class="flex flex-col gap-1.5">
+                    @for (entregable of item.hito.entregables; track entregable.id) {
+                      <li class="flex items-center gap-3 rounded-input bg-neutro-50 px-3 py-2">
+                        <button type="button"
+                          class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors disabled:cursor-default"
+                          [class]="claseIconoEntregable(entregable.estado)"
+                          [disabled]="!puedeEditar() || guardando()"
+                          [attr.aria-label]="'Estado de ' + entregable.nombre + ': ' + ETIQUETAS_ENTREGABLE[entregable.estado] + '. Pulsa para avanzar.'"
+                          (click)="avanzarEstado(entregable)">
+                          <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                        </button>
+                        <div class="min-w-0 flex-1">
+                          <p class="truncate text-sm font-medium text-neutro-800"
+                            [class.line-through]="entregable.estado !== 'PENDIENTE'"
+                            [class.text-neutro-500]="entregable.estado !== 'PENDIENTE'">{{ entregable.nombre }}</p>
+                          @if (entregable.fecha_entrega) {
+                            <p class="text-xs text-neutro-500">Entregado {{ entregable.fecha_entrega | fechaCorta }}</p>
+                          }
+                        </div>
+                        <app-badge [valor]="entregable.estado" [etiqueta]="ETIQUETAS_ENTREGABLE[entregable.estado]" />
+                        @if (puedeEditar()) {
+                          <button type="button" class="rounded p-1 text-neutro-400 hover:bg-peligro/10 hover:text-peligro"
+                            [attr.aria-label]="'Eliminar ' + entregable.nombre" (click)="eliminar(entregable)">
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.3 5.3a1 1 0 011.4 0L10 7.6l2.3-2.3a1 1 0 111.4 1.4L11.4 9l2.3 2.3a1 1 0 01-1.4 1.4L10 10.4l-2.3 2.3a1 1 0 01-1.4-1.4L8.6 9 6.3 6.7a1 1 0 010-1.4z"/></svg>
+                          </button>
+                        }
+                      </li>
+                    } @empty {
+                      @if (hitoAgregando() !== item.hito.id) {
+                        <li class="text-xs text-neutro-400">Sin entregables definidos para este hito.</li>
+                      }
+                    }
+                  </ul>
+
+                  @if (hitoAgregando() === item.hito.id) {
+                    <form class="mt-2 flex flex-wrap gap-2" (submit)="$event.preventDefault(); agregar(item.hito)">
+                      <input #nombreInput type="text" maxlength="200" placeholder="Nombre del entregable (p. ej. Manual de usuario)"
+                        aria-label="Nombre del entregable" [value]="nombreNuevo()" (input)="nombreNuevo.set(nombreInput.value)"
+                        (keydown.escape)="cancelarAgregar()"
+                        class="min-w-0 flex-1 rounded-input border border-neutro-300 bg-surface px-3 py-1.5 text-sm text-neutro-800 focus:border-primario-500 focus:outline-none" />
+                      <app-boton tipo="submit" tamano="sm" [disabled]="!nombreNuevo().trim() || guardando()">Agregar</app-boton>
+                      <app-boton variante="fantasma" tamano="sm" (clic)="cancelarAgregar()">Cancelar</app-boton>
+                    </form>
+                  }
+                </div>
+              </div>
+            </li>
+          }
+        }
+      </ol>
+    }
+  </section>
+</div>

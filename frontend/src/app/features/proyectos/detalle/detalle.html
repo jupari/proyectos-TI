@@ -229,6 +229,18 @@
       </app-card>
     }
 
+    @if (pestanaActiva() === 'linea-tiempo') {
+      <app-linea-tiempo
+        [proyectoId]="proyecto()!.id"
+        [fases]="proyecto()!.fases"
+        [hitos]="proyecto()!.hitos"
+        [puedeEditar]="puedeEditar()"
+        (nuevoHito)="abrirNuevoHito()"
+        (editarHito)="abrirEditarHito($event)"
+        (cambio)="recargarSilencioso()"
+      />
+    }
+
     @if (pestanaActiva() === 'hitos') {
       <app-card titulo="Hitos">
         <div class="mb-3 flex justify-end">

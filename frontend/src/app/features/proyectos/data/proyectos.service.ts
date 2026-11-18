@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 import { ApiService, ParametrosConsulta } from '../../../core/api/api.service';
 import {
   AsignacionRecurso,
+  EntregableHito,
   FaseProyecto,
   Hito,
   Proyecto,
@@ -99,6 +100,11 @@ export class FasesProyectoService extends ApiService<FaseProyecto> {
 @Injectable({ providedIn: 'root' })
 export class HitosService extends ApiService<Hito> {
   protected readonly recurso = 'hitos';
+}
+
+@Injectable({ providedIn: 'root' })
+export class EntregablesHitoService extends ApiService<EntregableHito> {
+  protected readonly recurso = 'entregables-hito';
 }
 
 @Injectable({ providedIn: 'root' })

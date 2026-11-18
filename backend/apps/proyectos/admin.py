@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from apps.recursos.models import AsignacionRecurso
 
-from .models import FaseProyecto, Hito, Proyecto, RubroPresupuesto
+from .models import EntregableHito, FaseProyecto, Hito, Proyecto, RubroPresupuesto
 
 
 class FaseProyectoInline(admin.TabularInline):
@@ -88,3 +88,10 @@ class RubroPresupuestoAdmin(admin.ModelAdmin):
     search_fields = ["descripcion", "proyecto__codigo", "proyecto__nombre"]
     autocomplete_fields = ["proyecto"]
     readonly_fields = ["monto_ejecutado", "creado_en", "actualizado_en"]
+
+
+@admin.register(EntregableHito)
+class EntregableHitoAdmin(admin.ModelAdmin):
+    list_display = ["nombre", "hito", "proyecto", "estado", "fecha_entrega"]
+    list_filter = ["estado"]
+    search_fields = ["nombre", "hito__nombre"]

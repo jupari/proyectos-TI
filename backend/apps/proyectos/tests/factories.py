@@ -5,7 +5,13 @@ import factory
 from apps.accounts.tests.factories import UsuarioFactory
 from apps.catalogos.tests.factories import AreaFactory
 from apps.core.choices import EstadoFase, EstadoHito, EstadoProyecto, Prioridad
-from apps.proyectos.models import FaseProyecto, Hito, Proyecto, RubroPresupuesto
+from apps.proyectos.models import (
+    EntregableHito,
+    FaseProyecto,
+    Hito,
+    Proyecto,
+    RubroPresupuesto,
+)
 
 
 class ProyectoFactory(factory.django.DjangoModelFactory):
@@ -54,6 +60,15 @@ class HitoFactory(factory.django.DjangoModelFactory):
     estado = EstadoHito.PENDIENTE
     criterio_cumplimiento = "Entregable aceptado por el cliente"
     es_entregable = True
+
+
+class EntregableHitoFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = EntregableHito
+
+    hito = factory.SubFactory(HitoFactory)
+    proyecto = factory.SelfAttribute("hito.proyecto")
+    nombre = factory.Sequence(lambda n: f"Entregable {n}")
 
 
 class RubroPresupuestoFactory(factory.django.DjangoModelFactory):

@@ -178,6 +178,14 @@ export const ETIQUETAS_ESTADO_HITO: Record<EstadoHito, string> = {
   REPROGRAMADO: 'Reprogramado',
 };
 
+export type EstadoEntregable = 'PENDIENTE' | 'ENTREGADO' | 'APROBADO';
+
+export const ETIQUETAS_ESTADO_ENTREGABLE: Record<EstadoEntregable, string> = {
+  PENDIENTE: 'Pendiente',
+  ENTREGADO: 'Entregado',
+  APROBADO: 'Aprobado',
+};
+
 export type EstadoFase = 'PENDIENTE' | 'EN_PROGRESO' | 'COMPLETADA';
 
 export const ETIQUETAS_ESTADO_FASE: Record<EstadoFase, string> = {

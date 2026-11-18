@@ -58,6 +58,7 @@ import { TareasService } from '../../tareas/data/tareas.service';
 import { FilaComparativoEjecucion, ProyectoDetalle } from '../data/proyectos.model';
 import { HitosService, ProyectosService, RubrosPresupuestoService } from '../data/proyectos.service';
 import { columnaDeFecha, construirPeriodosMes, construirPeriodosSemana, PeriodoCronograma, rangoFechasDe } from './cronograma.utils';
+import { LineaTiempo } from './linea-tiempo/linea-tiempo';
 import { NodoArbolTareaFila } from './nodo-arbol-tarea';
 
 interface FilaFaseEditable {
@@ -75,6 +76,7 @@ interface FilaFaseEditable {
 
 const PESTANAS: PestanaTab[] = [
   { id: 'resumen', etiqueta: 'Resumen' },
+  { id: 'linea-tiempo', etiqueta: 'Línea de tiempo' },
   { id: 'fases', etiqueta: 'Fases' },
   { id: 'hitos', etiqueta: 'Hitos' },
   { id: 'presupuesto', etiqueta: 'Presupuesto' },
@@ -107,6 +109,7 @@ const PESTANAS: PestanaTab[] = [
     Numero,
     Input,
     NodoArbolTareaFila,
+    LineaTiempo,
     PanelExpediente,
     Grafico,
     EstadoVacio,
@@ -1296,8 +1299,10 @@ export class DetalleProyecto {
     this.cargarSeguimientos();
   }
 
-  private cargar(): void {
-    this.cargando.set(true);
+  /** `silenciosa`: refresca los datos sin ocultar la pantalla con «Cargando…»
+   * (p. ej. al marcar un entregable en la línea de tiempo). */
+  private cargar(silenciosa = false): void {
+    if (!silenciosa) this.cargando.set(true);
     this.proyectosService.obtenerDetalle(this.id).subscribe({
       next: (proyecto) => {
         this.proyecto.set(proyecto);
@@ -1309,6 +1314,10 @@ export class DetalleProyecto {
         this.cargando.set(false);
       },
     });
+  }
+
+  protected recargarSilencioso(): void {
+    this.cargar(true);
   }
 
   protected cambiarPestana(id: string): void {

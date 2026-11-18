@@ -8,7 +8,7 @@ type CategoriaBadge = 'exito' | 'alerta' | 'peligro' | 'info' | 'neutro';
 const CATEGORIA_POR_VALOR: Record<string, CategoriaBadge> = {
   COMPLETADA: 'exito', COMPLETADO: 'exito', APROBADO: 'exito', CUMPLIDO: 'exito',
   PUBLICADO: 'exito', VERDE: 'exito', ACTIVO: 'exito', PRODUCCION_SOPORTE: 'exito',
-  EJECUCION: 'info', EN_PROGRESO: 'info', PLANEACION: 'info', LOCAL: 'info', GOOGLE: 'info',
+  EJECUCION: 'info', EN_PROGRESO: 'info', ENTREGADO: 'info', PLANEACION: 'info', LOCAL: 'info', GOOGLE: 'info',
   ENVIADO: 'alerta', PENDIENTE: 'alerta', AMARILLO: 'alerta', REPROGRAMADO: 'alerta',
   EN_REVISION: 'alerta', ABIERTO: 'alerta', ALTA: 'alerta', CRITICA: 'peligro',
   CANCELADA: 'peligro', CANCELADO: 'peligro', RECHAZADO: 'peligro', RECHAZO: 'peligro',

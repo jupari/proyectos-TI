@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from apps.tablero.services import resumen_ejecucion as calcular_resumen_ejecucion
 
-from .models import FaseProyecto, Hito, Proyecto, RubroPresupuesto
+from .models import EntregableHito, FaseProyecto, Hito, Proyecto, RubroPresupuesto
 from .services import generar_codigo_proyecto, validar_presupuesto
 
 # `generar_codigo_proyecto` bloquea la última fila con ese prefijo —si existe
@@ -60,7 +60,33 @@ class FaseProyectoSerializer(serializers.ModelSerializer):
     # sola vez al final de guardar todas las fases juntas (fase-05 adenda).
 
 
+class EntregableHitoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EntregableHito
+        fields = [
+            "id",
+            "proyecto",
+            "hito",
+            "nombre",
+            "descripcion",
+            "estado",
+            "fecha_entrega",
+            "activo",
+        ]
+
+    def validate(self, attrs):
+        hito = attrs.get("hito", getattr(self.instance, "hito", None))
+        proyecto = attrs.get("proyecto", getattr(self.instance, "proyecto", None))
+        if hito is not None and proyecto is not None and hito.proyecto_id != proyecto.id:
+            raise serializers.ValidationError(
+                {"hito": ["El hito no pertenece a este proyecto."]}
+            )
+        return attrs
+
+
 class HitoSerializer(serializers.ModelSerializer):
+    entregables = serializers.SerializerMethodField()
+
     class Meta:
         model = Hito
         fields = [
@@ -73,8 +99,14 @@ class HitoSerializer(serializers.ModelSerializer):
             "estado",
             "criterio_cumplimiento",
             "es_entregable",
+            "entregables",
             "activo",
         ]
+
+    def get_entregables(self, obj) -> list[dict]:
+        # Se filtra en Python (no con `.filter`) para aprovechar el prefetch.
+        activos = [e for e in obj.entregables.all() if e.activo]
+        return EntregableHitoSerializer(activos, many=True).data
 
 
 class RubroPresupuestoSerializer(serializers.ModelSerializer):

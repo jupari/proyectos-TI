@@ -112,6 +112,12 @@ class EstadoHito(models.TextChoices):
     REPROGRAMADO = "REPROGRAMADO", "Reprogramado"
 
 
+class EstadoEntregable(models.TextChoices):
+    PENDIENTE = "PENDIENTE", "Pendiente"
+    ENTREGADO = "ENTREGADO", "Entregado"
+    APROBADO = "APROBADO", "Aprobado"
+
+
 class EstadoFase(models.TextChoices):
     PENDIENTE = "PENDIENTE", "Pendiente"
     EN_PROGRESO = "EN_PROGRESO", "En progreso"
