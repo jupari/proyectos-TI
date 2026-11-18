@@ -2,14 +2,9 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import {
-  CompromisoSeguimiento,
-  DocumentoExpediente,
-  ETIQUETAS_CATEGORIA_DOCUMENTO,
-  ETIQUETAS_ESTADO_COMPROMISO,
   ETIQUETAS_ESTADO_SEGUIMIENTO,
   ETIQUETAS_PERIODICIDAD,
   Seguimiento,
@@ -19,14 +14,12 @@ import { EtiquetaEnumPipe, FechaCortaPipe } from '../../../shared/pipes';
 import { Badge } from '../../../shared/ui/badge/badge';
 import { Boton } from '../../../shared/ui/boton/boton';
 import { EstadoVacio } from '../../../shared/ui/estado-vacio/estado-vacio';
-import { Modal } from '../../../shared/ui/modal/modal';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { Semaforo, ValorSemaforo } from '../../../shared/ui/semaforo/semaforo';
-import { DocumentosService } from '../../expediente/data/documentos.service';
 import { ProyectosService } from '../../proyectos/data/proyectos.service';
-import { CompromisosService } from '../data/compromisos.service';
 import { FiltrosSeguimiento } from '../data/seguimientos.model';
 import { SeguimientosService } from '../data/seguimientos.service';
+import { DetalleSeguimientoModal } from '../detalle-modal/detalle-seguimiento-modal';
 import { sincronizarQueryParams } from '../../../core/ui/query-params';
 
 /** Tope de seguimientos que se traen de una vez para agrupar en el
@@ -58,7 +51,7 @@ interface GrupoProyecto {
     Semaforo,
     Select,
     EstadoVacio,
-    Modal,
+    DetalleSeguimientoModal,
     EtiquetaEnumPipe,
     FechaCortaPipe,
   ],
@@ -66,8 +59,6 @@ interface GrupoProyecto {
 export class ListaSeguimientos {
   private readonly seguimientosService = inject(SeguimientosService);
   private readonly proyectosService = inject(ProyectosService);
-  private readonly compromisosService = inject(CompromisosService);
-  private readonly documentosService = inject(DocumentosService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
@@ -75,8 +66,6 @@ export class ListaSeguimientos {
 
   protected readonly ETIQUETAS_ESTADO_SEGUIMIENTO = ETIQUETAS_ESTADO_SEGUIMIENTO;
   protected readonly ETIQUETAS_PERIODICIDAD = ETIQUETAS_PERIODICIDAD;
-  protected readonly ETIQUETAS_ESTADO_COMPROMISO = ETIQUETAS_ESTADO_COMPROMISO;
-  protected readonly ETIQUETAS_CATEGORIA_DOCUMENTO = ETIQUETAS_CATEGORIA_DOCUMENTO;
 
   protected readonly cargando = signal(false);
   protected readonly grupos = signal<GrupoProyecto[]>([]);
@@ -99,11 +88,7 @@ export class ListaSeguimientos {
 
   protected readonly puedeCrear = computed(() => this.auth.tienePermiso('seguimientos.crear'));
 
-  protected readonly detalleAbierto = signal(false);
   protected readonly detalleSeguimiento = signal<Seguimiento | null>(null);
-  protected readonly detalleCompromisos = signal<CompromisoSeguimiento[]>([]);
-  protected readonly detalleDocumentos = signal<DocumentoExpediente[]>([]);
-  protected readonly cargandoDetalle = signal(false);
 
   constructor() {
     const parametros = this.ruta.snapshot.queryParamMap;
@@ -219,39 +204,9 @@ export class ListaSeguimientos {
 
   protected abrirDetalle(seguimiento: Seguimiento): void {
     this.detalleSeguimiento.set(seguimiento);
-    this.detalleCompromisos.set([]);
-    this.detalleDocumentos.set([]);
-    this.detalleAbierto.set(true);
-    this.cargandoDetalle.set(true);
-
-    forkJoin({
-      compromisos: this.compromisosService.listar({ seguimiento: seguimiento.id, page_size: 200 }),
-      documentos: this.documentosService.listar({ seguimiento: seguimiento.id, page_size: 200 }),
-    }).subscribe({
-      next: ({ compromisos, documentos }) => {
-        this.detalleCompromisos.set(compromisos.results);
-        this.detalleDocumentos.set(documentos.results);
-        this.cargandoDetalle.set(false);
-      },
-      error: () => {
-        this.cargandoDetalle.set(false);
-        this.toast.mostrar({ tipo: 'error', mensaje: 'No se pudo cargar el detalle del seguimiento.' });
-      },
-    });
   }
 
   protected cerrarDetalle(): void {
-    this.detalleAbierto.set(false);
-  }
-
-  protected descargarAdjunto(documento: DocumentoExpediente): void {
-    this.documentosService.descargar(documento.id).subscribe((blob) => {
-      const url = URL.createObjectURL(blob);
-      const enlace = document.createElement('a');
-      enlace.href = url;
-      enlace.download = documento.nombre_original;
-      enlace.click();
-      URL.revokeObjectURL(url);
-    });
+    this.detalleSeguimiento.set(null);
   }
 }

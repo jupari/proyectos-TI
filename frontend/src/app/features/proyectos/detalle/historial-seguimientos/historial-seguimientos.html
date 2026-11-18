@@ -15,9 +15,14 @@
       <ol class="flex flex-col gap-3">
         @for (item of grupo.items; track item.seguimiento.id) {
           <li>
-            <a
-              [routerLink]="['/seguimientos', item.seguimiento.id]"
-              class="group flex flex-col gap-4 rounded-panel border border-neutro-200 bg-neutro-50 p-4 transition-colors
+            <div
+              role="button"
+              tabindex="0"
+              [attr.aria-label]="'Ver seguimiento ' + item.titulo"
+              (click)="seleccionado.set(item.seguimiento)"
+              (keydown.enter)="seleccionado.set(item.seguimiento)"
+              (keydown.space)="$event.preventDefault(); seleccionado.set(item.seguimiento)"
+              class="group flex cursor-pointer flex-col gap-4 rounded-panel border border-neutro-200 bg-neutro-50 p-4 transition-colors
                 hover:border-primario-400 hover:bg-primario-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario-500
                 sm:flex-row sm:items-center"
             >
@@ -49,9 +54,9 @@
               <!-- Avance -->
               <div class="w-full shrink-0 sm:w-44">
                 <div class="flex items-baseline justify-between gap-2">
-                  <span class="text-2xl font-bold text-primario-900">{{ item.seguimiento.avance_reportado }}%</span>
+                  <span class="text-2xl font-bold text-primario-900">{{ avance(item.seguimiento) }}%</span>
                   @if (item.variacion !== null) {
-                    <span class="rounded-full px-2 py-0.5 text-xs font-semibold" [class]="claseVariacion(item.variacion)">
+                    <span class="whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold" [class]="claseVariacion(item.variacion)">
                       {{ textoVariacion(item.variacion) }}
                     </span>
                   }
@@ -61,10 +66,12 @@
                   <div class="h-full rounded-full bg-primario-500" [style.width.%]="avance(item.seguimiento)"></div>
                 </div>
               </div>
-            </a>
+            </div>
           </li>
         }
       </ol>
     </section>
   }
+
+  <app-detalle-seguimiento-modal [seguimiento]="seleccionado()" (cerrar)="seleccionado.set(null)" />
 </div>

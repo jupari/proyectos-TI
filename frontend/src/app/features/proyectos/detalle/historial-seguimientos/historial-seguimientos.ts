@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
 import { ETIQUETAS_ESTADO_SEGUIMIENTO, Seguimiento } from '../../../../core/models';
 import { HorasPipe, MonedaPipe } from '../../../../shared/pipes';
 import { Badge } from '../../../../shared/ui/badge/badge';
 import { Semaforo, ValorSemaforo } from '../../../../shared/ui/semaforo/semaforo';
+import { DetalleSeguimientoModal } from '../../../seguimientos/detalle-modal/detalle-seguimiento-modal';
 import { agruparSeguimientos } from './historial-seguimientos.utils';
 
 /** Historial de seguimientos del proyecto agrupado por periodicidad
@@ -13,12 +13,14 @@ import { agruparSeguimientos } from './historial-seguimientos.utils';
   selector: 'app-historial-seguimientos',
   templateUrl: './historial-seguimientos.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Badge, Semaforo, HorasPipe, MonedaPipe],
+  imports: [Badge, Semaforo, HorasPipe, MonedaPipe, DetalleSeguimientoModal],
 })
 export class HistorialSeguimientos {
   readonly seguimientos = input.required<Seguimiento[]>();
 
   protected readonly ETIQUETAS_ESTADO = ETIQUETAS_ESTADO_SEGUIMIENTO;
+  /** Seguimiento abierto en el modal de detalle (`null` = cerrado). */
+  protected readonly seleccionado = signal<Seguimiento | null>(null);
   protected readonly grupos = computed(() => agruparSeguimientos(this.seguimientos()));
 
   protected valorSemaforo(valor: string): ValorSemaforo {
