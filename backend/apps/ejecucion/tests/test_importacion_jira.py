@@ -141,6 +141,23 @@ def test_reimportar_mismo_worklog_actualiza_no_duplica():
     assert registro.horas == Decimal("8")
 
 
+def test_reimportar_tras_mapear_la_tarea_reutiliza_el_registro_sin_chocar_por_id_externo():
+    _, _, tarea = _preparar_proyecto_recurso_tarea()
+    tarea.clave_jira = ""
+    tarea.save()
+    with patch(RUTA_CLIENTE, return_value=_cliente_mock([_worklog()])):
+        importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+    tarea.clave_jira = "PROY-1"
+    tarea.save()
+
+    with patch(RUTA_CLIENTE, return_value=_cliente_mock([_worklog()])):
+        resumen = importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+
+    assert resumen["errores"] == []
+    registro = RegistroEjecucion.objects.get(origen=OrigenRegistro.JIRA, id_externo="555")
+    assert registro.tarea_id == tarea.id
+
+
 def test_reimportar_reactiva_el_registro_borrado_logicamente():
     _preparar_proyecto_recurso_tarea()
     with patch(RUTA_CLIENTE, return_value=_cliente_mock([_worklog()])):

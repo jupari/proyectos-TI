@@ -674,6 +674,13 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
                     periodicidad=Periodicidad.DIARIA,
                     periodo_inicio=grupo["fecha"],
                 ).first()
+                if existente is None:
+                    # Mismo grupo de worklogs ya importado antes pero con otra tarea,
+                    # recurso o día (p. ej. la tarea se mapeó después): se reutiliza
+                    # ese registro en vez de chocar con `registroejecucion_origen_id_externo_unico`.
+                    existente = RegistroEjecucion.objects.filter(
+                        origen=OrigenRegistro.JIRA, id_externo=id_externo
+                    ).first()
                 if existente is not None and existente.origen != OrigenRegistro.JIRA:
                     raise ValidationError(
                         {
