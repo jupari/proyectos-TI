@@ -114,7 +114,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MONEDA_BASE = env("MONEDA_BASE", default="COP")
 MAX_UPLOAD_MB = env.int("MAX_UPLOAD_MB", default=25)
-EXTENSIONES_PERMITIDAS = env.list("EXTENSIONES_PERMITIDAS", default=[])
+EXTENSIONES_PERMITIDAS = env.list(
+    "EXTENSIONES_PERMITIDAS",
+    default=["pdf", "docx", "xlsx", "pptx", "png", "jpg", "jpeg", "msg", "txt", "csv", "zip"],
+)
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
