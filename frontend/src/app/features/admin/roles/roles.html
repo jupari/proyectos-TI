@@ -1,64 +1,63 @@
-<div class="flex flex-col gap-4">
-  <div class="flex flex-wrap items-center justify-between gap-2">
-    <h1 class="text-2xl font-bold text-neutro-900">Roles</h1>
-    <app-boton (clic)="abrirNuevo()">+ Nuevo rol</app-boton>
-  </div>
+<div class="flex flex-col gap-6">
+  <app-cabecera-admin
+    titulo="Roles"
+    descripcion="Cada rol define qué pantallas se ven y hasta dónde llegan los datos. Los roles del sistema traen sus permisos fijos."
+  >
+    <app-boton acciones (clic)="abrirNuevo()">
+      <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 4a1 1 0 011 1v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H5a1 1 0 110-2h4V5a1 1 0 011-1z"/></svg>
+      Nuevo rol
+    </app-boton>
+    <ng-container resumen>
+      <app-ficha-resumen etiqueta="Roles" [valor]="resumen().total" tono="primario" />
+      <app-ficha-resumen etiqueta="Del sistema" [valor]="resumen().sistema" nota="Permisos fijos" />
+      <app-ficha-resumen etiqueta="Personalizados" [valor]="resumen().personalizados" tono="alerta" nota="Sin permisos hasta programarlos" />
+    </ng-container>
+  </app-cabecera-admin>
 
-  <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-surface shadow-tarjeta">
-    <table class="w-full text-left text-sm">
-      <thead class="border-b border-primario-100 bg-primario-50 text-xs uppercase tracking-wide text-primario-900">
-        <tr>
-          <th class="px-4 py-3 font-semibold">Código</th>
-          <th class="px-4 py-3 font-semibold">Descripción</th>
-          <th class="px-4 py-3 font-semibold">Orden</th>
-          <th class="px-4 py-3 font-semibold">Tipo</th>
-          <th class="px-4 py-3 font-semibold"></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-neutro-100">
-        @if (cargando()) {
-          @for (indice of [0, 1, 2]; track indice) {
-            <tr>
-              <td class="px-4 py-3" colspan="5">
-                <div class="h-4 w-full animate-pulse rounded bg-neutro-100"></div>
-              </td>
-            </tr>
-          }
-        } @else if (roles().length === 0) {
-          <tr>
-            <td class="px-4 py-6" colspan="5">
-              <app-estado-vacio mensaje="No hay roles registrados." />
-            </td>
-          </tr>
-        } @else {
-          @for (rol of roles(); track rol.id) {
-            <tr class="transition-colors hover:bg-primario-50/60">
-              <td class="px-4 py-3 font-medium text-neutro-800">{{ rol.codigo }}</td>
-              <td class="px-4 py-3 text-neutro-700">{{ rol.descripcion }}</td>
-              <td class="px-4 py-3 text-neutro-600">{{ rol.orden }}</td>
-              <td class="px-4 py-3">
-                @if (rol.es_sistema) {
-                  <app-badge valor="SISTEMA" etiqueta="Del sistema" />
-                } @else {
-                  <app-badge valor="PERSONALIZADO" etiqueta="Personalizado" />
-                }
-              </td>
-              <td class="flex justify-end gap-3 px-4 py-3">
-                <button type="button" class="text-primario-700 hover:text-primario-800 hover:underline" (click)="abrirEditar(rol)">
-                  Editar
+  @if (cargando()) {
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      @for (indice of [0, 1, 2]; track indice) {
+        <div class="h-36 animate-pulse rounded-panel bg-neutro-100"></div>
+      }
+    </div>
+  } @else if (roles().length === 0) {
+    <div class="rounded-panel border border-neutro-200 bg-surface px-4 py-8 shadow-tarjeta">
+      <app-estado-vacio mensaje="No hay roles registrados." />
+    </div>
+  } @else {
+    <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      @for (rol of roles(); track rol.id) {
+        <li class="group flex flex-col justify-between gap-5 rounded-panel border border-neutro-200 bg-surface p-5 shadow-tarjeta transition-shadow hover:shadow-hover">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <code class="inline-block rounded-input bg-primario-50 px-2 py-1 text-xs font-bold tracking-wider text-primario-800">{{ rol.codigo }}</code>
+              <p class="mt-3 text-base font-semibold leading-snug text-neutro-900">{{ rol.descripcion }}</p>
+            </div>
+            @if (rol.es_sistema) {
+              <app-badge valor="SISTEMA" etiqueta="Del sistema" />
+            } @else {
+              <app-badge valor="PERSONALIZADO" etiqueta="Personalizado" />
+            }
+          </div>
+          <div class="flex items-center justify-between border-t border-neutro-100 pt-3">
+            <span class="text-xs text-neutro-500">Orden <span class="font-semibold text-neutro-700 tabular-nums">{{ rol.orden }}</span></span>
+            <div class="flex items-center gap-1">
+              <button type="button" class="rounded-input px-2.5 py-1.5 text-sm font-medium text-primario-700 transition-colors hover:bg-primario-50
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario-500" (click)="abrirEditar(rol)">
+                Editar
+              </button>
+              @if (!rol.es_sistema) {
+                <button type="button" class="rounded-input px-2.5 py-1.5 text-sm font-medium text-peligro transition-colors hover:bg-peligro/10
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-peligro" (click)="eliminar(rol)">
+                  Desactivar
                 </button>
-                @if (!rol.es_sistema) {
-                  <button type="button" class="text-peligro hover:underline" (click)="eliminar(rol)">
-                    Desactivar
-                  </button>
-                }
-              </td>
-            </tr>
-          }
-        }
-      </tbody>
-    </table>
-  </div>
+              }
+            </div>
+          </div>
+        </li>
+      }
+    </ul>
+  }
 
   <p class="text-xs text-neutro-400">
     Los cinco roles del sistema (ADMIN, PMO, LIDER, RECURSO, CONSULTA) traen fijos sus permisos

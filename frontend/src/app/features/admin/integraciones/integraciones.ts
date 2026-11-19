@@ -6,7 +6,9 @@ import { ErrorApi } from '../../../core/models';
 import { ToastService } from '../../../core/ui/toast.service';
 import { FechaCortaPipe, HorasPipe } from '../../../shared/pipes';
 import { Boton } from '../../../shared/ui/boton/boton';
+import { CabeceraAdmin } from '../../../shared/ui/cabecera-admin/cabecera-admin';
 import { Card } from '../../../shared/ui/card/card';
+import { FichaResumen } from '../../../shared/ui/ficha-resumen/ficha-resumen';
 import { Datepicker } from '../../../shared/ui/datepicker/datepicker';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { Switch } from '../../../shared/ui/switch/switch';
@@ -21,7 +23,7 @@ import {
   selector: 'app-integraciones',
   templateUrl: './integraciones.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Boton, Card, Datepicker, Select, Switch, FechaCortaPipe, HorasPipe],
+  imports: [FormsModule, Boton, CabeceraAdmin, Card, FichaResumen, Datepicker, Select, Switch, FechaCortaPipe, HorasPipe],
 })
 export class Integraciones {
   private readonly integracionesJiraService = inject(IntegracionesJiraService);

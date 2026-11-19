@@ -1,78 +1,115 @@
-<div class="flex flex-col gap-4">
-  <div class="flex flex-wrap items-center justify-between gap-2">
-    <h1 class="text-2xl font-bold text-neutro-900">Usuarios</h1>
-    <app-boton (clic)="abrirNuevo()">+ Nuevo usuario</app-boton>
-  </div>
+<div class="flex flex-col gap-6">
+  <app-cabecera-admin
+    titulo="Usuarios"
+    descripcion="Quién puede entrar a la plataforma y con qué rol. Un usuario con rol Recurso ve únicamente los proyectos donde está asignado."
+  >
+    <app-boton acciones (clic)="abrirNuevo()">
+      <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 4a1 1 0 011 1v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H5a1 1 0 110-2h4V5a1 1 0 011-1z"/></svg>
+      Nuevo usuario
+    </app-boton>
+    <ng-container resumen>
+      <app-ficha-resumen etiqueta="Usuarios" [valor]="resumen().total" tono="primario" />
+      <app-ficha-resumen etiqueta="Activos" [valor]="resumen().activos" tono="exito" />
+      <app-ficha-resumen etiqueta="Inactivos" [valor]="resumen().inactivos" nota="No pueden iniciar sesión" />
+      <app-ficha-resumen etiqueta="Sin rol" [valor]="resumen().sinRol" tono="alerta" nota="Sin permisos asignados" />
+    </ng-container>
+  </app-cabecera-admin>
 
-  <div class="max-w-sm">
-    <app-input
-      etiqueta="Buscar"
-      placeholder="Correo o nombre…"
-      [ngModel]="busqueda()"
-      (ngModelChange)="busqueda.set($event)"
-      (keydown.enter)="cargar()"
-    />
-  </div>
+  <section class="overflow-hidden rounded-panel border border-neutro-200 bg-surface shadow-tarjeta" aria-label="Listado de usuarios">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-neutro-100 px-4 py-3">
+      <label class="relative block w-full max-w-sm">
+        <span class="sr-only">Buscar usuario</span>
+        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutro-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 103.4 9.8l3.2 3.2a1 1 0 001.4-1.4l-3.2-3.2A5.5 5.5 0 009 3.5zM5 9a4 4 0 118 0 4 4 0 01-8 0z" clip-rule="evenodd"/>
+        </svg>
+        <input
+          type="search"
+          placeholder="Buscar por nombre o correo…"
+          class="w-full rounded-input border border-neutro-200 bg-neutro-50 py-2 pl-9 pr-3 text-sm text-neutro-800 placeholder:text-neutro-400
+            focus:border-primario-500 focus:bg-surface focus:outline-none focus:shadow-focus"
+          [value]="busqueda()"
+          (input)="busqueda.set($any($event.target).value)"
+          (keydown.enter)="cargar()"
+        />
+      </label>
+      <p class="text-xs text-neutro-500">Enter para buscar</p>
+    </div>
 
-  <div class="overflow-x-auto rounded-panel border border-neutro-200 bg-surface shadow-tarjeta">
-    <table class="w-full text-left text-sm">
-      <thead class="border-b border-primario-100 bg-primario-50 text-xs uppercase tracking-wide text-primario-900">
-        <tr>
-          <th class="px-4 py-3 font-semibold">Nombre</th>
-          <th class="px-4 py-3 font-semibold">Correo</th>
-          <th class="px-4 py-3 font-semibold">Roles</th>
-          <th class="px-4 py-3 font-semibold">Proveedor</th>
-          <th class="px-4 py-3 font-semibold text-center">Activo</th>
-          <th class="px-4 py-3 font-semibold"></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-neutro-100">
-        @if (cargando()) {
-          @for (indice of [0, 1, 2]; track indice) {
-            <tr>
-              <td class="px-4 py-3" colspan="6">
-                <div class="h-4 w-full animate-pulse rounded bg-neutro-100"></div>
-              </td>
-            </tr>
-          }
-        } @else if (usuarios().length === 0) {
-          <tr>
-            <td class="px-4 py-6" colspan="6">
-              <app-estado-vacio mensaje="No hay usuarios que coincidan con la búsqueda." />
-            </td>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-neutro-100 text-[11px] uppercase tracking-wider text-neutro-500">
+            <th class="px-4 py-2.5 font-semibold">Persona</th>
+            <th class="px-4 py-2.5 font-semibold">Roles</th>
+            <th class="hidden px-4 py-2.5 font-semibold md:table-cell">Acceso</th>
+            <th class="px-4 py-2.5 text-center font-semibold">Activo</th>
+            <th class="w-12 px-4 py-2.5"><span class="sr-only">Acciones</span></th>
           </tr>
-        } @else {
-          @for (usuario of usuarios(); track usuario.id) {
-            <tr class="transition-colors hover:bg-primario-50/60">
-              <td class="px-4 py-3 text-neutro-800">{{ usuario.nombres }} {{ usuario.apellidos }}</td>
-              <td class="px-4 py-3 text-neutro-600">{{ usuario.email }}</td>
-              <td class="px-4 py-3">
-                <div class="flex flex-wrap gap-1">
-                  @for (rol of usuario.roles; track rol) {
-                    <app-badge [valor]="rol" />
-                  } @empty {
-                    <span class="text-neutro-400">Sin roles</span>
-                  }
-                </div>
-              </td>
-              <td class="px-4 py-3 text-neutro-600">{{ usuario.proveedor_auth }}</td>
-              <td class="px-4 py-3 text-center">
-                <app-switch
-                  [ngModel]="usuario.is_active"
-                  (ngModelChange)="alternarActivo(usuario)"
-                />
-              </td>
-              <td class="px-4 py-3 text-right">
-                <button type="button" class="text-sm font-medium text-primario-700 hover:text-primario-800 hover:underline" (click)="abrirEditar(usuario)">
-                  Editar
-                </button>
+        </thead>
+        <tbody class="divide-y divide-neutro-100">
+          @if (cargando()) {
+            @for (indice of [0, 1, 2, 3]; track indice) {
+              <tr>
+                <td class="px-4 py-3.5" colspan="5">
+                  <div class="h-9 w-full animate-pulse rounded-input bg-neutro-100"></div>
+                </td>
+              </tr>
+            }
+          } @else if (usuarios().length === 0) {
+            <tr>
+              <td class="px-4 py-8" colspan="5">
+                <app-estado-vacio mensaje="No hay usuarios que coincidan con la búsqueda." />
               </td>
             </tr>
+          } @else {
+            @for (usuario of usuarios(); track usuario.id) {
+              <tr class="group transition-colors hover:bg-neutro-50" [class.opacity-60]="!usuario.is_active">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primario-100 text-xs font-bold text-primario-800" aria-hidden="true">
+                      {{ iniciales(usuario) }}
+                    </span>
+                    <div class="min-w-0">
+                      <p class="truncate font-medium text-neutro-900">{{ usuario.nombres }} {{ usuario.apellidos }}</p>
+                      <p class="truncate text-xs text-neutro-500">{{ usuario.email }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap gap-1">
+                    @for (rol of usuario.roles; track rol) {
+                      <app-badge [valor]="rol" />
+                    } @empty {
+                      <span class="text-xs text-alerta">Sin roles</span>
+                    }
+                  </div>
+                </td>
+                <td class="hidden px-4 py-3 md:table-cell">
+                  <span class="inline-flex items-center rounded-full border border-neutro-200 px-2 py-0.5 text-xs text-neutro-600">
+                    {{ usuario.proveedor_auth === 'GOOGLE' ? 'Google' : 'Clave local' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <app-switch [ngModel]="usuario.is_active" (ngModelChange)="alternarActivo(usuario)" />
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    class="inline-flex h-9 w-9 items-center justify-center rounded-input text-neutro-400 transition-colors hover:bg-primario-50 hover:text-primario-700
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario-500"
+                    [attr.aria-label]="'Editar a ' + usuario.nombres + ' ' + usuario.apellidos"
+                    (click)="abrirEditar(usuario)"
+                  >
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M13.6 2.9a2 2 0 112.8 2.8l-8.8 8.8-3.6.8.8-3.6 8.8-8.8z"/></svg>
+                  </button>
+                </td>
+              </tr>
+            }
           }
-        }
-      </tbody>
-    </table>
-  </div>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
 
 <app-modal

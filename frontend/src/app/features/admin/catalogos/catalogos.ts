@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 
@@ -7,6 +7,8 @@ import { Area, ErrorApi, PerfilRecurso, Portafolio } from '../../../core/models'
 import { ConfirmacionService } from '../../../core/ui/confirmacion.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { Boton } from '../../../shared/ui/boton/boton';
+import { CabeceraAdmin } from '../../../shared/ui/cabecera-admin/cabecera-admin';
+import { FichaResumen } from '../../../shared/ui/ficha-resumen/ficha-resumen';
 import { Input } from '../../../shared/ui/input/input';
 import { Modal } from '../../../shared/ui/modal/modal';
 import { Numero } from '../../../shared/ui/numero/numero';
@@ -24,17 +26,51 @@ interface ServicioCatalogoGenerico {
   eliminar: (id: string) => Observable<unknown>;
 }
 
-const PESTANAS: PestanaTab[] = [
-  { id: 'areas', etiqueta: 'Áreas' },
-  { id: 'portafolios', etiqueta: 'Portafolios' },
-  { id: 'perfiles', etiqueta: 'Perfiles de recurso' },
-];
+interface FilaCatalogo {
+  item: Area | Portafolio | PerfilRecurso;
+  codigo: string;
+  nombre: string;
+  detalle: string;
+}
+
+interface TextosCatalogo {
+  etiqueta: string;
+  singular: string;
+  ayuda: string;
+  vacio: string;
+  columnaDetalle: string;
+}
+
+/** Textos de cada catálogo: nombre de la pestaña, botón de alta, ayuda y columna extra. */
+const TEXTOS: Record<TipoCatalogo, TextosCatalogo> = {
+  areas: {
+    etiqueta: 'Áreas',
+    singular: 'Nueva área',
+    ayuda: 'Dependencias que solicitan proyectos y a las que se les mide el portafolio.',
+    vacio: 'Sin áreas registradas.',
+    columnaDetalle: 'Responsable',
+  },
+  portafolios: {
+    etiqueta: 'Portafolios',
+    singular: 'Nuevo portafolio',
+    ayuda: 'Agrupaciones de proyectos para reportar a la gerencia.',
+    vacio: 'Sin portafolios registrados.',
+    columnaDetalle: 'Descripción',
+  },
+  perfiles: {
+    etiqueta: 'Perfiles de recurso',
+    singular: 'Nuevo perfil',
+    ayuda: 'Cargos con una tarifa por hora de referencia para estimar costos.',
+    vacio: 'Sin perfiles registrados.',
+    columnaDetalle: 'Tarifa por hora',
+  },
+};
 
 @Component({
   selector: 'app-catalogos',
   templateUrl: './catalogos.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Tabs, Boton, Input, Textarea, Numero, Select, Modal],
+  imports: [FormsModule, Tabs, Boton, CabeceraAdmin, FichaResumen, Input, Textarea, Numero, Select, Modal],
 })
 export class Catalogos {
   private readonly areasService = inject(AreasService);
@@ -44,13 +80,45 @@ export class Catalogos {
   private readonly confirmacion = inject(ConfirmacionService);
   private readonly toast = inject(ToastService);
 
-  protected readonly pestanas = PESTANAS;
+  protected readonly textos = TEXTOS;
+  protected readonly pestanas = computed<PestanaTab[]>(() => [
+    { id: 'areas', etiqueta: `${TEXTOS.areas.etiqueta} · ${this.areas().length}` },
+    { id: 'portafolios', etiqueta: `${TEXTOS.portafolios.etiqueta} · ${this.portafolios().length}` },
+    { id: 'perfiles', etiqueta: `${TEXTOS.perfiles.etiqueta} · ${this.perfiles().length}` },
+  ]);
   protected readonly pestanaActiva = signal<TipoCatalogo>('areas');
 
   protected readonly areas = signal<Area[]>([]);
   protected readonly portafolios = signal<Portafolio[]>([]);
   protected readonly perfiles = signal<PerfilRecurso[]>([]);
   protected readonly opcionesResponsables = signal<OpcionSelect[]>([]);
+
+  /** Filas de la pestaña activa con la misma forma, para pintarlas con una sola tabla. */
+  protected readonly filas = computed<FilaCatalogo[]>(() => {
+    const tipo = this.pestanaActiva();
+    if (tipo === 'areas') {
+      return this.areas().map((a) => ({
+        item: a,
+        codigo: a.codigo,
+        nombre: a.nombre,
+        detalle: this.nombreResponsable(a.responsable),
+      }));
+    }
+    if (tipo === 'portafolios') {
+      return this.portafolios().map((p) => ({
+        item: p,
+        codigo: p.codigo,
+        nombre: p.nombre,
+        detalle: p.descripcion || '—',
+      }));
+    }
+    return this.perfiles().map((p) => ({
+      item: p,
+      codigo: p.codigo,
+      nombre: p.nombre,
+      detalle: `${Number(p.tarifa_hora_referencia).toLocaleString('es-CO')} ${p.moneda}`,
+    }));
+  });
 
   protected readonly modalAbierto = signal(false);
   protected readonly tipoEnEdicion = signal<TipoCatalogo>('areas');
@@ -82,6 +150,11 @@ export class Catalogos {
           r.results.map((u) => ({ valor: u.id, etiqueta: `${u.nombres} ${u.apellidos}` })),
         ),
       );
+  }
+
+  private nombreResponsable(id: string | null): string {
+    if (!id) return 'Sin responsable';
+    return this.opcionesResponsables().find((o) => o.valor === id)?.etiqueta ?? '—';
   }
 
   protected cambiarPestana(id: string): void {

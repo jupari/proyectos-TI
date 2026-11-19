@@ -16,3 +16,5 @@ export * from './tabla/tabla';
 export * from './tabs/tabs';
 export * from './textarea/textarea';
 export * from './toast/toast';
+export * from './cabecera-admin/cabecera-admin';
+export * from './ficha-resumen/ficha-resumen';

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ErrorApi, RolMeta } from '../../../core/models';
@@ -7,6 +7,8 @@ import { ConfirmacionService } from '../../../core/ui/confirmacion.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { Badge } from '../../../shared/ui/badge/badge';
 import { Boton } from '../../../shared/ui/boton/boton';
+import { CabeceraAdmin } from '../../../shared/ui/cabecera-admin/cabecera-admin';
+import { FichaResumen } from '../../../shared/ui/ficha-resumen/ficha-resumen';
 import { EstadoVacio } from '../../../shared/ui/estado-vacio/estado-vacio';
 import { Input } from '../../../shared/ui/input/input';
 import { Modal } from '../../../shared/ui/modal/modal';
@@ -17,7 +19,7 @@ import { RolesService } from '../data/roles.service';
   selector: 'app-roles',
   templateUrl: './roles.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Badge, Boton, EstadoVacio, Input, Modal, Numero],
+  imports: [FormsModule, Badge, Boton, CabeceraAdmin, FichaResumen, EstadoVacio, Input, Modal, Numero],
 })
 export class Roles {
   private readonly rolesService = inject(RolesService);
@@ -26,6 +28,11 @@ export class Roles {
 
   protected readonly cargando = signal(false);
   protected readonly roles = signal<RolMeta[]>([]);
+  protected readonly resumen = computed(() => {
+    const lista = this.roles();
+    const sistema = lista.filter((r) => r.es_sistema).length;
+    return { total: lista.length, sistema, personalizados: lista.length - sistema };
+  });
 
   protected readonly modalAbierto = signal(false);
   protected readonly idEnEdicion = signal<string | null>(null);

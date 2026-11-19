@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ErrorApi, RolMeta, Usuario } from '../../../core/models';
@@ -7,6 +7,8 @@ import { ConfirmacionService } from '../../../core/ui/confirmacion.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { Badge } from '../../../shared/ui/badge/badge';
 import { Boton } from '../../../shared/ui/boton/boton';
+import { CabeceraAdmin } from '../../../shared/ui/cabecera-admin/cabecera-admin';
+import { FichaResumen } from '../../../shared/ui/ficha-resumen/ficha-resumen';
 import { EstadoVacio } from '../../../shared/ui/estado-vacio/estado-vacio';
 import { Input } from '../../../shared/ui/input/input';
 import { Modal } from '../../../shared/ui/modal/modal';
@@ -18,7 +20,7 @@ import { UsuariosService } from '../data/usuarios.service';
   selector: 'app-usuarios',
   templateUrl: './usuarios.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Badge, Boton, EstadoVacio, Input, Modal, Switch],
+  imports: [FormsModule, Badge, Boton, CabeceraAdmin, FichaResumen, EstadoVacio, Input, Modal, Switch],
 })
 export class Usuarios {
   private readonly usuariosService = inject(UsuariosService);
@@ -30,6 +32,18 @@ export class Usuarios {
   protected readonly usuarios = signal<Usuario[]>([]);
   protected readonly roles = signal<RolMeta[]>([]);
   protected readonly busqueda = signal('');
+
+  /** Lectura rápida sobre los usuarios cargados (la lista llega completa, hasta 200). */
+  protected readonly resumen = computed(() => {
+    const lista = this.usuarios();
+    const activos = lista.filter((u) => u.is_active).length;
+    return {
+      total: lista.length,
+      activos,
+      inactivos: lista.length - activos,
+      sinRol: lista.filter((u) => u.roles.length === 0).length,
+    };
+  });
 
   protected readonly modalAbierto = signal(false);
   protected readonly idEnEdicion = signal<string | null>(null);
@@ -55,6 +69,11 @@ export class Usuarios {
       .listar({ page_size: 200, ordering: 'orden' })
       .subscribe((respuesta) => this.roles.set(respuesta.results));
     this.cargar();
+  }
+
+  protected iniciales(usuario: Usuario): string {
+    const letras = `${usuario.nombres.trim()[0] ?? ''}${usuario.apellidos.trim()[0] ?? ''}`;
+    return (letras || usuario.email[0] || '?').toUpperCase();
   }
 
   protected cargar(): void {
