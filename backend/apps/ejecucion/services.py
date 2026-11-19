@@ -138,6 +138,20 @@ def validar_topes(registro):
     return advertencias
 
 
+def _contexto_error_importacion(grupo, recurso, proyecto, exc):
+    """Detalle del error con el proyecto, la persona, el día y las fechas del
+    proyecto, para saber qué corregir sin buscar el worklog en Jira."""
+    fin = max(proyecto.fecha_fin_plan, proyecto.fecha_fin_real or proyecto.fecha_fin_plan)
+    inicio = min(
+        proyecto.fecha_inicio_plan, proyecto.fecha_inicio_real or proyecto.fecha_inicio_plan
+    )
+    return (
+        f"Proyecto {proyecto.codigo} — {proyecto.nombre} "
+        f"(vigente {inicio.isoformat()} a {fin.isoformat()}), "
+        f"{recurso.nombre}, día {grupo['fecha']}: {_detalle_legible(exc)}"
+    )
+
+
 def validar_rango_proyecto(registro):
     """El periodo debe intersecar el rango del proyecto, tomando el más
     amplio entre fechas plan y reales (si el proyecto arrancó o cerró fuera
@@ -734,7 +748,7 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
                 {
                     "id_externo": id_externo,
                     "motivo": "no se pudo guardar el registro",
-                    "detalle": _detalle_legible(exc),
+                    "detalle": _contexto_error_importacion(grupo, recurso, proyecto, exc),
                 }
             )
             continue
