@@ -148,12 +148,11 @@ def test_resumen_ejecucion_con_ejecucion_real_cuenta_solo_lo_aprobado(roles):
 
 
 def test_resumen_global_cuenta_proyectos_en_produccion_y_en_soporte():
-    estado = EstadoProyecto.PRODUCCION_SOPORTE
-    ProyectoFactory(estado=estado, en_produccion=True)
-    ProyectoFactory(estado=estado, en_soporte=True)
-    ProyectoFactory(estado=estado, en_produccion=True, en_soporte=True)  # cuenta en ambas
-    ProyectoFactory(estado=estado)  # sin marcar
-    ProyectoFactory(estado=EstadoProyecto.EJECUCION)
+    ProyectoFactory(estado=EstadoProyecto.EJECUCION, en_produccion=True)
+    ProyectoFactory(estado=EstadoProyecto.CERRADO, en_soporte=True)
+    ProyectoFactory(estado=EstadoProyecto.EJECUCION, en_produccion=True, en_soporte=True)
+    ProyectoFactory(estado=EstadoProyecto.EJECUCION)  # sin marcar
+    ProyectoFactory(estado=EstadoProyecto.CANCELADO, en_produccion=True)  # no cuenta
 
     global_ = resumen_global(Proyecto.objects.all())
 

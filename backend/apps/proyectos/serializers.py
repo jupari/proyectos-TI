@@ -1,7 +1,6 @@
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
-from apps.core.choices import EstadoProyecto
 from apps.tablero.services import resumen_ejecucion as calcular_resumen_ejecucion
 
 from .models import EntregableHito, FaseProyecto, Hito, Proyecto, RubroPresupuesto
@@ -247,17 +246,6 @@ class ProyectoEscrituraSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "codigo"]
 
     def validate(self, attrs):
-        estado = self.instance.estado if self.instance else None
-        if (attrs.get("en_produccion") or attrs.get("en_soporte")) and (
-            estado != EstadoProyecto.PRODUCCION_SOPORTE
-        ):
-            raise serializers.ValidationError(
-                {
-                    "en_produccion": [
-                        "Solo se puede indicar cuando el proyecto está en «Producción y soporte»."
-                    ]
-                }
-            )
         _validar_fin_despues_de_inicio(
             attrs, self.instance, "fecha_inicio_plan", "fecha_fin_plan"
         )

@@ -72,7 +72,6 @@ export class FormularioProyecto {
   protected readonly presupuestoDinero = signal<number | null>(null);
   protected readonly observaciones = signal('');
   protected readonly claveJira = signal<string | null>(null);
-  protected readonly estadoProyecto = signal<string | null>(null);
   protected readonly enProduccion = signal(false);
   protected readonly enSoporte = signal(false);
 
@@ -172,7 +171,6 @@ export class FormularioProyecto {
         this.presupuestoDinero.set(Number(proyecto.presupuesto_dinero));
         this.observaciones.set(proyecto.observaciones);
         this.claveJira.set(proyecto.clave_jira || null);
-        this.estadoProyecto.set(proyecto.estado);
         this.enProduccion.set(proyecto.en_produccion ?? false);
         this.enSoporte.set(proyecto.en_soporte ?? false);
         this.cargandoDetalle.set(false);
@@ -231,8 +229,8 @@ export class FormularioProyecto {
       avance_reportado: 0,
       observaciones: this.observaciones(),
       clave_jira: this.claveJira() ?? '',
-      en_produccion: this.estadoProyecto() === 'PRODUCCION_SOPORTE' && this.enProduccion(),
-      en_soporte: this.estadoProyecto() === 'PRODUCCION_SOPORTE' && this.enSoporte(),
+      en_produccion: this.enProduccion(),
+      en_soporte: this.enSoporte(),
     };
 
     this.guardando.set(true);

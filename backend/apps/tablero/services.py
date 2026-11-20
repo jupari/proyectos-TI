@@ -210,7 +210,11 @@ def resumen_global(proyectos):
     por_semaforo = dict(
         proyectos.values("semaforo").annotate(total=Count("id")).values_list("semaforo", "total")
     )
-    en_operacion = proyectos.filter(estado=EstadoProyecto.PRODUCCION_SOPORTE)
+    # Independiente del estado: un proyecto en Ejecución ya puede estar operando.
+    # Los borradores y cancelados no cuentan.
+    en_operacion = proyectos.exclude(
+        estado__in=[EstadoProyecto.BORRADOR, EstadoProyecto.CANCELADO]
+    )
     en_produccion = en_operacion.filter(en_produccion=True).count()
     en_soporte = en_operacion.filter(en_soporte=True).count()
 
