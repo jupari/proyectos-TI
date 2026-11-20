@@ -35,9 +35,6 @@ import { sincronizarQueryParams } from '../../../core/ui/query-params';
 // de Chart.js.
 const MARCA_400 = () => colorTema('primario-400');
 const MARCA_900 = () => colorTema('primario-800');
-const SEMAFORO_VERDE = '#16a34a';
-const SEMAFORO_AMARILLO = '#eab308';
-const SEMAFORO_ROJO = '#dc2626';
 const PELIGRO = '#dc2626';
 
 @Component({
@@ -161,26 +158,6 @@ export class PanelTablero {
     if (segundos < 60) return `hace ${segundos} segundos`;
     return `hace ${Math.round(segundos / 60)} min`;
   });
-
-  protected readonly graficoSemaforo = computed<ChartData>(() => {
-    const porSemaforo = this.resumen()?.por_semaforo ?? {};
-    return {
-      labels: ['Verde', 'Amarillo', 'Rojo'],
-      datasets: [
-        {
-          label: 'Proyectos',
-          data: [porSemaforo['VERDE'] ?? 0, porSemaforo['AMARILLO'] ?? 0, porSemaforo['ROJO'] ?? 0],
-          backgroundColor: [SEMAFORO_VERDE, SEMAFORO_AMARILLO, SEMAFORO_ROJO],
-        },
-      ],
-    };
-  });
-
-  protected readonly opcionesGraficoSemaforo: ChartOptions = {
-    indexAxis: 'y',
-    plugins: { legend: { display: false } },
-    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
-  };
 
   protected readonly top10PorPresupuesto = computed(() =>
     [...this.filas()]

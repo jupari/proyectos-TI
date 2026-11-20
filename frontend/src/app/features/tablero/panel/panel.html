@@ -141,27 +141,6 @@
     </div>
   } @else {
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <app-card titulo="Distribución de proyectos por semáforo">
-        @if (cargandoGraficos()) {
-          <div class="h-48 animate-pulse rounded bg-neutro-100"></div>
-        } @else if (!resumen() || resumen()!.total_proyectos === 0) {
-          <app-estado-vacio mensaje="No hay proyectos para graficar." />
-        } @else {
-          <app-grafico
-            tipo="bar"
-            [datos]="graficoSemaforo()"
-            [opciones]="opcionesGraficoSemaforo"
-            etiqueta="Cantidad de proyectos por color de semáforo"
-            [columnasTabla]="['Semáforo', 'Proyectos']"
-            [filasTabla]="[
-              ['Verde', resumen()?.por_semaforo?.['VERDE'] ?? 0],
-              ['Amarillo', resumen()?.por_semaforo?.['AMARILLO'] ?? 0],
-              ['Rojo', resumen()?.por_semaforo?.['ROJO'] ?? 0]
-            ]"
-          />
-        }
-      </app-card>
-
       <app-card titulo="Horas planeadas vs. ejecutadas (top 10 por presupuesto)">
         @if (cargandoTabla()) {
           <div class="h-48 animate-pulse rounded bg-neutro-100"></div>
