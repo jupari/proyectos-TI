@@ -20,6 +20,7 @@ import { Datepicker } from '../../../shared/ui/datepicker/datepicker';
 import { Input } from '../../../shared/ui/input/input';
 import { Numero } from '../../../shared/ui/numero/numero';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
+import { Switch } from '../../../shared/ui/switch/switch';
 import { Textarea } from '../../../shared/ui/textarea/textarea';
 import { AreasService, PortafoliosService } from '../../admin/data/catalogos.service';
 import { IntegracionesJiraService } from '../../admin/data/integraciones-jira.service';
@@ -31,7 +32,7 @@ import { ProyectosService } from '../data/proyectos.service';
   selector: 'app-formulario-proyecto',
   templateUrl: './formulario.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Boton, Input, Textarea, Select, Datepicker, Numero],
+  imports: [FormsModule, Boton, Input, Textarea, Select, Switch, Datepicker, Numero],
 })
 export class FormularioProyecto {
   private readonly proyectosService = inject(ProyectosService);
@@ -72,11 +73,8 @@ export class FormularioProyecto {
   protected readonly observaciones = signal('');
   protected readonly claveJira = signal<string | null>(null);
   protected readonly estadoProyecto = signal<string | null>(null);
-  protected readonly faseOperacion = signal<string | null>(null);
-  protected readonly opcionesFaseOperacion: OpcionSelect[] = [
-    { valor: 'PRODUCCION', etiqueta: 'Producción' },
-    { valor: 'SOPORTE', etiqueta: 'Soporte' },
-  ];
+  protected readonly enProduccion = signal(false);
+  protected readonly enSoporte = signal(false);
 
   protected readonly puedeMapearJira = computed(
     () => this.auth.tieneRol('ADMIN') || this.auth.tieneRol('PMO'),
@@ -175,7 +173,8 @@ export class FormularioProyecto {
         this.observaciones.set(proyecto.observaciones);
         this.claveJira.set(proyecto.clave_jira || null);
         this.estadoProyecto.set(proyecto.estado);
-        this.faseOperacion.set(proyecto.fase_operacion || null);
+        this.enProduccion.set(proyecto.en_produccion ?? false);
+        this.enSoporte.set(proyecto.en_soporte ?? false);
         this.cargandoDetalle.set(false);
       },
       error: () => {
@@ -232,8 +231,8 @@ export class FormularioProyecto {
       avance_reportado: 0,
       observaciones: this.observaciones(),
       clave_jira: this.claveJira() ?? '',
-      fase_operacion:
-        this.estadoProyecto() === 'PRODUCCION_SOPORTE' ? (this.faseOperacion() ?? '') : '',
+      en_produccion: this.estadoProyecto() === 'PRODUCCION_SOPORTE' && this.enProduccion(),
+      en_soporte: this.estadoProyecto() === 'PRODUCCION_SOPORTE' && this.enSoporte(),
     };
 
     this.guardando.set(true);

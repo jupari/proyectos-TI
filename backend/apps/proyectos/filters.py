@@ -15,7 +15,8 @@ class FiltroProyecto(django_filters.FilterSet):
         model = Proyecto
         fields = [
             "estado",
-            "fase_operacion",
+            "en_produccion",
+            "en_soporte",
             "prioridad",
             "portafolio",
             "area_solicitante",

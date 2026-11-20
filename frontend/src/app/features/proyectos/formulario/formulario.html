@@ -60,15 +60,24 @@
           name="prioridad"
         />
         @if (estadoProyecto() === 'PRODUCCION_SOPORTE') {
-          <app-select
-            etiqueta="Fase de operación"
-            ayuda="Indica si el proyecto está en producción o en soporte. Alimenta las tarjetas del tablero."
-            [opciones]="opcionesFaseOperacion"
-            [limpiable]="true"
-            [ngModel]="faseOperacion()"
-            (ngModelChange)="actualizar(faseOperacion, $event)"
-            name="faseOperacion"
-          />
+          <div class="flex flex-col gap-2">
+            <p class="text-sm text-neutro-500">
+              Un proyecto puede estar en producción, en soporte o en ambos. Alimenta las
+              tarjetas del tablero.
+            </p>
+            <app-switch
+              etiqueta="En producción"
+              [ngModel]="enProduccion()"
+              (ngModelChange)="actualizar(enProduccion, $event)"
+              name="enProduccion"
+            />
+            <app-switch
+              etiqueta="En soporte"
+              [ngModel]="enSoporte()"
+              (ngModelChange)="actualizar(enSoporte, $event)"
+              name="enSoporte"
+            />
+          </div>
         }
       </section>
 

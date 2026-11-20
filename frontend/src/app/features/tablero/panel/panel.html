@@ -116,17 +116,17 @@
         </p>
         <p class="text-sm text-neutro-500">{{ resumen()!.pct_dinero | porcentaje }}</p>
       </app-card>
-      <a [routerLink]="['/proyectos']" [queryParams]="{ fase_operacion: 'PRODUCCION' }" class="block">
+      <a [routerLink]="['/proyectos']" [queryParams]="{ en_produccion: 'true' }" class="block">
         <app-card titulo="En producción">
           <p class="text-3xl font-bold text-primario-900">
-            {{ resumen()!.por_fase_operacion?.['PRODUCCION'] ?? 0 }}
+            {{ resumen()!.en_produccion ?? 0 }}
           </p>
         </app-card>
       </a>
-      <a [routerLink]="['/proyectos']" [queryParams]="{ fase_operacion: 'SOPORTE' }" class="block">
+      <a [routerLink]="['/proyectos']" [queryParams]="{ en_soporte: 'true' }" class="block">
         <app-card titulo="En soporte">
           <p class="text-3xl font-bold text-primario-900">
-            {{ resumen()!.por_fase_operacion?.['SOPORTE'] ?? 0 }}
+            {{ resumen()!.en_soporte ?? 0 }}
           </p>
         </app-card>
       </a>

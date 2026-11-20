@@ -163,7 +163,8 @@ class ProyectoListaSerializer(serializers.ModelSerializer):
             "gerente_nombre",
             "lider_tecnico",
             "estado",
-            "fase_operacion",
+            "en_produccion",
+            "en_soporte",
             "prioridad",
             "fecha_inicio_plan",
             "fecha_fin_plan",
@@ -240,17 +241,19 @@ class ProyectoEscrituraSerializer(serializers.ModelSerializer):
             "avance_reportado",
             "observaciones",
             "clave_jira",
-            "fase_operacion",
+            "en_produccion",
+            "en_soporte",
         ]
         read_only_fields = ["id", "codigo"]
 
     def validate(self, attrs):
-        fase = attrs.get("fase_operacion")
         estado = self.instance.estado if self.instance else None
-        if fase and estado != EstadoProyecto.PRODUCCION_SOPORTE:
+        if (attrs.get("en_produccion") or attrs.get("en_soporte")) and (
+            estado != EstadoProyecto.PRODUCCION_SOPORTE
+        ):
             raise serializers.ValidationError(
                 {
-                    "fase_operacion": [
+                    "en_produccion": [
                         "Solo se puede indicar cuando el proyecto está en «Producción y soporte»."
                     ]
                 }

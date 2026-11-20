@@ -147,16 +147,18 @@ def test_resumen_ejecucion_con_ejecucion_real_cuenta_solo_lo_aprobado(roles):
 # --- Tablero de control (fase 10) --------------------------------------------
 
 
-def test_resumen_global_cuenta_proyectos_por_fase_de_operacion():
-    ProyectoFactory(estado=EstadoProyecto.PRODUCCION_SOPORTE, fase_operacion="PRODUCCION")
-    ProyectoFactory(estado=EstadoProyecto.PRODUCCION_SOPORTE, fase_operacion="SOPORTE")
-    ProyectoFactory(estado=EstadoProyecto.PRODUCCION_SOPORTE, fase_operacion="SOPORTE")
-    ProyectoFactory(estado=EstadoProyecto.PRODUCCION_SOPORTE)  # sin fase indicada
+def test_resumen_global_cuenta_proyectos_en_produccion_y_en_soporte():
+    estado = EstadoProyecto.PRODUCCION_SOPORTE
+    ProyectoFactory(estado=estado, en_produccion=True)
+    ProyectoFactory(estado=estado, en_soporte=True)
+    ProyectoFactory(estado=estado, en_produccion=True, en_soporte=True)  # cuenta en ambas
+    ProyectoFactory(estado=estado)  # sin marcar
     ProyectoFactory(estado=EstadoProyecto.EJECUCION)
 
     global_ = resumen_global(Proyecto.objects.all())
 
-    assert global_["por_fase_operacion"] == {"PRODUCCION": 1, "SOPORTE": 2}
+    assert global_["en_produccion"] == 2
+    assert global_["en_soporte"] == 2
 
 
 def test_resumen_global_cuadra_con_la_suma_de_resumen_ejecucion_por_proyecto():

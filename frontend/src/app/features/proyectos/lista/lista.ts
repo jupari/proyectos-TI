@@ -67,7 +67,8 @@ export class ListaProyectos {
   protected readonly busqueda = signal('');
   protected readonly estado = signal<string | null>(null);
   /** Solo llega por la URL (tarjetas del tablero); no tiene selector propio. */
-  protected readonly faseOperacion = signal<string | null>(null);
+  protected readonly enProduccion = signal(false);
+  protected readonly enSoporte = signal(false);
   protected readonly prioridad = signal<string | null>(null);
   protected readonly portafolio = signal<string | null>(null);
   protected readonly area = signal<string | null>(null);
@@ -109,7 +110,8 @@ export class ListaProyectos {
     const parametros = this.ruta.snapshot.queryParamMap;
     this.busqueda.set(parametros.get('search') ?? '');
     this.estado.set(parametros.get('estado'));
-    this.faseOperacion.set(parametros.get('fase_operacion'));
+    this.enProduccion.set(parametros.get('en_produccion') === 'true');
+    this.enSoporte.set(parametros.get('en_soporte') === 'true');
     this.prioridad.set(parametros.get('prioridad'));
     this.portafolio.set(parametros.get('portafolio'));
     this.area.set(parametros.get('area_solicitante'));
@@ -149,7 +151,8 @@ export class ListaProyectos {
     return {
       search: this.busqueda() || undefined,
       estado: this.estado() ?? undefined,
-      fase_operacion: this.faseOperacion() ?? undefined,
+      en_produccion: this.enProduccion() || undefined,
+      en_soporte: this.enSoporte() || undefined,
       prioridad: this.prioridad() ?? undefined,
       portafolio: this.portafolio() ?? undefined,
       area_solicitante: this.area() ?? undefined,
@@ -204,7 +207,8 @@ export class ListaProyectos {
   protected limpiarFiltros(): void {
     this.busqueda.set('');
     this.estado.set(null);
-    this.faseOperacion.set(null);
+    this.enProduccion.set(false);
+    this.enSoporte.set(false);
     this.prioridad.set(null);
     this.portafolio.set(null);
     this.area.set(null);

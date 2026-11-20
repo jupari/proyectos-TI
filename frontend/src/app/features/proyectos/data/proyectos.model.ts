@@ -50,7 +50,8 @@ export interface ProyectoEscritura {
   avance_reportado: number | string;
   observaciones: string;
   clave_jira?: string;
-  fase_operacion?: string;
+  en_produccion?: boolean;
+  en_soporte?: boolean;
 }
 
 /** Fila de `comparativo_por_recurso`/`comparativo_por_mes`
@@ -90,7 +91,8 @@ export interface ExpedienteProyecto {
 export interface FiltrosProyecto {
   search?: string;
   estado?: string;
-  fase_operacion?: string;
+  en_produccion?: boolean;
+  en_soporte?: boolean;
   prioridad?: string;
   portafolio?: string;
   area_solicitante?: string;

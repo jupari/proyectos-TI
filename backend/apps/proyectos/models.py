@@ -9,7 +9,6 @@ from apps.core.choices import (
     EstadoFase,
     EstadoHito,
     EstadoProyecto,
-    FaseOperacion,
     Prioridad,
     Semaforo,
 )
@@ -41,9 +40,10 @@ class Proyecto(ModeloBase):
     estado = models.CharField(
         max_length=20, choices=EstadoProyecto.choices, default=EstadoProyecto.BORRADOR
     )
-    fase_operacion = models.CharField(
-        max_length=12, choices=FaseOperacion.choices, blank=True, default=""
-    )
+    # Solo se marcan cuando el estado es `PRODUCCION_SOPORTE`; un proyecto puede
+    # estar en producción y en soporte a la vez.
+    en_produccion = models.BooleanField(default=False)
+    en_soporte = models.BooleanField(default=False)
     prioridad = models.CharField(max_length=10, choices=Prioridad.choices, default=Prioridad.MEDIA)
     fecha_inicio_plan = models.DateField()
     fecha_fin_plan = models.DateField()

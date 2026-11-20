@@ -11,14 +11,6 @@ class EstadoProyecto(models.TextChoices):
     PRODUCCION_SOPORTE = "PRODUCCION_SOPORTE", "Producción y soporte"
 
 
-class FaseOperacion(models.TextChoices):
-    """Subdivide el estado `PRODUCCION_SOPORTE`: se llena solo cuando el
-    proyecto ya salió a operación."""
-
-    PRODUCCION = "PRODUCCION", "Producción"
-    SOPORTE = "SOPORTE", "Soporte"
-
-
 class Prioridad(models.TextChoices):
     BAJA = "BAJA", "Baja"
     MEDIA = "MEDIA", "Media"
