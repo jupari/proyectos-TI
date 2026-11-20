@@ -11,6 +11,8 @@ export interface Proyecto extends ModeloBase {
   gerente: string;
   lider_tecnico: string | null;
   estado: EstadoProyecto;
+  /** Solo se llena cuando el estado es `PRODUCCION_SOPORTE`. */
+  fase_operacion?: '' | 'PRODUCCION' | 'SOPORTE';
   prioridad: Prioridad;
   fecha_inicio_plan: string;
   fecha_fin_plan: string;

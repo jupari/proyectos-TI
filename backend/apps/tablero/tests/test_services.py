@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from apps.core.choices import EstadoAprobacion, EstadoTarea, Semaforo
+from apps.core.choices import EstadoAprobacion, EstadoProyecto, EstadoTarea, Semaforo
 from apps.ejecucion.tests.factories import GastoEjecutadoFactory, RegistroEjecucionFactory
 from apps.proyectos.models import Proyecto
 from apps.proyectos.tests.factories import HitoFactory, ProyectoFactory, RubroPresupuestoFactory
@@ -145,6 +145,18 @@ def test_resumen_ejecucion_con_ejecucion_real_cuenta_solo_lo_aprobado(roles):
 
 
 # --- Tablero de control (fase 10) --------------------------------------------
+
+
+def test_resumen_global_cuenta_proyectos_por_fase_de_operacion():
+    ProyectoFactory(estado=EstadoProyecto.PRODUCCION_SOPORTE, fase_operacion="PRODUCCION")
+    ProyectoFactory(estado=EstadoProyecto.PRODUCCION_SOPORTE, fase_operacion="SOPORTE")
+    ProyectoFactory(estado=EstadoProyecto.PRODUCCION_SOPORTE, fase_operacion="SOPORTE")
+    ProyectoFactory(estado=EstadoProyecto.PRODUCCION_SOPORTE)  # sin fase indicada
+    ProyectoFactory(estado=EstadoProyecto.EJECUCION)
+
+    global_ = resumen_global(Proyecto.objects.all())
+
+    assert global_["por_fase_operacion"] == {"PRODUCCION": 1, "SOPORTE": 2}
 
 
 def test_resumen_global_cuadra_con_la_suma_de_resumen_ejecucion_por_proyecto():

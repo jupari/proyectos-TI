@@ -23,6 +23,8 @@ export interface ResumenGlobalTablero {
   total_proyectos: number;
   por_estado: Record<string, number>;
   por_semaforo: Record<string, number>;
+  /** Proyectos en «Producción y soporte» según su fase (`PRODUCCION`/`SOPORTE`). */
+  por_fase_operacion?: Record<string, number>;
   proyectos_en_riesgo: number;
   horas_planeadas: number;
   horas_ejecutadas: number;

@@ -85,13 +85,13 @@
       <app-boton variante="secundario" tamano="sm" (clic)="refrescar()">Reintentar</app-boton>
     </div>
   } @else if (cargandoResumen()) {
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      @for (indice of [0, 1, 2, 3, 4]; track indice) {
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      @for (indice of [0, 1, 2, 3, 4, 5]; track indice) {
         <div class="h-20 animate-pulse rounded-panel border border-neutro-200 bg-neutro-100"></div>
       }
     </div>
   } @else if (resumen()) {
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <a [routerLink]="['/proyectos']" [queryParams]="{ estado: 'EJECUCION' }" class="block">
         <app-card titulo="Proyectos activos">
           <p class="text-3xl font-bold text-primario-900">
@@ -116,10 +116,17 @@
         </p>
         <p class="text-sm text-neutro-500">{{ resumen()!.pct_dinero | porcentaje }}</p>
       </app-card>
-      <a [routerLink]="['/proyectos']" [queryParams]="{ estado: 'PRODUCCION_SOPORTE' }" class="block">
-        <app-card titulo="En producción y soporte">
+      <a [routerLink]="['/proyectos']" [queryParams]="{ fase_operacion: 'PRODUCCION' }" class="block">
+        <app-card titulo="En producción">
           <p class="text-3xl font-bold text-primario-900">
-            {{ resumen()!.por_estado['PRODUCCION_SOPORTE'] ?? 0 }}
+            {{ resumen()!.por_fase_operacion?.['PRODUCCION'] ?? 0 }}
+          </p>
+        </app-card>
+      </a>
+      <a [routerLink]="['/proyectos']" [queryParams]="{ fase_operacion: 'SOPORTE' }" class="block">
+        <app-card titulo="En soporte">
+          <p class="text-3xl font-bold text-primario-900">
+            {{ resumen()!.por_fase_operacion?.['SOPORTE'] ?? 0 }}
           </p>
         </app-card>
       </a>

@@ -59,6 +59,17 @@
           (ngModelChange)="actualizar(prioridad, $event)"
           name="prioridad"
         />
+        @if (estadoProyecto() === 'PRODUCCION_SOPORTE') {
+          <app-select
+            etiqueta="Fase de operación"
+            ayuda="Indica si el proyecto está en producción o en soporte. Alimenta las tarjetas del tablero."
+            [opciones]="opcionesFaseOperacion"
+            [limpiable]="true"
+            [ngModel]="faseOperacion()"
+            (ngModelChange)="actualizar(faseOperacion, $event)"
+            name="faseOperacion"
+          />
+        }
       </section>
 
       <section class="flex flex-col gap-4 rounded-panel border border-neutro-200 bg-surface p-5 shadow-tarjeta">

@@ -71,6 +71,12 @@ export class FormularioProyecto {
   protected readonly presupuestoDinero = signal<number | null>(null);
   protected readonly observaciones = signal('');
   protected readonly claveJira = signal<string | null>(null);
+  protected readonly estadoProyecto = signal<string | null>(null);
+  protected readonly faseOperacion = signal<string | null>(null);
+  protected readonly opcionesFaseOperacion: OpcionSelect[] = [
+    { valor: 'PRODUCCION', etiqueta: 'Producción' },
+    { valor: 'SOPORTE', etiqueta: 'Soporte' },
+  ];
 
   protected readonly puedeMapearJira = computed(
     () => this.auth.tieneRol('ADMIN') || this.auth.tieneRol('PMO'),
@@ -168,6 +174,8 @@ export class FormularioProyecto {
         this.presupuestoDinero.set(Number(proyecto.presupuesto_dinero));
         this.observaciones.set(proyecto.observaciones);
         this.claveJira.set(proyecto.clave_jira || null);
+        this.estadoProyecto.set(proyecto.estado);
+        this.faseOperacion.set(proyecto.fase_operacion || null);
         this.cargandoDetalle.set(false);
       },
       error: () => {
@@ -224,6 +232,8 @@ export class FormularioProyecto {
       avance_reportado: 0,
       observaciones: this.observaciones(),
       clave_jira: this.claveJira() ?? '',
+      fase_operacion:
+        this.estadoProyecto() === 'PRODUCCION_SOPORTE' ? (this.faseOperacion() ?? '') : '',
     };
 
     this.guardando.set(true);

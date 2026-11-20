@@ -31,6 +31,7 @@ from apps.core.choices import (
     EstadoAprobacion,
     EstadoCompromiso,
     EstadoHito,
+    EstadoProyecto,
     EstadoTarea,
     Semaforo,
 )
@@ -209,6 +210,13 @@ def resumen_global(proyectos):
     por_semaforo = dict(
         proyectos.values("semaforo").annotate(total=Count("id")).values_list("semaforo", "total")
     )
+    por_fase_operacion = dict(
+        proyectos.filter(estado=EstadoProyecto.PRODUCCION_SOPORTE)
+        .exclude(fase_operacion="")
+        .values("fase_operacion")
+        .annotate(total=Count("id"))
+        .values_list("fase_operacion", "total")
+    )
 
     asignaciones = AsignacionRecurso.objects.filter(proyecto__in=proyectos)
     registros = RegistroEjecucion.objects.filter(proyecto__in=proyectos)
@@ -242,6 +250,7 @@ def resumen_global(proyectos):
         "total_proyectos": proyectos.count(),
         "por_estado": por_estado,
         "por_semaforo": por_semaforo,
+        "por_fase_operacion": por_fase_operacion,
         "proyectos_en_riesgo": por_semaforo.get(Semaforo.ROJO, 0),
         "horas_planeadas": horas_planeadas,
         "horas_ejecutadas": horas_ejecutadas,
