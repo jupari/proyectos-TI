@@ -93,6 +93,7 @@ class DependenciaTareaSerializer(serializers.ModelSerializer):
 class TareaListaSerializer(serializers.ModelSerializer):
     proyecto_codigo = serializers.CharField(source="proyecto.codigo", read_only=True)
     fase_nombre = serializers.SerializerMethodField()
+    sprint_nombre = serializers.SerializerMethodField()
     responsable_nombre = serializers.SerializerMethodField()
     dias_atraso = serializers.SerializerMethodField()
     tiene_subtareas = serializers.SerializerMethodField()
@@ -125,6 +126,10 @@ class TareaListaSerializer(serializers.ModelSerializer):
             "creada_durante_ejecucion",
             "motivo_creacion",
             "clave_jira",
+            "sprint",
+            "sprint_nombre",
+            "epica_clave",
+            "epica_nombre",
             "dias_atraso",
             "tiene_subtareas",
             "numero_dependencias",
@@ -133,6 +138,9 @@ class TareaListaSerializer(serializers.ModelSerializer):
 
     def get_fase_nombre(self, obj) -> str | None:
         return obj.fase.nombre if obj.fase else None
+
+    def get_sprint_nombre(self, obj) -> str | None:
+        return obj.sprint.nombre if obj.sprint else None
 
     def get_responsable_nombre(self, obj) -> str | None:
         return obj.responsable.nombre if obj.responsable else None

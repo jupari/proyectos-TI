@@ -25,6 +25,11 @@ export interface Tarea extends ModeloBase {
   motivo_creacion: string;
   /** Clave del issue en Jira (p. ej. `PROY-123`); vacío si no está asociada (fase 12). */
   clave_jira: string | null;
+  /** Datos de Jira (fase 14); solo lectura. */
+  sprint?: string | null;
+  sprint_nombre?: string | null;
+  epica_clave?: string;
+  epica_nombre?: string;
 }
 
 export interface DependenciaTarea extends ModeloBase {

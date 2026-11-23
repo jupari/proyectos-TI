@@ -1,11 +1,38 @@
 from django.db import models
 from django.db.models import Q
 
-from apps.core.choices import EstadoTarea, Prioridad, TipoDependencia, TipoTarea
+from apps.core.choices import EstadoSprint, EstadoTarea, Prioridad, TipoDependencia, TipoTarea
 from apps.core.models import ModeloBase
 from apps.core.validators import validar_porcentaje, validar_positivo
 from apps.proyectos.models import FaseProyecto, Proyecto
 from apps.recursos.models import Recurso
+
+
+class Sprint(ModeloBase):
+    """Sprint de Jira (fase 14). Solo se crea desde la importación: la
+    aplicación no lo edita, igual que `RegistroEjecucion.origen=JIRA`."""
+
+    proyecto = models.ForeignKey(Proyecto, on_delete=models.CASCADE, related_name="sprints")
+    id_jira = models.PositiveIntegerField()
+    nombre = models.CharField(max_length=200)
+    estado = models.CharField(
+        max_length=10, choices=EstadoSprint.choices, default=EstadoSprint.FUTURO
+    )
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_fin = models.DateField(null=True, blank=True)
+    fecha_cierre = models.DateField(null=True, blank=True)
+    meta = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "sprint"
+        verbose_name_plural = "sprints"
+        ordering = ["proyecto", "-fecha_inicio", "nombre"]
+        constraints = [
+            models.UniqueConstraint(fields=["proyecto", "id_jira"], name="sprint_jira_unico"),
+        ]
+
+    def __str__(self):
+        return f"{self.proyecto.codigo} — {self.nombre}"
 
 
 class Tarea(ModeloBase):
@@ -44,6 +71,12 @@ class Tarea(ModeloBase):
     creada_durante_ejecucion = models.BooleanField(default=False)
     motivo_creacion = models.TextField(blank=True)
     clave_jira = models.CharField(max_length=30, null=True, blank=True, unique=True)
+    # Datos que llegan de Jira (fase 14); la aplicación no los edita.
+    sprint = models.ForeignKey(
+        Sprint, null=True, blank=True, on_delete=models.SET_NULL, related_name="tareas"
+    )
+    epica_clave = models.CharField(max_length=30, blank=True, default="")
+    epica_nombre = models.CharField(max_length=250, blank=True, default="")
 
     class Meta:
         verbose_name = "tarea"

@@ -138,7 +138,9 @@ class TareaViewSet(MixinAlcancePorRol, ViewSetBase):
     ordering_fields = ["orden", "fecha_inicio_plan", "fecha_fin_plan", "prioridad", "codigo"]
 
     def get_queryset(self):
-        queryset = Tarea.objects.select_related("proyecto", "fase", "responsable", "tarea_padre")
+        queryset = Tarea.objects.select_related(
+            "proyecto", "fase", "responsable", "tarea_padre", "sprint"
+        )
         if self.request.query_params.get("activo") != "false":
             queryset = queryset.filter(activo=True)
         if self.action == "retrieve":

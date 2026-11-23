@@ -56,7 +56,7 @@ export const ETIQUETAS_ESTADO_TAREA: Record<EstadoTarea, string> = {
   CANCELADA: 'Cancelada',
 };
 
-export type TipoTarea = 'ACTIVIDAD' | 'TAREA' | 'INCIDENCIA' | 'CAMBIO' | 'REUNION';
+export type TipoTarea = 'ACTIVIDAD' | 'TAREA' | 'INCIDENCIA' | 'CAMBIO' | 'REUNION' | 'HISTORIA';
 
 export const ETIQUETAS_TIPO_TAREA: Record<TipoTarea, string> = {
   ACTIVIDAD: 'Actividad',
@@ -64,6 +64,7 @@ export const ETIQUETAS_TIPO_TAREA: Record<TipoTarea, string> = {
   INCIDENCIA: 'Incidencia',
   CAMBIO: 'Cambio',
   REUNION: 'Reunión',
+  HISTORIA: 'Historia de usuario',
 };
 
 export type Periodicidad = 'DIARIA' | 'SEMANAL' | 'MENSUAL';

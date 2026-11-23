@@ -33,6 +33,15 @@ class TipoTarea(models.TextChoices):
     INCIDENCIA = "INCIDENCIA", "Incidencia"
     CAMBIO = "CAMBIO", "Cambio"
     REUNION = "REUNION", "Reunión"
+    HISTORIA = "HISTORIA", "Historia de usuario"
+
+
+class EstadoSprint(models.TextChoices):
+    """Mismos tres estados que Jira (`future`, `active`, `closed`)."""
+
+    FUTURO = "FUTURO", "Futuro"
+    ACTIVO = "ACTIVO", "Activo"
+    CERRADO = "CERRADO", "Cerrado"
 
 
 class Periodicidad(models.TextChoices):

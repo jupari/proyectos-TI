@@ -28,6 +28,7 @@ class FiltroTarea(django_filters.FilterSet):
             "prioridad",
             "responsable",
             "tarea_padre",
+            "sprint",
             "creada_durante_ejecucion",
         ]
 
