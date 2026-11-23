@@ -210,9 +210,21 @@ export interface TareaMiTrabajo {
   proyecto_nombre: string;
   sprint_nombre: string | null;
   sprint_activo: boolean;
+  responsable_id: string | null;
+  responsable_nombre: string | null;
+}
+
+export interface ResponsableMiTrabajo {
+  /** `null` agrupa las tareas sin responsable. */
+  id: string | null;
+  nombre: string;
+  total: number;
 }
 
 export interface MiTrabajo {
+  /** `equipo`: un administrador ve las tareas de todos; `personal`: solo las propias. */
+  alcance: 'personal' | 'equipo';
+  responsables: ResponsableMiTrabajo[];
   recurso: { id: string; nombre: string } | null;
   mensaje: string;
   resumen: { total: number; vencidas: number; bloqueadas: number; horas_pendientes: number };

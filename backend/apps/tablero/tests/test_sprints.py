@@ -159,3 +159,41 @@ def test_api_respeta_el_alcance_por_rol_en_sprints_y_burndown(roles):
     assert cliente.get(f"/api/v1/tablero/sprints/{sprint_ajeno.id}/burndown/").status_code == 404
     assert cliente.get("/api/v1/tablero/sprints/").status_code == 400
     assert cliente.get("/api/v1/tablero/mi-trabajo/").status_code == 200
+
+
+def test_admin_ve_las_tareas_de_todo_el_equipo_con_su_responsable(roles):
+    admin = crear_usuario_con_rol("ADMIN")  # sin recurso propio
+    ana = RecursoFactory(nombre="Ana")
+    luis = RecursoFactory(nombre="Luis")
+    proyecto = ProyectoFactory()
+    sprint = _sprint(proyecto, 1, EstadoSprint.ACTIVO)
+    _tarea(proyecto, sprint, 5, responsable=ana)
+    _tarea(proyecto, sprint, 5, responsable=ana)
+    _tarea(proyecto, sprint, 5, responsable=luis)
+    _tarea(proyecto, sprint, 5)  # sin asignar
+    _tarea(proyecto, sprint, 5, EstadoTarea.COMPLETADA, responsable=ana)  # ya cerrada
+
+    datos = mi_trabajo(admin)
+
+    assert datos["alcance"] == "equipo"
+    assert datos["resumen"]["total"] == 4
+    assert {t["responsable_nombre"] for t in datos["tareas"]} == {"Ana", "Luis", None}
+    por_nombre = {r["nombre"]: r["total"] for r in datos["responsables"]}
+    assert por_nombre == {"Ana": 2, "Luis": 1, "Sin asignar": 1}
+    assert datos["responsables"][-1]["id"] is None  # «Sin asignar» al final
+
+
+def test_quien_no_es_admin_solo_ve_lo_suyo_aunque_haya_mas_tareas(roles):
+    usuario = crear_usuario_con_rol("LIDER")
+    propio = RecursoFactory(usuario=usuario)
+    proyecto = ProyectoFactory()
+    sprint = _sprint(proyecto, 1, EstadoSprint.ACTIVO)
+    _tarea(proyecto, sprint, 5, responsable=propio)
+    _tarea(proyecto, sprint, 5, responsable=RecursoFactory())
+    _tarea(proyecto, sprint, 5)
+
+    datos = mi_trabajo(usuario)
+
+    assert datos["alcance"] == "personal"
+    assert datos["resumen"]["total"] == 1
+    assert datos["responsables"] == []

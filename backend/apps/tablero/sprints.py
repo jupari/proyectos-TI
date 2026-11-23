@@ -18,6 +18,7 @@ from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from apps.core.choices import EstadoSprint, EstadoTarea
+from apps.core.roles import codigos_roles_de
 from apps.tareas.models import Sprint, Tarea
 
 CERO = Decimal("0")
@@ -154,25 +155,75 @@ def _enlace_jira(clave):
     return f"{base}/browse/{clave}" if base and clave else None
 
 
+def _fila_tarea(tarea, hoy):
+    return {
+        "id": str(tarea.id),
+        "codigo": tarea.codigo,
+        "clave_jira": tarea.clave_jira,
+        "enlace_jira": _enlace_jira(tarea.clave_jira),
+        "nombre": tarea.nombre,
+        "tipo": tarea.tipo,
+        "estado": tarea.estado,
+        "avance": float(tarea.avance),
+        "horas_estimadas": float(tarea.horas_estimadas),
+        "horas_ejecutadas": float(tarea.horas_ejecutadas),
+        "fecha_fin_plan": tarea.fecha_fin_plan.isoformat(),
+        "vencida": tarea.fecha_fin_plan < hoy,
+        "proyecto_id": str(tarea.proyecto_id),
+        "proyecto_codigo": tarea.proyecto.codigo,
+        "proyecto_nombre": tarea.proyecto.nombre,
+        "sprint_nombre": tarea.sprint.nombre if tarea.sprint else None,
+        "sprint_activo": bool(tarea.sprint and tarea.sprint.estado == EstadoSprint.ACTIVO),
+        "responsable_id": str(tarea.responsable_id) if tarea.responsable_id else None,
+        "responsable_nombre": tarea.responsable.nombre if tarea.responsable else None,
+    }
+
+
+def _resumen_filas(filas):
+    pendientes = sum(
+        (
+            max(Decimal(str(f["horas_estimadas"])) - Decimal(str(f["horas_ejecutadas"])), CERO)
+            for f in filas
+        ),
+        CERO,
+    )
+    return {
+        "total": len(filas),
+        "vencidas": sum(1 for f in filas if f["vencida"]),
+        "bloqueadas": sum(1 for f in filas if f["estado"] == EstadoTarea.BLOQUEADA),
+        "horas_pendientes": _redondear(pendientes),
+    }
+
+
 def mi_trabajo(usuario, hoy=None):
-    """Tareas abiertas asignadas al recurso ligado al usuario, con las del
-    sprint activo primero."""
+    """Tareas abiertas, con las del sprint activo primero. Una persona ve las
+    del recurso ligado a su usuario (`alcance="personal"`); un `ADMIN` ve las
+    de todo el equipo (`alcance="equipo"`), incluidas las sin responsable, con
+    la lista de responsables para filtrar."""
     hoy = hoy or timezone.localdate()
+    es_admin = "ADMIN" in codigos_roles_de(usuario)
     recurso = getattr(usuario, "recurso", None)
-    if recurso is None:
+
+    if es_admin:
+        consulta = Tarea.objects.filter(activo=True, proyecto__activo=True)
+    elif recurso is not None:
+        consulta = Tarea.objects.filter(responsable=recurso, activo=True, proyecto__activo=True)
+    else:
         return {
+            "alcance": "personal",
             "recurso": None,
             "mensaje": (
                 "Su usuario no está asociado a un recurso, por eso no tiene tareas asignadas."
             ),
             "resumen": {"total": 0, "vencidas": 0, "bloqueadas": 0, "horas_pendientes": 0},
+            "responsables": [],
             "tareas": [],
         }
 
     tareas = list(
-        Tarea.objects.filter(responsable=recurso, activo=True, proyecto__activo=True)
-        .exclude(estado__in=ESTADOS_TERMINALES)
-        .select_related("proyecto", "sprint")
+        consulta.exclude(estado__in=ESTADOS_TERMINALES).select_related(
+            "proyecto", "sprint", "responsable"
+        )
     )
     tareas.sort(
         key=lambda t: (
@@ -181,41 +232,30 @@ def mi_trabajo(usuario, hoy=None):
             t.codigo,
         )
     )
+    filas = [_fila_tarea(t, hoy) for t in tareas]
 
-    filas = []
-    horas_pendientes = CERO
-    for tarea in tareas:
-        horas_pendientes += max(tarea.horas_estimadas - tarea.horas_ejecutadas, CERO)
-        filas.append(
-            {
-                "id": str(tarea.id),
-                "codigo": tarea.codigo,
-                "clave_jira": tarea.clave_jira,
-                "enlace_jira": _enlace_jira(tarea.clave_jira),
-                "nombre": tarea.nombre,
-                "tipo": tarea.tipo,
-                "estado": tarea.estado,
-                "avance": float(tarea.avance),
-                "horas_estimadas": float(tarea.horas_estimadas),
-                "horas_ejecutadas": float(tarea.horas_ejecutadas),
-                "fecha_fin_plan": tarea.fecha_fin_plan.isoformat(),
-                "vencida": tarea.fecha_fin_plan < hoy,
-                "proyecto_id": str(tarea.proyecto_id),
-                "proyecto_codigo": tarea.proyecto.codigo,
-                "proyecto_nombre": tarea.proyecto.nombre,
-                "sprint_nombre": tarea.sprint.nombre if tarea.sprint else None,
-                "sprint_activo": bool(tarea.sprint and tarea.sprint.estado == EstadoSprint.ACTIVO),
-            }
+    responsables = []
+    if es_admin:
+        por_responsable = {}
+        for fila in filas:
+            clave = fila["responsable_id"]
+            if clave not in por_responsable:
+                por_responsable[clave] = {
+                    "id": clave,
+                    "nombre": fila["responsable_nombre"] or "Sin asignar",
+                    "total": 0,
+                }
+            por_responsable[clave]["total"] += 1
+        responsables = sorted(
+            por_responsable.values(), key=lambda r: (r["id"] is None, r["nombre"])
         )
+
     return {
-        "recurso": {"id": str(recurso.id), "nombre": recurso.nombre},
+        "alcance": "equipo" if es_admin else "personal",
+        "recurso": {"id": str(recurso.id), "nombre": recurso.nombre} if recurso else None,
         "mensaje": "",
-        "resumen": {
-            "total": len(filas),
-            "vencidas": sum(1 for f in filas if f["vencida"]),
-            "bloqueadas": sum(1 for f in filas if f["estado"] == EstadoTarea.BLOQUEADA),
-            "horas_pendientes": _redondear(horas_pendientes),
-        },
+        "resumen": _resumen_filas(filas),
+        "responsables": responsables,
         "tareas": filas,
     }
 
