@@ -1,3 +1,4 @@
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import BaseAuthentication
 
 
@@ -13,3 +14,14 @@ class SinAutenticacion(BaseAuthentication):
 
     def authenticate_header(self, request):
         return "Bearer"
+
+
+class SinAutenticacionScheme(OpenApiAuthenticationExtension):
+    """Documenta `SinAutenticacion` igual que el JWT que reemplaza en esos
+    endpoints, para que el esquema OpenAPI no cambie ni dé advertencias."""
+
+    target_class = "apps.accounts.autenticacion.SinAutenticacion"
+    name = "jwtAuth"
+
+    def get_security_definition(self, auto_schema):
+        return {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
