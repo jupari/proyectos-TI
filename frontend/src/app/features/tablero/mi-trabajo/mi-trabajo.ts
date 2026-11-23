@@ -6,6 +6,7 @@ import { ETIQUETAS_ESTADO_TAREA, EstadoTarea, MiTrabajo } from '../../../core/mo
 import { FechaCortaPipe, HorasPipe } from '../../../shared/pipes';
 import { EstadoVacio } from '../../../shared/ui/estado-vacio/estado-vacio';
 import { FichaResumen } from '../../../shared/ui/ficha-resumen/ficha-resumen';
+import { Boton } from '../../../shared/ui/boton/boton';
 import { Progreso } from '../../../shared/ui/progreso/progreso';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { TableroService } from '../data/tablero.service';
@@ -20,6 +21,7 @@ import { TableroService } from '../data/tablero.service';
   imports: [
     FormsModule,
     RouterLink,
+    Boton,
     EstadoVacio,
     FichaResumen,
     Progreso,
@@ -34,8 +36,33 @@ export class MiTrabajoPagina {
   protected readonly cargando = signal(true);
   protected readonly error = signal(false);
   protected readonly datos = signal<MiTrabajo | null>(null);
-  /** Filtro por responsable (solo administrador): vacío todos, `'sin-asignar'` o un id. */
+  /** Filtros combinables; `null` es «todos». */
+  protected readonly proyecto = signal<string | null>(null);
+  /** Solo administrador: un id de recurso o `'sin-asignar'`. */
   protected readonly responsable = signal<string | null>(null);
+  protected readonly estado = signal<string | null>(null);
+
+  protected readonly opcionesProyecto = computed<OpcionSelect[]>(() => {
+    const porId = new Map<string, string>();
+    for (const t of this.datos()?.tareas ?? []) {
+      porId.set(t.proyecto_id, `${t.proyecto_codigo} — ${t.proyecto_nombre}`);
+    }
+    return [...porId.entries()]
+      .map(([valor, etiqueta]) => ({ valor, etiqueta }))
+      .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, 'es'));
+  });
+
+  /** Solo los estados que de verdad tienen tareas, en el orden del ciclo de vida. */
+  protected readonly opcionesEstado = computed<OpcionSelect[]>(() => {
+    const presentes = new Set((this.datos()?.tareas ?? []).map((t) => t.estado));
+    return (Object.keys(ETIQUETAS_ESTADO_TAREA) as EstadoTarea[])
+      .filter((estado) => presentes.has(estado))
+      .map((estado) => ({ valor: estado, etiqueta: ETIQUETAS_ESTADO_TAREA[estado] }));
+  });
+
+  protected readonly hayFiltros = computed(
+    () => !!(this.proyecto() || this.responsable() || this.estado()),
+  );
 
   protected readonly opcionesResponsable = computed<OpcionSelect[]>(() =>
     (this.datos()?.responsables ?? []).map((r) => ({
@@ -45,10 +72,15 @@ export class MiTrabajoPagina {
   );
 
   protected readonly tareas = computed(() => {
-    const filtro = this.responsable();
-    const todas = this.datos()?.tareas ?? [];
-    if (!filtro) return todas;
-    return todas.filter((t) => (t.responsable_id ?? 'sin-asignar') === filtro);
+    const proyecto = this.proyecto();
+    const responsable = this.responsable();
+    const estado = this.estado();
+    return (this.datos()?.tareas ?? []).filter(
+      (t) =>
+        (!proyecto || t.proyecto_id === proyecto) &&
+        (!responsable || (t.responsable_id ?? 'sin-asignar') === responsable) &&
+        (!estado || t.estado === estado),
+    );
   });
 
   /** Se recalcula con el filtro para que las fichas siempre cuadren con la tabla. */
@@ -76,6 +108,12 @@ export class MiTrabajoPagina {
         this.cargando.set(false);
       },
     });
+  }
+
+  protected limpiarFiltros(): void {
+    this.proyecto.set(null);
+    this.responsable.set(null);
+    this.estado.set(null);
   }
 
   protected etiquetaEstado(estado: string): string {

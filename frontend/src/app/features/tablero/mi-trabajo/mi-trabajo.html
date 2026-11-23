@@ -24,8 +24,16 @@
     @if (d.alcance === 'personal' && d.recurso === null) {
       <app-estado-vacio [mensaje]="d.mensaje" />
     } @else {
-      @if (d.alcance === 'equipo') {
-        <div class="max-w-sm">
+      <div class="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <app-select
+          etiqueta="Proyecto"
+          placeholder="Todos los proyectos"
+          [opciones]="opcionesProyecto()"
+          [limpiable]="true"
+          [ngModel]="proyecto()"
+          (ngModelChange)="proyecto.set($event)"
+        />
+        @if (d.alcance === 'equipo') {
           <app-select
             etiqueta="Responsable"
             placeholder="Todas las personas"
@@ -34,8 +42,21 @@
             [ngModel]="responsable()"
             (ngModelChange)="responsable.set($event)"
           />
-        </div>
-      }
+        }
+        <app-select
+          etiqueta="Estado"
+          placeholder="Todos los estados"
+          [opciones]="opcionesEstado()"
+          [limpiable]="true"
+          [ngModel]="estado()"
+          (ngModelChange)="estado.set($event)"
+        />
+        @if (hayFiltros()) {
+          <div>
+            <app-boton variante="secundario" (clic)="limpiarFiltros()">Limpiar filtros</app-boton>
+          </div>
+        }
+      </div>
 
       <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <app-ficha-resumen etiqueta="Abiertas" [valor]="resumen().total" tono="primario" />
@@ -54,7 +75,13 @@
 
       @if (tareas().length === 0) {
         <app-estado-vacio
-          [mensaje]="d.alcance === 'equipo' ? 'No hay tareas abiertas para mostrar.' : 'No tiene tareas abiertas asignadas.'"
+          [mensaje]="
+            hayFiltros()
+              ? 'Ninguna tarea coincide con los filtros elegidos.'
+              : d.alcance === 'equipo'
+                ? 'No hay tareas abiertas para mostrar.'
+                : 'No tiene tareas abiertas asignadas.'
+          "
         />
       } @else {
         <section class="overflow-x-auto rounded-panel border border-neutro-200 bg-surface shadow-tarjeta">
