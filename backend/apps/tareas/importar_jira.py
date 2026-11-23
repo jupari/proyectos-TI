@@ -17,6 +17,7 @@ from rest_framework.exceptions import ValidationError
 from apps.core.choices import EstadoSprint, EstadoTarea, Prioridad, TipoEvento
 from apps.core.services import registrar_evento
 from apps.proyectos.models import Proyecto
+from apps.proyectos.services import pausar_recalculo_avance, recalcular_avance_proyecto
 from apps.recursos.models import Recurso
 
 from .importacion_jira import preparar_tareas
@@ -215,7 +216,7 @@ def importar_tareas_jira(clave_proyecto, desde=None, *, dry_run=False, cliente=N
         - {""}
     )
 
-    with transaction.atomic():
+    with transaction.atomic(), pausar_recalculo_avance():
         # Los sprints primero y fuera de la transacción de cada tarea: si una
         # tarea falla y se deshace, los sprints que ya usan otras no se pierden.
         sprints = {}
@@ -250,6 +251,7 @@ def importar_tareas_jira(clave_proyecto, desde=None, *, dry_run=False, cliente=N
                 }
             )
 
+        recalcular_avance_proyecto(proyecto, forzar=True)
         registrar_evento(
             tipo_evento=TipoEvento.IMPORTACION,
             entidad="Proyecto",

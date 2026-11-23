@@ -48,6 +48,12 @@
         </app-card>
         <app-card titulo="Avance">
           <app-progreso [valor]="numero(proyecto()!.avance_reportado)" class="block" />
+          @if (proyecto()!.avance_tareas; as avanceTareas) {
+            <p class="mt-1 text-xs text-neutro-500">
+              Según las tareas: {{ numero(avanceTareas) | porcentaje }}
+              @if (proyecto()!.avance_desde_tareas) { · el avance sigue a las tareas }
+            </p>
+          }
         </app-card>
         <app-card titulo="Semáforo">
           <app-semaforo [valor]="esValorSemaforo(proyecto()!.resumen_ejecucion.semaforo)" />

@@ -23,6 +23,9 @@ export interface Proyecto extends ModeloBase {
   presupuesto_horas: string;
   presupuesto_dinero: string;
   avance_reportado: string;
+  /** Calculado a partir de las tareas; `null` si el proyecto no tiene tareas que medir. */
+  avance_tareas?: string | null;
+  avance_desde_tareas?: boolean;
   /** Calculado (C): nunca se escribe desde la API. */
   semaforo: Semaforo;
   observaciones: string;

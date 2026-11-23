@@ -72,6 +72,8 @@ export class FormularioProyecto {
   protected readonly presupuestoDinero = signal<number | null>(null);
   protected readonly observaciones = signal('');
   protected readonly claveJira = signal<string | null>(null);
+  private readonly avanceReportado = signal<number | string>(0);
+  protected readonly avanceDesdeTareas = signal(false);
   protected readonly enProduccion = signal(false);
   protected readonly enSoporte = signal(false);
 
@@ -171,6 +173,8 @@ export class FormularioProyecto {
         this.presupuestoDinero.set(Number(proyecto.presupuesto_dinero));
         this.observaciones.set(proyecto.observaciones);
         this.claveJira.set(proyecto.clave_jira || null);
+        this.avanceReportado.set(proyecto.avance_reportado);
+        this.avanceDesdeTareas.set(proyecto.avance_desde_tareas ?? false);
         this.enProduccion.set(proyecto.en_produccion ?? false);
         this.enSoporte.set(proyecto.en_soporte ?? false);
         this.cargandoDetalle.set(false);
@@ -226,7 +230,10 @@ export class FormularioProyecto {
       moneda: this.moneda(),
       presupuesto_horas: this.presupuestoHoras() ?? 0,
       presupuesto_dinero: this.presupuestoDinero() ?? 0,
-      avance_reportado: 0,
+      // El avance lo publican los seguimientos (o las tareas): al editar se conserva
+      // el que tiene el proyecto; mandar 0 lo reiniciaría en cada guardado.
+      avance_reportado: this.avanceReportado(),
+      avance_desde_tareas: this.avanceDesdeTareas(),
       observaciones: this.observaciones(),
       clave_jira: this.claveJira() ?? '',
       en_produccion: this.enProduccion(),

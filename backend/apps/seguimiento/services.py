@@ -92,7 +92,13 @@ def precargar(proyecto, periodicidad, periodo_inicio):
         "horas_acumuladas": horas_acumuladas,
         "costo_acumulado": costo_acumulado,
         "semaforo_calculado": semaforo_calculado(proyecto, fecha_corte),
-        "avance_reportado": _avance_anterior(proyecto, periodo_inicio_norm),
+        # Si el proyecto tiene tareas medibles (p. ej. importadas de Jira), el avance
+        # propuesto es el que dicen ellas; quien publica lo confirma o lo ajusta.
+        "avance_reportado": (
+            proyecto.avance_tareas
+            if proyecto.avance_tareas is not None
+            else _avance_anterior(proyecto, periodo_inicio_norm)
+        ),
         "tareas_completadas_en_periodo": tareas_completadas_en_periodo,
         "tareas_vencidas": tareas_vencidas,
         "hitos_del_periodo": hitos_del_periodo,

@@ -61,6 +61,18 @@
         />
         <div class="flex flex-col gap-2">
           <p class="text-sm text-neutro-500">
+            Si el proyecto tiene tareas (por ejemplo, importadas de Jira), el avance se puede calcular
+            a partir de ellas. Si lo desactiva, el avance lo siguen fijando los seguimientos.
+          </p>
+          <app-switch
+            etiqueta="Calcular el avance desde las tareas"
+            [ngModel]="avanceDesdeTareas()"
+            (ngModelChange)="actualizar(avanceDesdeTareas, $event)"
+            name="avanceDesdeTareas"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <p class="text-sm text-neutro-500">
             Marque si el proyecto ya opera. Puede estar en producción, en soporte o en ambos, sin
             importar su estado. Alimenta las tarjetas del tablero.
           </p>

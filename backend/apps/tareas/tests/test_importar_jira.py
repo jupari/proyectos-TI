@@ -106,6 +106,9 @@ def test_importa_historia_y_subtarea_con_sprint_epica_y_responsable():
     assert historia.avance == 100
     sprint = Sprint.objects.get(proyecto=proyecto, id_jira=7)
     assert sprint.estado == EstadoSprint.ACTIVO and historia.sprint_id == sprint.id
+    # El avance del proyecto se calcula una sola vez, al terminar.
+    proyecto.refresh_from_db()
+    assert proyecto.avance_tareas == 100
 
 
 def test_reimportar_actualiza_sin_duplicar_y_conserva_las_fechas_del_plan():

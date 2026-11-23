@@ -59,6 +59,12 @@ class Proyecto(ModeloBase):
     avance_reportado = models.DecimalField(
         max_digits=5, decimal_places=2, default=0, validators=[validar_porcentaje]
     )
+    # Fase 14: el avance que resulta de las tareas (calculado, nunca se escribe a mano).
+    # Con `avance_desde_tareas` activo, `avance_reportado` lo sigue automáticamente.
+    avance_tareas = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True, editable=False
+    )
+    avance_desde_tareas = models.BooleanField(default=False)
     semaforo = models.CharField(
         max_length=10, choices=Semaforo.choices, default=Semaforo.VERDE, editable=False
     )

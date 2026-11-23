@@ -1,7 +1,10 @@
 """Toda la regla de negocio de proyectos vive aquí, no en los serializers
 (docs/plan/fase-05-proyectos-presupuesto.md §5.2)."""
 
+import contextlib
+import contextvars
 import datetime
+from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Sum
@@ -128,3 +131,59 @@ def generar_codigo_proyecto():
         )
         siguiente = int(ultimo.codigo.rsplit("-", 1)[-1]) + 1 if ultimo else 1
         return f"{prefijo}{siguiente:03d}"
+
+
+# --- Avance calculado desde las tareas (fase 14) ------------------------------
+
+_recalculo_pausado = contextvars.ContextVar("recalculo_avance_pausado", default=False)
+
+
+@contextlib.contextmanager
+def pausar_recalculo_avance():
+    """Evita recalcular el avance del proyecto en cada `Tarea.save()` durante
+    una importación masiva; quien lo usa llama a `recalcular_avance_proyecto`
+    una sola vez al final."""
+    token = _recalculo_pausado.set(True)
+    try:
+        yield
+    finally:
+        _recalculo_pausado.reset(token)
+
+
+def calcular_avance_tareas(proyecto):
+    """Promedio del avance de las tareas raíz activas (las historias y tareas
+    sueltas; sus subtareas ya están incluidas en su avance), ponderado por
+    `horas_estimadas` o simple si ninguna tiene horas. Las canceladas no
+    cuentan. `None` si el proyecto no tiene tareas que medir."""
+    raices = list(
+        proyecto.tareas.filter(activo=True, tarea_padre__isnull=True)
+        .exclude(estado=EstadoTarea.CANCELADA)
+        .values_list("avance", "horas_estimadas")
+    )
+    if not raices:
+        return None
+    total_horas = sum((horas for _avance, horas in raices), Decimal("0"))
+    if total_horas > 0:
+        avance = sum((a * h for a, h in raices), Decimal("0")) / total_horas
+    else:
+        avance = sum((a for a, _h in raices), Decimal("0")) / len(raices)
+    return avance.quantize(Decimal("0.01"))
+
+
+def recalcular_avance_proyecto(proyecto, *, forzar=False):
+    """Guarda `avance_tareas` y, si el proyecto lo pide
+    (`avance_desde_tareas`), también `avance_reportado`. Usa `update()` y no
+    `save()` a propósito: es un cálculo automático, no un cambio de negocio
+    que deba llenar la bitácora cada vez."""
+    from apps.proyectos.models import Proyecto
+
+    if _recalculo_pausado.get() and not forzar:
+        return None
+    avance = calcular_avance_tareas(proyecto)
+    cambios = {"avance_tareas": avance}
+    if avance is not None and proyecto.avance_desde_tareas:
+        cambios["avance_reportado"] = avance
+    Proyecto.objects.filter(pk=proyecto.pk).update(**cambios)
+    for campo, valor in cambios.items():
+        setattr(proyecto, campo, valor)
+    return avance

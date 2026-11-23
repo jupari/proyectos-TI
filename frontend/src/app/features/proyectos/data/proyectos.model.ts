@@ -50,6 +50,7 @@ export interface ProyectoEscritura {
   avance_reportado: number | string;
   observaciones: string;
   clave_jira?: string;
+  avance_desde_tareas?: boolean;
   en_produccion?: boolean;
   en_soporte?: boolean;
 }

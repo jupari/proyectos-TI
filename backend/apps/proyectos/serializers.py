@@ -4,7 +4,7 @@ from rest_framework import serializers
 from apps.tablero.services import resumen_ejecucion as calcular_resumen_ejecucion
 
 from .models import EntregableHito, FaseProyecto, Hito, Proyecto, RubroPresupuesto
-from .services import generar_codigo_proyecto, validar_presupuesto
+from .services import generar_codigo_proyecto, recalcular_avance_proyecto, validar_presupuesto
 
 # `generar_codigo_proyecto` bloquea la última fila con ese prefijo —si existe
 # alguna—, pero no protege contra una fila *nueva* insertada por otra
@@ -170,6 +170,8 @@ class ProyectoListaSerializer(serializers.ModelSerializer):
             "fecha_inicio_real",
             "fecha_fin_real",
             "avance_reportado",
+            "avance_tareas",
+            "avance_desde_tareas",
             "semaforo",
             "resumen_ejecucion",
             "activo",
@@ -238,6 +240,7 @@ class ProyectoEscrituraSerializer(serializers.ModelSerializer):
             "presupuesto_horas",
             "presupuesto_dinero",
             "avance_reportado",
+            "avance_desde_tareas",
             "observaciones",
             "clave_jira",
             "en_produccion",
@@ -269,4 +272,7 @@ class ProyectoEscrituraSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instancia = super().update(instance, validated_data)
         validar_presupuesto(instancia)
+        if instancia.avance_desde_tareas:
+            # Al activarlo, el avance se alinea de inmediato con las tareas.
+            recalcular_avance_proyecto(instancia)
         return instancia
