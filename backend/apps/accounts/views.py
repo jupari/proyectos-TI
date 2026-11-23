@@ -26,6 +26,7 @@ from apps.core.roles import codigos_roles_de
 from apps.core.services import registrar_evento
 from apps.core.views import ViewSetBase
 
+from .autenticacion import SinAutenticacion
 from .correo import enviar_codigo_2fa, enviar_enlace_recuperacion
 from .models import CodigoAccesoDobleFactor, RolMeta, Usuario
 from .oauth import (
@@ -86,7 +87,7 @@ class LoginView(APIView):
     correctas, envía el código de verificación por correo en vez de emitir
     tokens — eso lo hace `VerificarCodigoView` una vez confirmado el código."""
 
-    authentication_classes = []  # público: un Bearer vencido no debe dar 401 antes del AllowAny
+    authentication_classes = [SinAutenticacion]  # público: ignora un Bearer vencido
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
     throttle_scope = "login"
@@ -110,7 +111,7 @@ class VerificarCodigoView(APIView):
     """Segundo paso del login local (fase 13): confirma el código enviado
     por correo y, si es correcto, emite los tokens reales."""
 
-    authentication_classes = []  # público: un Bearer vencido no debe dar 401 antes del AllowAny
+    authentication_classes = [SinAutenticacion]  # público: ignora un Bearer vencido
     permission_classes = [AllowAny]
     throttle_classes = [CodigoRateThrottle]
     throttle_scope = "verificar-codigo"
@@ -147,7 +148,7 @@ class ReenviarCodigoView(APIView):
     """Reenvía un código nuevo para un login local pendiente (fase 13), por
     si el primero no llegó o venció, sin reiniciar el login desde cero."""
 
-    authentication_classes = []  # público: un Bearer vencido no debe dar 401 antes del AllowAny
+    authentication_classes = [SinAutenticacion]  # público: ignora un Bearer vencido
     permission_classes = [AllowAny]
     throttle_classes = [CodigoRateThrottle]
     throttle_scope = "reenviar-codigo"
@@ -237,7 +238,7 @@ class SolicitarRecuperacionView(APIView):
     si una cuenta existe. Solo envía el enlace si existe y es `LOCAL`
     (una cuenta `GOOGLE` no tiene clave propia que recuperar)."""
 
-    authentication_classes = []  # público: un Bearer vencido no debe dar 401 antes del AllowAny
+    authentication_classes = [SinAutenticacion]  # público: ignora un Bearer vencido
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "recuperar-clave"
@@ -265,7 +266,7 @@ class SolicitarRecuperacionView(APIView):
 
 
 class RestablecerClaveView(APIView):
-    authentication_classes = []  # público: un Bearer vencido no debe dar 401 antes del AllowAny
+    authentication_classes = [SinAutenticacion]  # público: ignora un Bearer vencido
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "recuperar-clave"
@@ -290,7 +291,7 @@ class RestablecerClaveView(APIView):
 
 
 class GoogleAutorizarView(APIView):
-    authentication_classes = []  # público: un Bearer vencido no debe dar 401 antes del AllowAny
+    authentication_classes = [SinAutenticacion]  # público: ignora un Bearer vencido
     permission_classes = [AllowAny]
 
     @extend_schema(
@@ -314,7 +315,7 @@ class GoogleAutorizarView(APIView):
 
 
 class GoogleCallbackView(APIView):
-    authentication_classes = []  # público: un Bearer vencido no debe dar 401 antes del AllowAny
+    authentication_classes = [SinAutenticacion]  # público: ignora un Bearer vencido
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
     throttle_scope = "login"
