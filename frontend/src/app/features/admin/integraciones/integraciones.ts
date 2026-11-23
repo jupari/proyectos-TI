@@ -11,7 +11,6 @@ import { CabeceraAdmin } from '../../../shared/ui/cabecera-admin/cabecera-admin'
 import { Card } from '../../../shared/ui/card/card';
 import { FichaResumen } from '../../../shared/ui/ficha-resumen/ficha-resumen';
 import { Datepicker } from '../../../shared/ui/datepicker/datepicker';
-import { Input } from '../../../shared/ui/input/input';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { Switch } from '../../../shared/ui/switch/switch';
 import { RecursosService } from '../../recursos/data/recursos.service';
@@ -34,7 +33,6 @@ import {
     Card,
     FichaResumen,
     Datepicker,
-    Input,
     Select,
     Switch,
     FechaCortaPipe,
@@ -63,7 +61,8 @@ export class Integraciones {
     { valor: 'APROBADO', etiqueta: 'Aprobadas automáticamente' },
   ];
 
-  protected readonly claveProyectoJira = signal('');
+  protected readonly claveProyectoJira = signal<string | null>(null);
+  protected readonly opcionesProyectosJira = signal<OpcionSelect[]>([]);
   protected readonly desdeTareas = signal<string | null>(null);
   protected readonly simulandoTareas = signal(false);
   protected readonly resumenTareas = signal<ResumenTareasJira | null>(null);
@@ -96,6 +95,17 @@ export class Integraciones {
   protected readonly asociandoCuenta = signal<string | null>(null);
 
   constructor() {
+    this.integracionesJiraService.listarProyectosJira().subscribe({
+      next: (proyectos) =>
+        this.opcionesProyectosJira.set(
+          proyectos.map((p) => ({ valor: p.clave, etiqueta: `${p.clave} — ${p.nombre}` })),
+        ),
+      error: () =>
+        this.toast.mostrar({
+          tipo: 'alerta',
+          mensaje: 'No se pudo cargar la lista de proyectos de Jira.',
+        }),
+    });
     this.integracionesJiraService.obtenerConfiguracion().subscribe({
       next: (configuracion) => {
         this.autoAprobarImportados.set(configuracion.auto_aprobar_importados);
@@ -171,9 +181,9 @@ export class Integraciones {
   }
 
   protected simularTareas(): void {
-    const clave = this.claveProyectoJira().trim();
+    const clave = this.claveProyectoJira();
     if (!clave) {
-      this.toast.mostrar({ tipo: 'error', mensaje: 'Escriba la clave del proyecto de Jira.' });
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Elija el proyecto de Jira.' });
       return;
     }
     this.simulandoTareas.set(true);
@@ -199,9 +209,9 @@ export class Integraciones {
   }
 
   protected async importarTareas(): Promise<void> {
-    const clave = this.claveProyectoJira().trim();
+    const clave = this.claveProyectoJira();
     if (!clave) {
-      this.toast.mostrar({ tipo: 'error', mensaje: 'Escriba la clave del proyecto de Jira.' });
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Elija el proyecto de Jira.' });
       return;
     }
     const confirmado = await this.confirmacion.confirmar({

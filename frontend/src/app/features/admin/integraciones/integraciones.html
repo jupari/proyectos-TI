@@ -106,12 +106,13 @@
     </p>
 
     <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <app-input
-        etiqueta="Clave del proyecto en Jira *"
-        placeholder="Por ejemplo, PDTIRD"
+      <app-select
+        etiqueta="Proyecto en Jira *"
+        placeholder="Elija un proyecto de Jira"
+        [opciones]="opcionesProyectosJira()"
+        [limpiable]="true"
         [ngModel]="claveProyectoJira()"
         (ngModelChange)="claveProyectoJira.set($event)"
-        (keydown.enter)="simularTareas()"
       />
       <app-datepicker
         etiqueta="Modificadas desde (opcional)"
