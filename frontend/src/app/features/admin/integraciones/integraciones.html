@@ -230,11 +230,11 @@
           </details>
         }
 
-        @if (t.muestra.length > 0) {
+        @if (t.detalle.length > 0) {
           <div class="overflow-x-auto rounded-panel border border-neutro-200">
             <table class="w-full text-left text-sm">
               <caption class="px-4 pt-3 text-left text-xs font-semibold uppercase tracking-wider text-neutro-500">
-                Muestra de las primeras incidencias
+                Incidencias ({{ t.detalle.length }})
               </caption>
               <thead class="text-neutro-500">
                 <tr>
@@ -248,7 +248,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-neutro-100">
-                @for (m of t.muestra; track m.clave) {
+                @for (m of filasPaginaTareas(); track m.clave) {
                   <tr>
                     <td class="px-4 py-2 font-medium">{{ m.clave }}</td>
                     <td class="px-4 py-2">{{ m.resumen }}</td>
@@ -263,6 +263,27 @@
                 }
               </tbody>
             </table>
+            <div class="flex items-center justify-between gap-3 border-t border-neutro-100 px-4 py-3 text-sm text-neutro-500">
+              <span>{{ t.detalle.length }} incidencia(s) · página {{ paginaTareas() }} de {{ totalPaginasTareas() }}</span>
+              <div class="flex gap-2">
+                <app-boton
+                  variante="secundario"
+                  tamano="sm"
+                  [disabled]="paginaTareas() <= 1"
+                  (clic)="irAPaginaTareas(paginaTareas() - 1)"
+                >
+                  Anterior
+                </app-boton>
+                <app-boton
+                  variante="secundario"
+                  tamano="sm"
+                  [disabled]="paginaTareas() >= totalPaginasTareas()"
+                  (clic)="irAPaginaTareas(paginaTareas() + 1)"
+                >
+                  Siguiente
+                </app-boton>
+              </div>
+            </div>
           </div>
         }
       </div>

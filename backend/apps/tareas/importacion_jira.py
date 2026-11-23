@@ -11,7 +11,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from apps.core.choices import EstadoTarea, TipoTarea
 from apps.recursos.models import Recurso
 
-MUESTRA_FILAS = 25
 CATEGORIAS_JIRA = {"new": "Por hacer", "indeterminate": "En curso", "done": "Listo"}
 
 _RE_BLOQUEADO = re.compile(r"bloquea|blocked|impedi|on hold|en espera", re.IGNORECASE)
@@ -203,7 +202,7 @@ def resumir_incidencias(incidencias, *, clave_proyecto, campo_sprint="", truncad
         "sin_sprint": sum(1 for t in tareas if t["sprint"] is None),
         "responsables_sin_recurso": sin_recurso,
         "advertencias": advertencias,
-        "muestra": [
+        "detalle": [
             {
                 "clave": t["clave"],
                 "resumen": t["resumen"],
@@ -217,7 +216,7 @@ def resumir_incidencias(incidencias, *, clave_proyecto, campo_sprint="", truncad
                 "epica": t["epica_clave"],
                 "padre": t["padre_clave"],
             }
-            for t in tareas[:MUESTRA_FILAS]
+            for t in tareas
         ],
     }
 

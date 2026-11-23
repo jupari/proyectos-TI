@@ -93,7 +93,7 @@ export interface ResumenTareasJira {
   sin_sprint: number;
   responsables_sin_recurso: { jira_account_id: string; nombre: string; incidencias: number }[];
   advertencias: string[];
-  muestra: FilaMuestraTareaJira[];
+  detalle: FilaMuestraTareaJira[];
 }
 
 /** Fase 12: no son recursos CRUD paginados (uno es una lista en vivo desde

@@ -121,4 +121,4 @@ def test_simulacion_resume_estados_sprints_epicas_y_responsables():
     assert resumen["sin_responsable"] == 1
     assert [p["nombre"] for p in resumen["responsables_sin_recurso"]] == ["Luis"]
     # La subtarea hereda la épica de su historia.
-    assert next(m for m in resumen["muestra"] if m["clave"] == "PDT-3")["epica"] == "PDT-1"
+    assert next(m for m in resumen["detalle"] if m["clave"] == "PDT-3")["epica"] == "PDT-1"

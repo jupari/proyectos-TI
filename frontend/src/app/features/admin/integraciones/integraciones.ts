@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ErrorApi } from '../../../core/models';
@@ -66,6 +66,23 @@ export class Integraciones {
   protected readonly resumenTareas = signal<ResumenTareasJira | null>(null);
   protected readonly clavesPorTipo = (resumen: ResumenTareasJira): [string, number][] =>
     Object.entries(resumen.por_tipo);
+
+  protected readonly TAMANO_PAGINA_TAREAS = 25;
+  protected readonly paginaTareas = signal(1);
+  protected readonly totalPaginasTareas = computed(() =>
+    Math.max(
+      1,
+      Math.ceil((this.resumenTareas()?.detalle.length ?? 0) / this.TAMANO_PAGINA_TAREAS),
+    ),
+  );
+  protected readonly filasPaginaTareas = computed(() => {
+    const inicio = (this.paginaTareas() - 1) * this.TAMANO_PAGINA_TAREAS;
+    return (this.resumenTareas()?.detalle ?? []).slice(inicio, inicio + this.TAMANO_PAGINA_TAREAS);
+  });
+
+  protected irAPaginaTareas(pagina: number): void {
+    this.paginaTareas.set(Math.min(Math.max(1, pagina), this.totalPaginasTareas()));
+  }
 
   protected readonly buscandoPersonas = signal(false);
   protected readonly personasSinMapear = signal<PersonaJiraSinMapear[] | null>(null);
@@ -156,6 +173,7 @@ export class Integraciones {
     }
     this.simulandoTareas.set(true);
     this.resumenTareas.set(null);
+    this.paginaTareas.set(1);
     this.integracionesJiraService
       .simularImportacionTareas(clave, this.desdeTareas() ?? undefined)
       .subscribe({
