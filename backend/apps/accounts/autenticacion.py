@@ -17,11 +17,11 @@ class SinAutenticacion(BaseAuthentication):
 
 
 class SinAutenticacionScheme(OpenApiAuthenticationExtension):
-    """Documenta `SinAutenticacion` igual que el JWT que reemplaza en esos
-    endpoints, para que el esquema OpenAPI no cambie ni dé advertencias."""
+    """Documenta `SinAutenticacion` en el esquema (esquema bearer, con nombre propio) en esos
+    endpoints, para que el esquema OpenAPI no dé advertencias."""
 
     target_class = "apps.accounts.autenticacion.SinAutenticacion"
-    name = "jwtAuth"
+    name = "sinAutenticacion"
 
     def get_security_definition(self, auto_schema):
         return {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
