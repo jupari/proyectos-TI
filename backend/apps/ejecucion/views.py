@@ -17,6 +17,7 @@ from apps.core.mixins import MixinAlcancePorRol
 from apps.core.roles import codigos_roles_de, resolver_proyecto_de_instancia
 from apps.core.views import ViewSetBase
 from apps.tareas.importacion_jira import simular_importacion_tareas
+from apps.tareas.importar_jira import importar_tareas_jira
 
 from .filters import FiltroGastoEjecutado, FiltroRegistroEjecucion
 from .integraciones.jira_tempo import ClienteJiraTempo
@@ -515,6 +516,53 @@ class SimularImportacionTareasJiraView(APIView):
                 raise ValidationError({"desde": ["Fecha inválida, use YYYY-MM-DD."]}) from exc
 
         return Response(simular_importacion_tareas(clave, desde))
+
+
+class ImportarTareasJiraView(APIView):
+    """`POST /integraciones/jira/tareas/importar/` (solo `ADMIN`): importa las
+    historias, tareas y sprints de un proyecto de Jira ya asociado a un
+    proyecto de la aplicación (fase 14). Con `dry_run` lo prueba y deshace."""
+
+    permission_classes = [PermisoSoloAdmin]
+
+    @extend_schema(
+        summary="Importa tareas, historias y sprints desde Jira (fase 14)",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "clave_proyecto": {"type": "string"},
+                    "desde": {"type": "string", "format": "date"},
+                    "dry_run": {"type": "boolean"},
+                },
+                "required": ["clave_proyecto"],
+            }
+        },
+        responses={200: {"type": "object"}},
+    )
+    def post(self, request):
+        faltantes = [
+            nombre for nombre in VARIABLES_JIRA_REQUERIDAS if not getattr(settings, nombre)
+        ]
+        if faltantes:
+            raise ValidationError(
+                {"__all__": [f"Faltan las variables de entorno: {', '.join(faltantes)}."]}
+            )
+
+        clave = (request.data.get("clave_proyecto") or "").strip()
+        if not clave:
+            raise ValidationError({"clave_proyecto": ["Debe indicar el proyecto de Jira."]})
+        desde = None
+        if request.data.get("desde"):
+            try:
+                desde = datetime.date.fromisoformat(request.data["desde"])
+            except ValueError as exc:
+                raise ValidationError({"desde": ["Fecha inválida, use YYYY-MM-DD."]}) from exc
+
+        resumen = importar_tareas_jira(
+            clave, desde, dry_run=bool(request.data.get("dry_run")), usuario=request.user
+        )
+        return Response(resumen)
 
 
 class ConfiguracionImportacionJiraSerializer(serializers.ModelSerializer):

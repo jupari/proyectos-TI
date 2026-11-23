@@ -5,6 +5,7 @@ from .views import (
     ConfiguracionImportacionJiraView,
     GastoEjecutadoViewSet,
     ImportarHorasJiraView,
+    ImportarTareasJiraView,
     IntegracionJiraProyectosView,
     PersonasJiraSinMapearView,
     RegistroEjecucionViewSet,
@@ -40,6 +41,11 @@ urlpatterns = [
         "integraciones/jira/tareas/simular/",
         SimularImportacionTareasJiraView.as_view(),
         name="integracion-jira-tareas-simular",
+    ),
+    path(
+        "integraciones/jira/tareas/importar/",
+        ImportarTareasJiraView.as_view(),
+        name="integracion-jira-tareas-importar",
     ),
     *router.urls,
 ]

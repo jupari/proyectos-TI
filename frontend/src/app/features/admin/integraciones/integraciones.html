@@ -120,9 +120,43 @@
       />
     </div>
 
-    <div class="mt-4 flex justify-end">
-      <app-boton [cargando]="simulandoTareas()" (clic)="simularTareas()">Simular lectura</app-boton>
+    <div class="mt-4 flex flex-wrap justify-end gap-2">
+      <app-boton variante="secundario" [cargando]="simulandoTareas()" (clic)="simularTareas()">
+        Simular lectura
+      </app-boton>
+      <app-boton [cargando]="importandoTareas()" (clic)="importarTareas()">Importar ahora</app-boton>
     </div>
+
+    @if (resultadoTareas(); as r) {
+      <div class="mt-4 flex flex-col gap-3 border-t border-neutro-100 pt-4">
+        <p class="text-sm text-neutro-500">Proyecto de la aplicación: <strong class="text-neutro-700">{{ r.proyecto }}</strong></p>
+        @for (aviso of r.advertencias; track $index) {
+          <p class="rounded-panel border border-alerta/30 bg-alerta/5 p-3 text-sm text-neutro-700">{{ aviso }}</p>
+        }
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <app-ficha-resumen etiqueta="Creadas" [valor]="r.creadas" tono="exito" />
+          <app-ficha-resumen etiqueta="Actualizadas" [valor]="r.actualizadas" tono="primario" />
+          <app-ficha-resumen etiqueta="Sprints" [valor]="r.sprints_creados + r.sprints_actualizados" />
+          <app-ficha-resumen etiqueta="Errores" [valor]="r.errores.length" [tono]="r.errores.length > 0 ? 'peligro' : 'neutro'" />
+        </div>
+        @if (r.sin_responsable_asociado.length > 0) {
+          <p class="text-sm text-neutro-500">
+            Responsables de Jira sin recurso asociado (sus tareas quedaron sin responsable):
+            {{ r.sin_responsable_asociado.join(', ') }}.
+          </p>
+        }
+        @if (r.errores.length > 0) {
+          <details class="text-sm" open>
+            <summary class="cursor-pointer text-peligro">Ver errores</summary>
+            <ul class="mt-2 flex flex-col gap-1 pl-4 text-peligro">
+              @for (e of r.errores; track $index) {
+                <li>{{ e.clave }}: {{ e.motivo }}{{ e.detalle ? ' — ' + e.detalle : '' }}</li>
+              }
+            </ul>
+          </details>
+        }
+      </div>
+    }
 
     @if (resumenTareas(); as t) {
       <div class="mt-4 flex flex-col gap-4 border-t border-neutro-100 pt-4">

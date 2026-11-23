@@ -117,13 +117,17 @@ def normalizar_incidencia(incidencia, campo_sprint=""):
         "horas_estimadas": _horas(campos.get("timeoriginalestimate")),
         "horas_registradas": _horas(campos.get("timespent")),
         "vencimiento": campos.get("duedate"),
+        "creada": _fecha(campos.get("created")),
+        "resuelta": _fecha(campos.get("resolutiondate")),
         "sprint": sprint,
         "sprints": sprints,
     }
 
 
-def resumir_incidencias(incidencias, *, clave_proyecto, campo_sprint="", truncado=False):
-    """Resumen de lo que traería la importación, sin tocar la base de datos."""
+def preparar_tareas(incidencias, campo_sprint=""):
+    """`(tareas, epicas)`: las incidencias que no son épicas, normalizadas, y
+    `{clave: nombre}` de las épicas. Lo usan igual la simulación y la
+    importación real, para que nunca difieran."""
     normalizadas = [normalizar_incidencia(i, campo_sprint) for i in incidencias]
     epicas = {n["clave"]: n["resumen"] for n in normalizadas if n["es_epica"]}
     tareas = [n for n in normalizadas if not n["es_epica"]]
@@ -135,6 +139,12 @@ def resumir_incidencias(incidencias, *, clave_proyecto, campo_sprint="", truncad
             tarea["epica_clave"], tarea["epica_nombre"] = epica_de[tarea["padre_clave"]]
         if tarea["epica_clave"]:
             epicas.setdefault(tarea["epica_clave"], tarea["epica_nombre"])
+    return tareas, epicas
+
+
+def resumir_incidencias(incidencias, *, clave_proyecto, campo_sprint="", truncado=False):
+    """Resumen de lo que traería la importación, sin tocar la base de datos."""
+    tareas, epicas = preparar_tareas(incidencias, campo_sprint)
 
     por_estado = Counter((t["estado_jira"], t["categoria"], t["estado"]) for t in tareas)
     estados = [

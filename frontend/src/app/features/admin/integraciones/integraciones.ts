@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 
 import { ErrorApi } from '../../../core/models';
+import { ConfirmacionService } from '../../../core/ui/confirmacion.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { FechaCortaPipe, HorasPipe } from '../../../shared/pipes';
 import { Boton } from '../../../shared/ui/boton/boton';
@@ -18,6 +19,7 @@ import {
   IntegracionesJiraService,
   PersonaJiraSinMapear,
   ResumenImportacionJira,
+  ResumenImportacionTareasJira,
   ResumenTareasJira,
 } from '../data/integraciones-jira.service';
 
@@ -43,6 +45,7 @@ export class Integraciones {
   private readonly integracionesJiraService = inject(IntegracionesJiraService);
   private readonly recursosService = inject(RecursosService);
   private readonly toast = inject(ToastService);
+  private readonly confirmacion = inject(ConfirmacionService);
 
   protected readonly cargando = signal(true);
   protected readonly guardando = signal(false);
@@ -64,6 +67,8 @@ export class Integraciones {
   protected readonly desdeTareas = signal<string | null>(null);
   protected readonly simulandoTareas = signal(false);
   protected readonly resumenTareas = signal<ResumenTareasJira | null>(null);
+  protected readonly importandoTareas = signal(false);
+  protected readonly resultadoTareas = signal<ResumenImportacionTareasJira | null>(null);
   protected readonly clavesPorTipo = (resumen: ResumenTareasJira): [string, number][] =>
     Object.entries(resumen.por_tipo);
 
@@ -191,6 +196,42 @@ export class Integraciones {
           this.toast.mostrar({ tipo: 'error', mensaje });
         },
       });
+  }
+
+  protected async importarTareas(): Promise<void> {
+    const clave = this.claveProyectoJira().trim();
+    if (!clave) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Escriba la clave del proyecto de Jira.' });
+      return;
+    }
+    const confirmado = await this.confirmacion.confirmar({
+      titulo: 'Importar tareas desde Jira',
+      mensaje: `Se crearán o actualizarán las historias, tareas y sprints del proyecto ${clave} en la aplicación. Jira no se modifica.`,
+      textoConfirmar: 'Importar',
+    });
+    if (!confirmado) return;
+
+    this.importandoTareas.set(true);
+    this.resultadoTareas.set(null);
+    this.integracionesJiraService.importarTareas(clave, this.desdeTareas() ?? undefined).subscribe({
+      next: (resultado) => {
+        this.importandoTareas.set(false);
+        this.resultadoTareas.set(resultado);
+        this.toast.mostrar({
+          tipo: resultado.errores.length > 0 ? 'error' : 'exito',
+          mensaje: `Importación terminada: ${resultado.creadas} creadas, ${resultado.actualizadas} actualizadas.`,
+        });
+      },
+      error: (error: unknown) => {
+        this.importandoTareas.set(false);
+        let mensaje = 'No se pudo completar la importación de tareas.';
+        if (error instanceof HttpErrorResponse) {
+          const cuerpoError = error.error as Partial<ErrorApi> | null;
+          mensaje = cuerpoError?.error?.mensaje ?? mensaje;
+        }
+        this.toast.mostrar({ tipo: 'error', mensaje });
+      },
+    });
   }
 
   protected buscarPersonasSinMapear(): void {

@@ -96,6 +96,19 @@ export interface ResumenTareasJira {
   detalle: FilaMuestraTareaJira[];
 }
 
+export interface ResumenImportacionTareasJira {
+  clave_proyecto: string;
+  proyecto: string;
+  creadas: number;
+  actualizadas: number;
+  sprints_creados: number;
+  sprints_actualizados: number;
+  sin_responsable_asociado: string[];
+  advertencias: string[];
+  errores: { clave: string; motivo: string; detalle?: string }[];
+  detalle: { clave: string; codigo: string; nombre: string; tipo: string; estado: string; accion: string }[];
+}
+
 /** Fase 12: no son recursos CRUD paginados (uno es una lista en vivo desde
  * Jira, el otro una fila única de configuración), así que no extiende
  * `ApiService<T>` — mismo criterio que `DocumentosService`. */
@@ -132,6 +145,13 @@ export class IntegracionesJiraService {
   simularImportacionTareas(clave_proyecto: string, desde?: string): Observable<ResumenTareasJira> {
     return this.http.post<ResumenTareasJira>(
       `${environment.apiBaseUrl}/integraciones/jira/tareas/simular/`,
+      { clave_proyecto, ...(desde ? { desde } : {}) },
+    );
+  }
+
+  importarTareas(clave_proyecto: string, desde?: string): Observable<ResumenImportacionTareasJira> {
+    return this.http.post<ResumenImportacionTareasJira>(
+      `${environment.apiBaseUrl}/integraciones/jira/tareas/importar/`,
       { clave_proyecto, ...(desde ? { desde } : {}) },
     );
   }
