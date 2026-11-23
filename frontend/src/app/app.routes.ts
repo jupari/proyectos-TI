@@ -39,6 +39,11 @@ export const routes: Routes = [
         loadChildren: () => import('./features/tablero/tablero.routes').then((m) => m.tableroRoutes),
       },
       {
+        path: 'mi-trabajo',
+        loadComponent: () =>
+          import('./features/tablero/mi-trabajo/mi-trabajo').then((m) => m.MiTrabajoPagina),
+      },
+      {
         path: 'proyectos',
         loadChildren: () => import('./features/proyectos/proyectos.routes').then((m) => m.proyectosRoutes),
       },

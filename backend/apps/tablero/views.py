@@ -26,6 +26,7 @@ from .services import (
     tabla_proyectos,
     tabla_proyectos_por_periodo,
 )
+from .sprints import burndown_sprint, mi_trabajo, sprint_de, sprints_del_proyecto
 
 PARAMETROS_FILTRO_PROYECTO = [
     OpenApiParameter("estado", str, required=False),
@@ -493,3 +494,55 @@ class ExportarTableroView(APIView):
         respuesta = StreamingHttpResponse(generar(), content_type="text/csv; charset=utf-8")
         respuesta["Content-Disposition"] = f'attachment; filename="tablero-{vista}.csv"'
         return respuesta
+
+
+# --- Sprints y «Mi trabajo» (fase 14, parte 5) --------------------------------
+
+
+class SprintsProyectoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Sprints de un proyecto con su velocidad",
+        description="Sprints importados de Jira, del más reciente al más antiguo, con horas "
+        "comprometidas y completadas, y la velocidad promedio de los últimos sprints cerrados.",
+        parameters=[OpenApiParameter("proyecto", str, required=True)],
+        responses={200: {"type": "object"}},
+    )
+    def get(self, request):
+        proyecto_id = request.query_params.get("proyecto")
+        if not proyecto_id:
+            raise ValidationError({"proyecto": ["Este parámetro es obligatorio."]})
+        proyecto = proyectos_del_tablero(request).filter(id=proyecto_id).first()
+        if proyecto is None:
+            raise NotFound("El proyecto no existe o no está en su alcance.")
+        return Response(sprints_del_proyecto(proyecto))
+
+
+class BurndownSprintView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Burndown de un sprint",
+        description="Trabajo restante (horas estimadas) por día frente a la línea ideal. Es una "
+        "aproximación: usa el alcance actual del sprint y la fecha de cierre de cada tarea.",
+        responses={200: {"type": "object"}},
+    )
+    def get(self, request, pk):
+        sprint = sprint_de(proyectos_del_tablero(request), pk)
+        if sprint is None:
+            raise NotFound("El sprint no existe o no está en su alcance.")
+        return Response(burndown_sprint(sprint))
+
+
+class MiTrabajoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Mi trabajo: tareas abiertas asignadas a quien consulta",
+        description="Solo lectura. Las tareas se actualizan en Jira y se importan; aquí se "
+        "consultan, con las del sprint activo primero.",
+        responses={200: {"type": "object"}},
+    )
+    def get(self, request):
+        return Response(mi_trabajo(request.user))

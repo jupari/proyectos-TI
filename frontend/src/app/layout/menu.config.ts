@@ -12,6 +12,7 @@ export interface ItemMenu {
  * Un ítem sin permiso no se renderiza; además la ruta queda protegida por guard. */
 export const ITEMS_MENU: ItemMenu[] = [
   { etiqueta: 'Tablero', icono: '📊', ruta: '/tablero' },
+  { etiqueta: 'Mi trabajo', icono: '🧑‍💻', ruta: '/mi-trabajo' },
   { etiqueta: 'Proyectos', icono: '📁', ruta: '/proyectos' },
   { etiqueta: 'Tareas', icono: '✅', ruta: '/tareas' },
   {

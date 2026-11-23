@@ -1,0 +1,98 @@
+<div class="flex flex-col gap-6">
+  <header>
+    <h1 class="text-2xl font-bold text-neutro-900">Mi trabajo</h1>
+    <p class="mt-1 text-sm text-neutro-500">
+      Sus tareas abiertas, con las del sprint activo primero. Se actualizan en Jira y se importan
+      aquí; esta vista es de consulta.
+    </p>
+  </header>
+
+  @if (cargando()) {
+    <div class="h-40 animate-pulse rounded-panel bg-neutro-100"></div>
+  } @else if (error()) {
+    <p class="rounded-panel border border-peligro/30 bg-peligro/5 p-4 text-sm text-peligro">
+      No se pudieron cargar sus tareas.
+    </p>
+  } @else if (datos(); as d) {
+    @if (d.recurso === null) {
+      <app-estado-vacio [mensaje]="d.mensaje" />
+    } @else {
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <app-ficha-resumen etiqueta="Abiertas" [valor]="d.resumen.total" tono="primario" />
+        <app-ficha-resumen
+          etiqueta="Vencidas"
+          [valor]="d.resumen.vencidas"
+          [tono]="d.resumen.vencidas > 0 ? 'peligro' : 'neutro'"
+        />
+        <app-ficha-resumen
+          etiqueta="Bloqueadas"
+          [valor]="d.resumen.bloqueadas"
+          [tono]="d.resumen.bloqueadas > 0 ? 'alerta' : 'neutro'"
+        />
+        <app-ficha-resumen etiqueta="Horas pendientes" [valor]="d.resumen.horas_pendientes | horas" nota="Estimadas menos registradas" />
+      </div>
+
+      @if (d.tareas.length === 0) {
+        <app-estado-vacio mensaje="No tiene tareas abiertas asignadas." />
+      } @else {
+        <section class="overflow-x-auto rounded-panel border border-neutro-200 bg-surface shadow-tarjeta">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="border-b border-neutro-100 text-[11px] uppercase tracking-wider text-neutro-500">
+                <th class="px-4 py-2.5 font-semibold">Tarea</th>
+                <th class="hidden px-4 py-2.5 font-semibold md:table-cell">Proyecto</th>
+                <th class="hidden px-4 py-2.5 font-semibold lg:table-cell">Sprint</th>
+                <th class="px-4 py-2.5 font-semibold">Estado</th>
+                <th class="hidden px-4 py-2.5 font-semibold sm:table-cell">Avance</th>
+                <th class="hidden px-4 py-2.5 text-right font-semibold sm:table-cell">Horas</th>
+                <th class="px-4 py-2.5 font-semibold">Fin plan</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutro-100">
+              @for (t of d.tareas; track t.id) {
+                <tr class="transition-colors hover:bg-neutro-50">
+                  <td class="px-4 py-3">
+                    <p class="font-medium text-neutro-900">{{ t.nombre }}</p>
+                    <p class="text-xs text-neutro-500">
+                      {{ t.clave_jira ?? t.codigo }}
+                      @if (t.enlace_jira) {
+                        ·
+                        <a
+                          [href]="t.enlace_jira"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-primario-700 hover:underline"
+                        >Abrir en Jira</a>
+                      }
+                    </p>
+                  </td>
+                  <td class="hidden px-4 py-3 md:table-cell">
+                    <a [routerLink]="['/proyectos', t.proyecto_id]" class="text-primario-700 hover:underline">
+                      {{ t.proyecto_codigo }}
+                    </a>
+                    <p class="text-xs text-neutro-500">{{ t.proyecto_nombre }}</p>
+                  </td>
+                  <td class="hidden px-4 py-3 lg:table-cell">
+                    @if (t.sprint_nombre) {
+                      <span [class.font-semibold]="t.sprint_activo">{{ t.sprint_nombre }}</span>
+                    } @else {
+                      <span class="text-neutro-400">—</span>
+                    }
+                  </td>
+                  <td class="px-4 py-3">{{ etiquetaEstado(t.estado) }}</td>
+                  <td class="hidden px-4 py-3 sm:table-cell"><app-progreso [valor]="t.avance" class="block w-24" /></td>
+                  <td class="hidden px-4 py-3 text-right tabular-nums sm:table-cell">
+                    {{ t.horas_ejecutadas | horas }} / {{ t.horas_estimadas | horas }}
+                  </td>
+                  <td class="px-4 py-3" [class.text-peligro]="t.vencida" [class.font-semibold]="t.vencida">
+                    {{ t.fecha_fin_plan | fechaCorta }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </section>
+      }
+    }
+  }
+</div>

@@ -60,6 +60,7 @@ import { HitosService, ProyectosService, RubrosPresupuestoService } from '../dat
 import { columnaDeFecha, construirPeriodosMes, construirPeriodosSemana, PeriodoCronograma, rangoFechasDe } from './cronograma.utils';
 import { HistorialSeguimientos } from './historial-seguimientos/historial-seguimientos';
 import { LineaTiempo } from './linea-tiempo/linea-tiempo';
+import { SprintsProyecto } from './sprints/sprints';
 import { NodoArbolTareaFila } from './nodo-arbol-tarea';
 
 interface FilaFaseEditable {
@@ -83,6 +84,7 @@ const PESTANAS: PestanaTab[] = [
   { id: 'presupuesto', etiqueta: 'Presupuesto' },
   { id: 'recursos', etiqueta: 'Recursos' },
   { id: 'tareas', etiqueta: 'Tareas' },
+  { id: 'sprints', etiqueta: 'Sprints' },
   { id: 'cronograma', etiqueta: 'Cronograma' },
   { id: 'ejecucion', etiqueta: 'Ejecución' },
   { id: 'seguimientos', etiqueta: 'Seguimientos' },
@@ -111,6 +113,7 @@ const PESTANAS: PestanaTab[] = [
     Input,
     NodoArbolTareaFila,
     LineaTiempo,
+    SprintsProyecto,
     HistorialSeguimientos,
     PanelExpediente,
     Grafico,

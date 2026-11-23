@@ -16,6 +16,7 @@ const ETIQUETAS_SEGMENTO: Record<string, string> = {
   registros: 'Registros',
   aprobaciones: 'Aprobaciones',
   'proyectos-por-periodo': 'Proyectos por periodo',
+  'mi-trabajo': 'Mi trabajo',
   seguimientos: 'Seguimientos',
   recursos: 'Recursos',
   asignaciones: 'Asignaciones',

@@ -4,12 +4,15 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import {
+  BurndownSprint,
   EjecucionMensualTablero,
   FiltrosTablero,
+  MiTrabajo,
   PlanCostosProyecto,
   RecursosTablero,
   ResumenGlobalTablero,
   ResumenTareasTablero,
+  SprintsProyecto,
   TablaProyectosPorPeriodoTablero,
   TablaProyectosTablero,
 } from '../../../core/models';
@@ -62,6 +65,20 @@ export class TableroService {
     return this.http.get<TablaProyectosPorPeriodoTablero>(`${this.base}/proyectos-por-periodo/`, {
       params: this.parametros(filtros),
     });
+  }
+
+  sprintsDelProyecto(proyectoId: string): Observable<SprintsProyecto> {
+    return this.http.get<SprintsProyecto>(`${this.base}/sprints/`, {
+      params: { proyecto: proyectoId },
+    });
+  }
+
+  burndownDelSprint(sprintId: string): Observable<BurndownSprint> {
+    return this.http.get<BurndownSprint>(`${this.base}/sprints/${sprintId}/burndown/`);
+  }
+
+  miTrabajo(): Observable<MiTrabajo> {
+    return this.http.get<MiTrabajo>(`${this.base}/mi-trabajo/`);
   }
 
   recursos(filtros?: FiltrosTablero): Observable<RecursosTablero> {

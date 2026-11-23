@@ -1,0 +1,105 @@
+@if (cargando()) {
+  <div class="h-48 animate-pulse rounded-panel bg-neutro-100"></div>
+} @else if (error()) {
+  <p class="rounded-panel border border-peligro/30 bg-peligro/5 p-4 text-sm text-peligro">
+    No se pudieron cargar los sprints.
+  </p>
+} @else if (datos(); as d) {
+  @if (d.sprints.length === 0) {
+    <app-estado-vacio
+      mensaje="Este proyecto aún no tiene sprints. Se importan desde Jira en Administración → Integraciones."
+    />
+  } @else {
+    <div class="flex flex-col gap-6">
+      <section class="flex flex-col gap-3 rounded-panel border border-neutro-200 bg-surface p-4 shadow-tarjeta">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div class="max-w-sm flex-1">
+            <app-select
+              etiqueta="Sprint"
+              [opciones]="opcionesSprint()"
+              [ngModel]="sprintElegido()"
+              (ngModelChange)="elegirSprint($event)"
+            />
+          </div>
+          @if (burndown(); as b) {
+            <p class="text-sm text-neutro-500">
+              {{ b.sprint.tareas_completadas }} de {{ b.sprint.tareas_total }} tareas ·
+              {{ b.sprint.horas_completadas | horas }} de {{ b.sprint.horas_comprometidas | horas }}
+            </p>
+          }
+        </div>
+
+        @if (cargandoBurndown()) {
+          <div class="h-48 animate-pulse rounded bg-neutro-100"></div>
+        } @else if (burndown(); as b) {
+          @if (b.disponible) {
+            <app-grafico
+              tipo="line"
+              [datos]="graficoBurndown()"
+              [opciones]="opcionesBurndown"
+              etiqueta="Trabajo restante del sprint por día frente a la línea ideal"
+              [columnasTabla]="['Día', 'Ideal (h)', 'Restante (h)']"
+              [filasTabla]="filasTablaBurndown()"
+            />
+            <p class="text-xs text-neutro-500">{{ b.nota }}</p>
+          } @else {
+            <app-estado-vacio [mensaje]="b.motivo ?? 'No hay datos para este sprint.'" />
+          }
+        }
+      </section>
+
+      <section class="flex flex-col gap-3 rounded-panel border border-neutro-200 bg-surface p-4 shadow-tarjeta">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 class="text-sm font-semibold text-neutro-900">Velocidad por sprint</h3>
+          @if (d.velocidad_promedio !== null) {
+            <p class="text-sm text-neutro-500">
+              Promedio de los últimos {{ d.sprints_en_velocidad }} cerrados:
+              <strong class="text-neutro-900">{{ d.velocidad_promedio | horas }}</strong> por sprint
+            </p>
+          } @else {
+            <p class="text-sm text-neutro-500">Aún no hay sprints cerrados para calcular el promedio.</p>
+          }
+        </div>
+        <app-grafico
+          tipo="bar"
+          [datos]="graficoVelocidad()"
+          [opciones]="opcionesVelocidad"
+          etiqueta="Horas comprometidas y completadas por sprint"
+          [columnasTabla]="['Sprint', 'Comprometidas (h)', 'Completadas (h)']"
+          [filasTabla]="filasTablaVelocidad()"
+        />
+      </section>
+
+      <section class="overflow-x-auto rounded-panel border border-neutro-200 bg-surface shadow-tarjeta">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-neutro-100 text-[11px] uppercase tracking-wider text-neutro-500">
+              <th class="px-4 py-2.5 font-semibold">Sprint</th>
+              <th class="px-4 py-2.5 font-semibold">Estado</th>
+              <th class="hidden px-4 py-2.5 font-semibold sm:table-cell">Inicio</th>
+              <th class="hidden px-4 py-2.5 font-semibold sm:table-cell">Fin</th>
+              <th class="px-4 py-2.5 text-right font-semibold">Tareas</th>
+              <th class="px-4 py-2.5 text-right font-semibold">Horas</th>
+              <th class="px-4 py-2.5 font-semibold">Avance</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutro-100">
+            @for (s of d.sprints; track s.id) {
+              <tr class="transition-colors hover:bg-neutro-50">
+                <td class="px-4 py-3 font-medium text-neutro-900">{{ s.nombre }}</td>
+                <td class="px-4 py-3 text-neutro-600">{{ ETIQUETAS_ESTADO[s.estado] }}</td>
+                <td class="hidden px-4 py-3 sm:table-cell">{{ s.fecha_inicio ? (s.fecha_inicio | fechaCorta) : '—' }}</td>
+                <td class="hidden px-4 py-3 sm:table-cell">{{ s.fecha_fin ? (s.fecha_fin | fechaCorta) : '—' }}</td>
+                <td class="px-4 py-3 text-right tabular-nums">{{ s.tareas_completadas }} / {{ s.tareas_total }}</td>
+                <td class="px-4 py-3 text-right tabular-nums">
+                  {{ s.horas_completadas | horas }} / {{ s.horas_comprometidas | horas }}
+                </td>
+                <td class="px-4 py-3"><app-progreso [valor]="s.porcentaje_completado" class="block w-28" /></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    </div>
+  }
+}

@@ -1,11 +1,14 @@
 from django.urls import path
 
 from .views import (
+    BurndownSprintView,
     EjecucionMensualView,
     ExportarTableroView,
+    MiTrabajoView,
     PlanCostosProyectoView,
     RecursosOcupacionView,
     ResumenGlobalView,
+    SprintsProyectoView,
     TablaProyectosPorPeriodoView,
     TablaProyectosView,
     TareasResumenView,
@@ -31,5 +34,12 @@ urlpatterns = [
     ),
     path("tablero/recursos/", RecursosOcupacionView.as_view(), name="tablero-recursos"),
     path("tablero/tareas/", TareasResumenView.as_view(), name="tablero-tareas"),
+    path("tablero/sprints/", SprintsProyectoView.as_view(), name="tablero-sprints"),
+    path(
+        "tablero/sprints/<uuid:pk>/burndown/",
+        BurndownSprintView.as_view(),
+        name="tablero-sprint-burndown",
+    ),
+    path("tablero/mi-trabajo/", MiTrabajoView.as_view(), name="tablero-mi-trabajo"),
     path("tablero/exportar/", ExportarTableroView.as_view(), name="tablero-exportar"),
 ]

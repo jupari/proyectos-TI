@@ -155,3 +155,66 @@ export interface ResumenTareasTablero {
   promedio_dias_atraso: number | null;
   calculado_en: string;
 }
+
+// --- Sprints y «Mi trabajo» (fase 14, parte 5) -------------------------------
+
+export interface SprintResumen {
+  id: string;
+  nombre: string;
+  estado: 'FUTURO' | 'ACTIVO' | 'CERRADO';
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  meta: string;
+  tareas_total: number;
+  tareas_completadas: number;
+  horas_comprometidas: number;
+  horas_completadas: number;
+  horas_ejecutadas: number;
+  porcentaje_completado: number;
+}
+
+export interface SprintsProyecto {
+  sprints: SprintResumen[];
+  /** Horas completadas por sprint, promedio de los últimos cerrados; `null` si no hay ninguno. */
+  velocidad_promedio: number | null;
+  sprints_en_velocidad: number;
+}
+
+export interface BurndownSprint {
+  disponible: boolean;
+  motivo?: string;
+  sprint: SprintResumen;
+  fechas?: string[];
+  ideal?: number[];
+  /** `null` en los días que aún no llegan. */
+  real?: (number | null)[];
+  horas_comprometidas?: number;
+  nota?: string;
+}
+
+export interface TareaMiTrabajo {
+  id: string;
+  codigo: string;
+  clave_jira: string | null;
+  enlace_jira: string | null;
+  nombre: string;
+  tipo: string;
+  estado: string;
+  avance: number;
+  horas_estimadas: number;
+  horas_ejecutadas: number;
+  fecha_fin_plan: string;
+  vencida: boolean;
+  proyecto_id: string;
+  proyecto_codigo: string;
+  proyecto_nombre: string;
+  sprint_nombre: string | null;
+  sprint_activo: boolean;
+}
+
+export interface MiTrabajo {
+  recurso: { id: string; nombre: string } | null;
+  mensaje: string;
+  resumen: { total: number; vencidas: number; bloqueadas: number; horas_pendientes: number };
+  tareas: TareaMiTrabajo[];
+}
