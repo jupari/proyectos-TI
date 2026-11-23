@@ -8,6 +8,7 @@ from .views import (
     IntegracionJiraProyectosView,
     PersonasJiraSinMapearView,
     RegistroEjecucionViewSet,
+    SimularImportacionTareasJiraView,
 )
 
 router = DefaultRouter()
@@ -34,6 +35,11 @@ urlpatterns = [
         "integraciones/jira/personas-sin-mapear/",
         PersonasJiraSinMapearView.as_view(),
         name="integracion-jira-personas-sin-mapear",
+    ),
+    path(
+        "integraciones/jira/tareas/simular/",
+        SimularImportacionTareasJiraView.as_view(),
+        name="integracion-jira-tareas-simular",
     ),
     *router.urls,
 ]

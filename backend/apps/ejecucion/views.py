@@ -16,6 +16,7 @@ from apps.core.exceptions import ErrorConflicto
 from apps.core.mixins import MixinAlcancePorRol
 from apps.core.roles import codigos_roles_de, resolver_proyecto_de_instancia
 from apps.core.views import ViewSetBase
+from apps.tareas.importacion_jira import simular_importacion_tareas
 
 from .filters import FiltroGastoEjecutado, FiltroRegistroEjecucion
 from .integraciones.jira_tempo import ClienteJiraTempo
@@ -471,6 +472,49 @@ class PersonasJiraSinMapearView(APIView):
             raise ValidationError({"hasta": ["Debe ser igual o posterior a desde."]})
 
         return Response(personas_jira_sin_mapear(desde, hasta))
+
+
+class SimularImportacionTareasJiraView(APIView):
+    """`POST /integraciones/jira/tareas/simular/` (`ADMIN` y `PMO`): lee las
+    incidencias de un proyecto de Jira y devuelve qué traería la importación de
+    tareas, historias y sprints (fase 14). Solo lectura: no escribe nada."""
+
+    permission_classes = [PermisoSoloAdminPmoLectura]
+
+    @extend_schema(
+        summary="Simula la importación de tareas, historias y sprints de Jira (fase 14)",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "clave_proyecto": {"type": "string"},
+                    "desde": {"type": "string", "format": "date"},
+                },
+                "required": ["clave_proyecto"],
+            }
+        },
+        responses={200: {"type": "object"}},
+    )
+    def post(self, request):
+        faltantes = [
+            nombre for nombre in VARIABLES_JIRA_REQUERIDAS if not getattr(settings, nombre)
+        ]
+        if faltantes:
+            raise ValidationError(
+                {"__all__": [f"Faltan las variables de entorno: {', '.join(faltantes)}."]}
+            )
+
+        clave = (request.data.get("clave_proyecto") or "").strip()
+        if not clave:
+            raise ValidationError({"clave_proyecto": ["Debe indicar el proyecto de Jira."]})
+        desde = None
+        if request.data.get("desde"):
+            try:
+                desde = datetime.date.fromisoformat(request.data["desde"])
+            except ValueError as exc:
+                raise ValidationError({"desde": ["Fecha inválida, use YYYY-MM-DD."]}) from exc
+
+        return Response(simular_importacion_tareas(clave, desde))
 
 
 class ConfiguracionImportacionJiraSerializer(serializers.ModelSerializer):

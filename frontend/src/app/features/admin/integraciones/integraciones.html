@@ -99,6 +99,176 @@
     }
   </app-card>
 
+  <app-card titulo="Tareas, historias y sprints desde Jira (simulación)">
+    <p class="text-sm text-neutro-500">
+      Lee un proyecto de Jira sin guardar nada y muestra qué traería la importación: tipos,
+      estados (para revisar cómo se traducen), sprints, épicas y responsables sin asociar.
+    </p>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <app-input
+        etiqueta="Clave del proyecto en Jira *"
+        placeholder="Por ejemplo, PDTIRD"
+        [ngModel]="claveProyectoJira()"
+        (ngModelChange)="claveProyectoJira.set($event)"
+        (keydown.enter)="simularTareas()"
+      />
+      <app-datepicker
+        etiqueta="Modificadas desde (opcional)"
+        [ngModel]="desdeTareas()"
+        (ngModelChange)="desdeTareas.set($event)"
+      />
+    </div>
+
+    <div class="mt-4 flex justify-end">
+      <app-boton [cargando]="simulandoTareas()" (clic)="simularTareas()">Simular lectura</app-boton>
+    </div>
+
+    @if (resumenTareas(); as t) {
+      <div class="mt-4 flex flex-col gap-4 border-t border-neutro-100 pt-4">
+        @for (aviso of t.advertencias; track $index) {
+          <p class="rounded-panel border border-alerta/30 bg-alerta/5 p-3 text-sm text-neutro-700">{{ aviso }}</p>
+        }
+
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <app-ficha-resumen etiqueta="Incidencias" [valor]="t.total_incidencias" tono="primario" />
+          <app-ficha-resumen etiqueta="Sprints" [valor]="t.sprints.length" />
+          <app-ficha-resumen etiqueta="Épicas" [valor]="t.epicas.length" />
+          <app-ficha-resumen
+            etiqueta="Sin estimación"
+            [valor]="t.sin_estimacion"
+            [tono]="t.sin_estimacion > 0 ? 'alerta' : 'neutro'"
+            nota="No tienen estimación original"
+          />
+        </div>
+
+        <p class="text-sm text-neutro-500">
+          @for (par of clavesPorTipo(t); track par[0]) {
+            <span class="mr-3">{{ par[0] }}: <strong class="text-neutro-700">{{ par[1] }}</strong></span>
+          }
+          <span class="mr-3">Sin responsable: <strong class="text-neutro-700">{{ t.sin_responsable }}</strong></span>
+          <span>Sin sprint: <strong class="text-neutro-700">{{ t.sin_sprint }}</strong></span>
+        </p>
+
+        <div class="overflow-x-auto rounded-panel border border-neutro-200">
+          <table class="w-full text-left text-sm">
+            <caption class="px-4 pt-3 text-left text-xs font-semibold uppercase tracking-wider text-neutro-500">
+              Estados encontrados en Jira y cómo se traducirían
+            </caption>
+            <thead class="text-neutro-500">
+              <tr>
+                <th class="px-4 py-2 font-semibold">Estado en Jira</th>
+                <th class="px-4 py-2 font-semibold">Categoría</th>
+                <th class="px-4 py-2 font-semibold">Se importaría como</th>
+                <th class="px-4 py-2 text-right font-semibold">Incidencias</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutro-100">
+              @for (e of t.estados; track e.nombre) {
+                <tr>
+                  <td class="px-4 py-2">{{ e.nombre }}</td>
+                  <td class="px-4 py-2">{{ e.categoria }}</td>
+                  <td class="px-4 py-2">{{ e.estado_app }}</td>
+                  <td class="px-4 py-2 text-right">{{ e.cantidad }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (t.sprints.length > 0) {
+          <div class="overflow-x-auto rounded-panel border border-neutro-200">
+            <table class="w-full text-left text-sm">
+              <caption class="px-4 pt-3 text-left text-xs font-semibold uppercase tracking-wider text-neutro-500">
+                Sprints
+              </caption>
+              <thead class="text-neutro-500">
+                <tr>
+                  <th class="px-4 py-2 font-semibold">Sprint</th>
+                  <th class="px-4 py-2 font-semibold">Estado</th>
+                  <th class="px-4 py-2 font-semibold">Inicio</th>
+                  <th class="px-4 py-2 font-semibold">Fin</th>
+                  <th class="px-4 py-2 text-right font-semibold">Incidencias</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-neutro-100">
+                @for (s of t.sprints; track s.id) {
+                  <tr>
+                    <td class="px-4 py-2">{{ s.nombre }}</td>
+                    <td class="px-4 py-2">{{ s.estado }}</td>
+                    <td class="px-4 py-2">{{ s.fecha_inicio ? (s.fecha_inicio | fechaCorta) : '—' }}</td>
+                    <td class="px-4 py-2">{{ s.fecha_fin ? (s.fecha_fin | fechaCorta) : '—' }}</td>
+                    <td class="px-4 py-2 text-right">{{ s.incidencias }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (t.epicas.length > 0) {
+          <details class="text-sm">
+            <summary class="cursor-pointer text-neutro-600">Ver épicas ({{ t.epicas.length }})</summary>
+            <ul class="mt-2 flex flex-col gap-1 pl-4 text-neutro-500">
+              @for (e of t.epicas; track e.clave) {
+                <li>{{ e.clave }} — {{ e.nombre }}</li>
+              }
+            </ul>
+          </details>
+        }
+
+        @if (t.responsables_sin_recurso.length > 0) {
+          <details class="text-sm" open>
+            <summary class="cursor-pointer text-neutro-600">
+              Responsables de Jira sin recurso asociado ({{ t.responsables_sin_recurso.length }})
+            </summary>
+            <ul class="mt-2 flex flex-col gap-1 pl-4 text-neutro-500">
+              @for (p of t.responsables_sin_recurso; track p.jira_account_id) {
+                <li>{{ p.nombre }} — {{ p.incidencias }} incidencias</li>
+              }
+            </ul>
+          </details>
+        }
+
+        @if (t.muestra.length > 0) {
+          <div class="overflow-x-auto rounded-panel border border-neutro-200">
+            <table class="w-full text-left text-sm">
+              <caption class="px-4 pt-3 text-left text-xs font-semibold uppercase tracking-wider text-neutro-500">
+                Muestra de las primeras incidencias
+              </caption>
+              <thead class="text-neutro-500">
+                <tr>
+                  <th class="px-4 py-2 font-semibold">Clave</th>
+                  <th class="px-4 py-2 font-semibold">Resumen</th>
+                  <th class="px-4 py-2 font-semibold">Tipo</th>
+                  <th class="px-4 py-2 font-semibold">Estado</th>
+                  <th class="px-4 py-2 font-semibold">Responsable</th>
+                  <th class="px-4 py-2 text-right font-semibold">Horas est.</th>
+                  <th class="px-4 py-2 font-semibold">Sprint</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-neutro-100">
+                @for (m of t.muestra; track m.clave) {
+                  <tr>
+                    <td class="px-4 py-2 font-medium">{{ m.clave }}</td>
+                    <td class="px-4 py-2">{{ m.resumen }}</td>
+                    <td class="px-4 py-2">{{ m.tipo }}</td>
+                    <td class="px-4 py-2">{{ m.estado_jira }} → {{ m.estado_app }}</td>
+                    <td class="px-4 py-2">{{ m.responsable || '—' }}</td>
+                    <td class="px-4 py-2 text-right">
+                      {{ m.horas_estimadas !== null ? (m.horas_estimadas | horas) : '—' }}
+                    </td>
+                    <td class="px-4 py-2">{{ m.sprint || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
+  </app-card>
+
   <app-card titulo="Personas de Jira sin asociar">
     <p class="text-sm text-neutro-500">
       La mayoría de las cuentas de Jira no expone su correo por la API (depende de la

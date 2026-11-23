@@ -49,6 +49,53 @@ export interface PersonaJiraSinMapear {
   worklogs: number;
 }
 
+export interface EstadoJiraResumen {
+  nombre: string;
+  categoria: string;
+  estado_app: string;
+  cantidad: number;
+}
+
+export interface SprintJiraResumen {
+  id: number;
+  nombre: string;
+  estado: string;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  incidencias: number;
+}
+
+export interface FilaMuestraTareaJira {
+  clave: string;
+  resumen: string;
+  tipo: string;
+  tipo_jira: string;
+  estado_jira: string;
+  estado_app: string;
+  responsable: string;
+  horas_estimadas: number | null;
+  sprint: string | null;
+  epica: string;
+  padre: string | null;
+}
+
+/** Fase 14: lo que traería la importación de tareas, historias y sprints (solo lectura). */
+export interface ResumenTareasJira {
+  clave_proyecto: string;
+  total_incidencias: number;
+  truncado: boolean;
+  por_tipo: Record<string, number>;
+  estados: EstadoJiraResumen[];
+  sprints: SprintJiraResumen[];
+  epicas: { clave: string; nombre: string }[];
+  sin_estimacion: number;
+  sin_responsable: number;
+  sin_sprint: number;
+  responsables_sin_recurso: { jira_account_id: string; nombre: string; incidencias: number }[];
+  advertencias: string[];
+  muestra: FilaMuestraTareaJira[];
+}
+
 /** Fase 12: no son recursos CRUD paginados (uno es una lista en vivo desde
  * Jira, el otro una fila única de configuración), así que no extiende
  * `ApiService<T>` — mismo criterio que `DocumentosService`. */
@@ -79,6 +126,13 @@ export class IntegracionesJiraService {
     return this.http.post<ResumenImportacionJira>(
       `${environment.apiBaseUrl}/integraciones/jira/importar/`,
       cuerpo,
+    );
+  }
+
+  simularImportacionTareas(clave_proyecto: string, desde?: string): Observable<ResumenTareasJira> {
+    return this.http.post<ResumenTareasJira>(
+      `${environment.apiBaseUrl}/integraciones/jira/tareas/simular/`,
+      { clave_proyecto, ...(desde ? { desde } : {}) },
     );
   }
 

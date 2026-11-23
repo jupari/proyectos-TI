@@ -10,6 +10,7 @@ import { CabeceraAdmin } from '../../../shared/ui/cabecera-admin/cabecera-admin'
 import { Card } from '../../../shared/ui/card/card';
 import { FichaResumen } from '../../../shared/ui/ficha-resumen/ficha-resumen';
 import { Datepicker } from '../../../shared/ui/datepicker/datepicker';
+import { Input } from '../../../shared/ui/input/input';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
 import { Switch } from '../../../shared/ui/switch/switch';
 import { RecursosService } from '../../recursos/data/recursos.service';
@@ -17,13 +18,26 @@ import {
   IntegracionesJiraService,
   PersonaJiraSinMapear,
   ResumenImportacionJira,
+  ResumenTareasJira,
 } from '../data/integraciones-jira.service';
 
 @Component({
   selector: 'app-integraciones',
   templateUrl: './integraciones.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Boton, CabeceraAdmin, Card, FichaResumen, Datepicker, Select, Switch, FechaCortaPipe, HorasPipe],
+  imports: [
+    FormsModule,
+    Boton,
+    CabeceraAdmin,
+    Card,
+    FichaResumen,
+    Datepicker,
+    Input,
+    Select,
+    Switch,
+    FechaCortaPipe,
+    HorasPipe,
+  ],
 })
 export class Integraciones {
   private readonly integracionesJiraService = inject(IntegracionesJiraService);
@@ -45,6 +59,13 @@ export class Integraciones {
     { valor: 'ENVIADO', etiqueta: 'Pendientes de aprobación' },
     { valor: 'APROBADO', etiqueta: 'Aprobadas automáticamente' },
   ];
+
+  protected readonly claveProyectoJira = signal('');
+  protected readonly desdeTareas = signal<string | null>(null);
+  protected readonly simulandoTareas = signal(false);
+  protected readonly resumenTareas = signal<ResumenTareasJira | null>(null);
+  protected readonly clavesPorTipo = (resumen: ResumenTareasJira): [string, number][] =>
+    Object.entries(resumen.por_tipo);
 
   protected readonly buscandoPersonas = signal(false);
   protected readonly personasSinMapear = signal<PersonaJiraSinMapear[] | null>(null);
@@ -118,6 +139,33 @@ export class Integraciones {
         error: (error: unknown) => {
           this.importando.set(false);
           let mensaje = 'No se pudo completar la importación.';
+          if (error instanceof HttpErrorResponse) {
+            const cuerpoError = error.error as Partial<ErrorApi> | null;
+            mensaje = cuerpoError?.error?.mensaje ?? mensaje;
+          }
+          this.toast.mostrar({ tipo: 'error', mensaje });
+        },
+      });
+  }
+
+  protected simularTareas(): void {
+    const clave = this.claveProyectoJira().trim();
+    if (!clave) {
+      this.toast.mostrar({ tipo: 'error', mensaje: 'Escriba la clave del proyecto de Jira.' });
+      return;
+    }
+    this.simulandoTareas.set(true);
+    this.resumenTareas.set(null);
+    this.integracionesJiraService
+      .simularImportacionTareas(clave, this.desdeTareas() ?? undefined)
+      .subscribe({
+        next: (resumen) => {
+          this.simulandoTareas.set(false);
+          this.resumenTareas.set(resumen);
+        },
+        error: (error: unknown) => {
+          this.simulandoTareas.set(false);
+          let mensaje = 'No se pudo leer el proyecto de Jira.';
           if (error instanceof HttpErrorResponse) {
             const cuerpoError = error.error as Partial<ErrorApi> | null;
             mensaje = cuerpoError?.error?.mensaje ?? mensaje;

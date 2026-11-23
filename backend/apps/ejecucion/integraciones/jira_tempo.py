@@ -6,6 +6,8 @@ Tempo (`TEMPO_API_TOKEN`, Bearer, siempre contra `https://api.tempo.io/4`)
 para los worklogs. Nunca escribe nada en ninguno de los dos: toda la
 integración es unidireccional hacia esta app."""
 
+import re
+
 import requests
 from django.conf import settings
 
@@ -14,6 +16,22 @@ from apps.core.exceptions import ErrorApi
 TEMPO_BASE_URL = "https://api.tempo.io/4"
 TIMEOUT_SEGUNDOS = 15
 TAMANO_LOTE_ISSUES = 100
+MAX_INCIDENCIAS = 2000
+CLAVE_PROYECTO_JIRA = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+CAMPOS_INCIDENCIA = [
+    "summary",
+    "issuetype",
+    "status",
+    "parent",
+    "assignee",
+    "priority",
+    "timeoriginalestimate",
+    "timespent",
+    "duedate",
+    "created",
+    "updated",
+    "resolutiondate",
+]
 
 
 class ErrorIntegracionJira(ErrorApi):
@@ -29,6 +47,7 @@ class ClienteJiraTempo:
         self.jira_token = settings.JIRA_API_TOKEN
         self.tempo_token = settings.TEMPO_API_TOKEN
         self._cache_correos = {}
+        self._campo_sprint = None
 
     def _exigir_configurado(self):
         faltantes = [
@@ -188,3 +207,47 @@ class ClienteJiraTempo:
         resultado = {"correo": datos.get("emailAddress"), "nombre": datos.get("displayName")}
         self._cache_correos[account_id] = resultado
         return resultado
+
+    def campo_sprint(self):
+        """Id del campo personalizado «Sprint» (`customfield_NNNNN`), que cambia
+        de una instancia de Jira a otra. `""` si la instancia no usa sprints."""
+        if self._campo_sprint is None:
+            self._campo_sprint = ""
+            for campo in self._get_jira("/rest/api/3/field"):
+                if campo.get("schema", {}).get("custom") == "com.pyxis.greenhopper.jira:gh-sprint":
+                    self._campo_sprint = campo["id"]
+                    break
+        return self._campo_sprint
+
+    def buscar_incidencias(self, clave_proyecto, desde=None, maximo=MAX_INCIDENCIAS):
+        """Incidencias (historias, tareas, bugs, subtareas y épicas) de un
+        proyecto de Jira, en crudo: `{"incidencias": [...], "campo_sprint": id,
+        "truncado": bool}`. Solo lectura. Con `desde` (fecha) trae solo las
+        modificadas desde ese día. Pagina por `nextPageToken` (el endpoint
+        clásico `/search` ya no existe) y corta en `maximo` para no agotar el
+        tiempo de la petición."""
+        if not CLAVE_PROYECTO_JIRA.match(clave_proyecto or ""):
+            raise ErrorIntegracionJira("La clave del proyecto de Jira no es válida.")
+        campo_sprint = self.campo_sprint()
+        jql = f'project = "{clave_proyecto}"'
+        if desde:
+            jql += f' AND updated >= "{desde.isoformat()}"'
+        jql += " ORDER BY created ASC"
+        campos = [*CAMPOS_INCIDENCIA, *([campo_sprint] if campo_sprint else [])]
+
+        incidencias = []
+        token = None
+        truncado = False
+        while True:
+            cuerpo = {"jql": jql, "fields": campos, "maxResults": TAMANO_LOTE_ISSUES}
+            if token:
+                cuerpo["nextPageToken"] = token
+            datos = self._post_jira("/rest/api/3/search/jql", cuerpo)
+            incidencias.extend(datos.get("issues", []))
+            token = datos.get("nextPageToken")
+            if not token or datos.get("isLast", True):
+                break
+            if len(incidencias) >= maximo:
+                truncado = True
+                break
+        return {"incidencias": incidencias, "campo_sprint": campo_sprint, "truncado": truncado}
