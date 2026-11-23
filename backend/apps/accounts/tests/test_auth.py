@@ -69,6 +69,17 @@ def test_login_completo_con_codigo_correcto_devuelve_access_refresh_y_usuario(ro
     assert respuesta.data["usuario"]["roles"] == ["LIDER"]
 
 
+def test_verificar_codigo_ignora_un_bearer_vencido_de_una_sesion_anterior(roles, cliente):
+    """Un token viejo en el navegador no debe dar 401 antes de validar el código."""
+    usuario = crear_usuario_con_rol("LIDER", email="lider@demo.local", password="demo12345")
+    cliente.credentials(HTTP_AUTHORIZATION="Bearer token.invalido.o.vencido")
+
+    respuesta = _login_completo(cliente, usuario.email, "demo12345")
+
+    assert respuesta.status_code == 200
+    assert set(respuesta.data) == {"access", "refresh", "usuario"}
+
+
 def test_verificar_codigo_incorrecto_incrementa_intentos_y_rechaza(roles, cliente):
     usuario = crear_usuario_con_rol("RECURSO", password="demo12345")
     paso1 = cliente.post(

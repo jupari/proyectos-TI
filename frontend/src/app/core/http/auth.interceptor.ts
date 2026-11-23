@@ -6,7 +6,10 @@ import { catchError } from 'rxjs/operators';
 
 import { AuthService } from '../auth/auth.service';
 
-const RUTA_PUBLICA = /\/auth\/(login|refresh|google\/autorizar|google\/callback)\/?(\?|$)/;
+// Endpoints sin sesión: no llevan Bearer ni disparan el refresco ante un 401
+// (un código incorrecto responde 401 y no significa "sesión vencida").
+const RUTA_PUBLICA =
+  /\/auth\/(login|verificar-codigo|reenviar-codigo|recuperar-clave|restablecer-clave|refresh|google\/autorizar|google\/callback)\/?(\?|$)/;
 
 let refrescando = false;
 const accessTokenRefrescado$ = new BehaviorSubject<string | null>(null);
