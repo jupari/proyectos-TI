@@ -176,3 +176,32 @@ def test_avance_en_curso_es_lo_registrado_sobre_lo_estimado_con_tope_90():
     assert avance_de(pasada) == 90
     assert avance_de(sin_dato) == 0
     assert avance_de({"estado": EstadoTarea.COMPLETADA}) == 100
+
+
+def test_asocia_al_recurso_por_nombre_sin_importar_tildes_ni_orden():
+    ProyectoFactory(clave_jira="PDT")
+    juan = RecursoFactory(nombre="Pérez Ana María", jira_account_id=None)
+    otro = RecursoFactory(nombre="Luis Mora", jira_account_id=None)
+    lote = _lote()
+    lote[2]["fields"]["assignee"] = {"accountId": "acc-9", "displayName": "ana maria PEREZ"}
+
+    resumen = importar_tareas_jira("PDT", cliente=_cliente(lote))
+
+    juan.refresh_from_db()
+    otro.refresh_from_db()
+    assert juan.jira_account_id == "acc-9" and otro.jira_account_id is None
+    assert Tarea.objects.get(clave_jira="PDT-2").responsable_id == juan.id
+    assert resumen["sin_responsable_asociado"] == []
+
+
+def test_no_asocia_si_el_nombre_coincide_con_dos_recursos():
+    ProyectoFactory(clave_jira="PDT")
+    RecursoFactory(nombre="Ana Pérez", jira_account_id=None)
+    RecursoFactory(nombre="Perez Ana", jira_account_id=None)
+    lote = _lote()
+    lote[2]["fields"]["assignee"] = {"accountId": "acc-9", "displayName": "Ana Pérez"}
+
+    resumen = importar_tareas_jira("PDT", cliente=_cliente(lote))
+
+    assert Tarea.objects.get(clave_jira="PDT-2").responsable_id is None
+    assert resumen["sin_responsable_asociado"] == ["Ana Pérez"]

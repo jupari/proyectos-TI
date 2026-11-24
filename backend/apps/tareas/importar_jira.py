@@ -9,6 +9,7 @@ del plan y observaciones."""
 
 import datetime
 import re
+import unicodedata
 from decimal import Decimal
 
 from django.db import transaction
@@ -32,6 +33,50 @@ _PRIORIDADES = (
 ESTADOS_EN_CURSO = {EstadoTarea.EN_PROGRESO, EstadoTarea.BLOQUEADA, EstadoTarea.EN_REVISION}
 AVANCE_MAXIMO_EN_CURSO = Decimal("90")
 ESTADOS_SPRINT = {"active": EstadoSprint.ACTIVO, "closed": EstadoSprint.CERRADO}
+
+
+def _normalizar_nombre(texto):
+    """Nombre sin tildes ni mayúsculas y sin importar el orden de las palabras."""
+    sin_tildes = unicodedata.normalize("NFKD", texto or "")
+    sin_tildes = "".join(c for c in sin_tildes if not unicodedata.combining(c))
+    return tuple(sorted(re.findall(r"[a-z0-9]+", sin_tildes.lower())))
+
+
+def asociar_recursos_por_nombre_o_correo(tareas):
+    """Liga a su persona de Jira los recursos que aún no tienen cuenta asociada.
+
+    Se reconoce por correo (si Jira lo muestra) o por nombre completo, y solo
+    cuando la coincidencia es única: ante la duda no se asocia a nadie. Así las
+    tareas dejan de quedar «sin asignar» solo porque nadie asoció la cuenta a
+    mano. Devuelve cuántos recursos se asociaron."""
+    personas = {}
+    for t in tareas:
+        if t["responsable_id"]:
+            personas[t["responsable_id"]] = (
+                t["responsable_nombre"],
+                (t.get("responsable_email") or "").lower(),
+            )
+    ya_asociadas = set(
+        Recurso.objects.filter(jira_account_id__in=personas).values_list(
+            "jira_account_id", flat=True
+        )
+    )
+    libres = list(Recurso.objects.filter(jira_account_id__isnull=True, activo=True))
+    asociados = 0
+    for cuenta, (nombre, email) in personas.items():
+        if cuenta in ya_asociadas:
+            continue
+        coincidencias = [r for r in libres if email and (r.email or "").lower() == email]
+        if not coincidencias and nombre:
+            clave = _normalizar_nombre(nombre)
+            coincidencias = [r for r in libres if _normalizar_nombre(r.nombre) == clave]
+        if len(coincidencias) == 1:
+            recurso = coincidencias[0]
+            # update() evita llenar la bitácora con una señal por cada asociación.
+            Recurso.objects.filter(pk=recurso.pk).update(jira_account_id=cuenta)
+            libres.remove(recurso)
+            asociados += 1
+    return asociados
 
 
 def prioridad_app_para(nombre):
@@ -208,6 +253,7 @@ def importar_tareas_jira(clave_proyecto, desde=None, *, dry_run=False, cliente=N
     tareas.sort(key=lambda t: _profundidad_en_lote(t, por_clave))
 
     cuentas = {t["responsable_id"] for t in tareas if t["responsable_id"]}
+    asociar_recursos_por_nombre_o_correo(tareas)
     responsables = {
         r.jira_account_id: r for r in Recurso.objects.filter(jira_account_id__in=cuentas)
     }

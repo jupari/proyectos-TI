@@ -113,6 +113,7 @@ def normalizar_incidencia(incidencia, campo_sprint=""):
         "epica_nombre": padre_campos.get("summary", "") if padre_es_epica else "",
         "responsable_id": responsable.get("accountId"),
         "responsable_nombre": responsable.get("displayName", ""),
+        "responsable_email": responsable.get("emailAddress", ""),
         "prioridad": (campos.get("priority") or {}).get("name", ""),
         "horas_estimadas": _horas(campos.get("timeoriginalestimate")),
         "horas_registradas": _horas(campos.get("timespent")),
