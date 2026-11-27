@@ -70,7 +70,9 @@ def validar_solapamiento(registro):
     """Ningún otro registro activo (de cualquier periodicidad, en estado
     distinto de `RECHAZADO`) del mismo recurso y proyecto puede intersecar
     `[periodo_inicio, periodo_fin]`: un mensual y un diario del mismo mes
-    contarían las mismas horas dos veces."""
+    contarían las mismas horas dos veces. Excepción: los registros que vienen
+    de Jira conviven entre sí cuando son de la misma periodicidad (una tarea
+    distinta cada uno)."""
     conflictivos = RegistroEjecucion.objects.filter(
         activo=True,
         recurso=registro.recurso,
@@ -101,6 +103,16 @@ def validar_solapamiento(registro):
                     ]
                 }
             )
+
+    # Lo importado de Jira llega con un registro por tarea y día: dos registros JIRA de la
+    # misma periodicidad y periodo son worklogs de tareas distintas, no horas contadas dos
+    # veces. Lo cargado a mano sí sigue bloqueando (docs/modelo-datos.md §6).
+    if registro.origen == OrigenRegistro.JIRA:
+        conflictivos = [
+            c
+            for c in conflictivos
+            if not (c.origen == OrigenRegistro.JIRA and c.periodicidad == registro.periodicidad)
+        ]
 
     if conflictivos:
         raise ErrorReglaNegocio(
@@ -563,6 +575,51 @@ def personas_jira_sin_mapear(desde, hasta):
     return sorted(resultado, key=lambda fila: fila["nombre"])
 
 
+def _retirar_registros_jira_obsoletos(grupos, resumen):
+    """Un día de importaciones anteriores pudo quedar en un solo registro (p. ej. sin
+    tarea, cuando las tareas aún no estaban importadas) y ahora el mismo día se parte en
+    un registro por tarea: si ambos convivieran, las horas contarían dos veces. Los
+    registros de Jira de ese día que ya no corresponden a ningún grupo y que comparten
+    worklogs con ellos se dan de baja (sin aprobar); si ya están aprobados no se tocan y
+    se reporta el error en vez de duplicar."""
+    por_dia = {}
+    for grupo in grupos.values():
+        clave = (grupo["recurso"].id, grupo["proyecto"].id, grupo["fecha"])
+        por_dia.setdefault(clave, []).append(grupo)
+
+    for (recurso_id, proyecto_id, fecha), del_dia in por_dia.items():
+        ids_del_dia = {i for g in del_dia for i in g["ids_externos"]}
+        exactos = {",".join(sorted(g["ids_externos"], key=int)) for g in del_dia}
+        for registro in RegistroEjecucion.objects.filter(
+            activo=True,
+            origen=OrigenRegistro.JIRA,
+            recurso_id=recurso_id,
+            proyecto_id=proyecto_id,
+            periodicidad=Periodicidad.DIARIA,
+            periodo_inicio=fecha,
+        ):
+            if registro.id_externo in exactos:
+                continue  # lo reutiliza el propio grupo
+            if not ids_del_dia.intersection((registro.id_externo or "").split(",")):
+                continue  # no es de esos worklogs: puede ser de otra tarea
+            if registro.estado_aprobacion == EstadoAprobacion.APROBADO:
+                for g in del_dia:
+                    g["bloqueado"] = True
+                resumen["errores"].append(
+                    {
+                        "id_externo": registro.id_externo,
+                        "motivo": "no se pudo guardar el registro",
+                        "detalle": (
+                            f"El día {fecha} ya tiene un registro aprobado (id {registro.id}) "
+                            "que agrupa estos worklogs en otra tarea; desapruébelo o "
+                            "elimínelo para reimportar ese día."
+                        ),
+                    }
+                )
+                break
+            RegistroEjecucion.objects.filter(pk=registro.pk).update(activo=False)
+
+
 @transaction.atomic
 def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
     """Trae los worklogs de Tempo entre `desde` y `hasta` (fechas) y los
@@ -671,7 +728,11 @@ def importar_horas_jira(desde, hasta, *, dry_run=False, auto_aprobar=None):
     # grupo lo reconoce como "existente" por sus datos (recurso/proyecto/
     # tarea/fecha), no por ese id_externo, y recalcula las horas desde cero
     # en vez de sumarlas de nuevo (evita contar doble si se reimporta).
+    _retirar_registros_jira_obsoletos(grupos, resumen)
+
     for grupo in grupos.values():
+        if grupo.get("bloqueado"):
+            continue
         recurso = grupo["recurso"]
         proyecto = grupo["proyecto"]
         tarea = grupo["tarea"]

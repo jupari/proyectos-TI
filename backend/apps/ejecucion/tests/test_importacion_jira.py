@@ -341,3 +341,57 @@ def test_error_de_conexion_se_reporta_sin_interrumpir():
 
     assert resumen["creados"] == 0
     assert len(resumen["errores"]) == 1
+
+
+def test_dos_tareas_el_mismo_dia_crean_un_registro_por_tarea_sin_chocar():
+    proyecto, recurso, tarea = _preparar_proyecto_recurso_tarea()
+    otra = TareaFactory(proyecto=proyecto, clave_jira="PROY-2")
+    cliente = _cliente_mock(
+        [
+            _worklog(tempoWorklogId=1, timeSpentSeconds=25200),
+            _worklog(tempoWorklogId=2, issue={"id": "10002"}, timeSpentSeconds=3600),
+        ],
+        claves={"10001": "PROY-1", "10002": "PROY-2"},
+    )
+
+    with patch(RUTA_CLIENTE, return_value=cliente):
+        resumen = importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+
+    assert resumen["creados"] == 2 and resumen["errores"] == []
+    assert RegistroEjecucion.objects.get(tarea=tarea).horas == Decimal("7")
+    assert RegistroEjecucion.objects.get(tarea=otra).horas == Decimal("1")
+
+
+def test_registro_viejo_sin_tarea_se_reemplaza_al_partir_el_dia_por_tareas():
+    proyecto, recurso, tarea = _preparar_proyecto_recurso_tarea()
+    otra = TareaFactory(proyecto=proyecto, clave_jira="PROY-2")
+    viejo = RegistroEjecucionFactory(
+        proyecto=proyecto,
+        recurso=recurso,
+        tarea=None,
+        periodicidad="DIARIA",
+        periodo_inicio=datetime.date(2026, 3, 10),
+        periodo_fin=datetime.date(2026, 3, 10),
+        horas=8,
+        valor_hora_aplicado=70000,
+        estado_aprobacion=EstadoAprobacion.ENVIADO,
+        origen=OrigenRegistro.JIRA,
+        id_externo="1,2",
+    )
+    cliente = _cliente_mock(
+        [
+            _worklog(tempoWorklogId=1, timeSpentSeconds=25200),
+            _worklog(tempoWorklogId=2, issue={"id": "10002"}, timeSpentSeconds=3600),
+        ],
+        claves={"10001": "PROY-1", "10002": "PROY-2"},
+    )
+
+    with patch(RUTA_CLIENTE, return_value=cliente):
+        resumen = importar_horas_jira(datetime.date(2026, 3, 1), datetime.date(2026, 3, 31))
+
+    assert resumen["errores"] == []
+    viejo.refresh_from_db()
+    assert viejo.activo is False
+    activos = RegistroEjecucion.objects.filter(activo=True, recurso=recurso)
+    assert sorted(r.horas for r in activos) == [Decimal("1"), Decimal("7")]
+    assert {r.tarea_id for r in activos} == {tarea.id, otra.id}
