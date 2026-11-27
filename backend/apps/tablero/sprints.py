@@ -261,6 +261,35 @@ def mi_trabajo(usuario, hoy=None):
     }
 
 
+def tareas_para_excel(usuario, *, proyecto=None, responsable=None, estado=None):
+    """Todas las tareas del alcance de `usuario` (también las terminadas, porque ahí
+    quedan las horas empleadas), con los mismos filtros de la pantalla. `responsable`
+    es un id de recurso o `'sin-asignar'`."""
+    es_admin = "ADMIN" in codigos_roles_de(usuario)
+    recurso = getattr(usuario, "recurso", None)
+    if es_admin:
+        consulta = Tarea.objects.filter(activo=True, proyecto__activo=True)
+    elif recurso is not None:
+        consulta = Tarea.objects.filter(responsable=recurso, activo=True, proyecto__activo=True)
+    else:
+        return []
+
+    if proyecto:
+        consulta = consulta.filter(proyecto_id=proyecto)
+    if es_admin and responsable:
+        if responsable == "sin-asignar":
+            consulta = consulta.filter(responsable__isnull=True)
+        else:
+            consulta = consulta.filter(responsable_id=responsable)
+    if estado:
+        consulta = consulta.filter(estado=estado)
+    return list(
+        consulta.select_related("proyecto", "sprint", "responsable").order_by(
+            "proyecto__codigo", "responsable__nombre", "codigo"
+        )
+    )
+
+
 def sprint_de(proyectos, sprint_id):
     """El `Sprint` si pertenece a alguno de `proyectos` (ya acotados por rol)."""
     return Sprint.objects.filter(pk=sprint_id, activo=True, proyecto__in=proyectos).first()

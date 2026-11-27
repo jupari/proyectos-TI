@@ -4,6 +4,7 @@ from .views import (
     BurndownSprintView,
     EjecucionMensualView,
     ExportarTableroView,
+    MiTrabajoExportarView,
     MiTrabajoView,
     PlanCostosProyectoView,
     RecursosOcupacionView,
@@ -34,6 +35,11 @@ urlpatterns = [
     ),
     path("tablero/recursos/", RecursosOcupacionView.as_view(), name="tablero-recursos"),
     path("tablero/tareas/", TareasResumenView.as_view(), name="tablero-tareas"),
+    path(
+        "tablero/mi-trabajo/exportar/",
+        MiTrabajoExportarView.as_view(),
+        name="tablero-mi-trabajo-exportar",
+    ),
     path("tablero/sprints/", SprintsProyectoView.as_view(), name="tablero-sprints"),
     path(
         "tablero/sprints/<uuid:pk>/burndown/",

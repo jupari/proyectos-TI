@@ -1,5 +1,6 @@
 <div class="flex flex-col gap-6">
-  <header>
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div>
     <h1 class="text-2xl font-bold text-neutro-900">
       {{ datos()?.alcance === 'equipo' ? 'Trabajo del equipo' : 'Mi trabajo' }}
     </h1>
@@ -12,6 +13,10 @@
         importan aquí; esta vista es de consulta.
       }
     </p>
+    </div>
+    <app-boton variante="secundario" [cargando]="exportando()" (clic)="exportar()">
+      Exportar a Excel
+    </app-boton>
   </header>
 
   @if (cargando()) {

@@ -81,6 +81,19 @@ export class TableroService {
     return this.http.get<MiTrabajo>(`${this.base}/mi-trabajo/`);
   }
 
+  /** Excel con las tareas (también las terminadas) y sus horas, con los filtros de la pantalla. */
+  exportarMiTrabajo(filtros: {
+    proyecto: string | null;
+    responsable: string | null;
+    estado: string | null;
+  }): Observable<Blob> {
+    let params = new HttpParams();
+    if (filtros.proyecto) params = params.set('proyecto', filtros.proyecto);
+    if (filtros.responsable) params = params.set('responsable', filtros.responsable);
+    if (filtros.estado) params = params.set('estado', filtros.estado);
+    return this.http.get(`${this.base}/mi-trabajo/exportar/`, { params, responseType: 'blob' });
+  }
+
   recursos(filtros?: FiltrosTablero): Observable<RecursosTablero> {
     return this.http.get<RecursosTablero>(`${this.base}/recursos/`, {
       params: this.parametros(filtros),

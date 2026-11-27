@@ -9,6 +9,7 @@ import { FichaResumen } from '../../../shared/ui/ficha-resumen/ficha-resumen';
 import { Boton } from '../../../shared/ui/boton/boton';
 import { Progreso } from '../../../shared/ui/progreso/progreso';
 import { OpcionSelect, Select } from '../../../shared/ui/select/select';
+import { ToastService } from '../../../core/ui/toast.service';
 import { TableroService } from '../data/tablero.service';
 
 /** «Mi trabajo»: las tareas abiertas del recurso ligado al usuario. Es de solo
@@ -32,6 +33,9 @@ import { TableroService } from '../data/tablero.service';
 })
 export class MiTrabajoPagina {
   private readonly tableroService = inject(TableroService);
+  private readonly toast = inject(ToastService);
+
+  protected readonly exportando = signal(false);
 
   protected readonly cargando = signal(true);
   protected readonly error = signal(false);
@@ -108,6 +112,32 @@ export class MiTrabajoPagina {
         this.cargando.set(false);
       },
     });
+  }
+
+  /** Baja un Excel con lo filtrado; incluye las tareas terminadas para sumar todas las horas. */
+  protected exportar(): void {
+    this.exportando.set(true);
+    this.tableroService
+      .exportarMiTrabajo({
+        proyecto: this.proyecto(),
+        responsable: this.responsable(),
+        estado: this.estado(),
+      })
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const enlace = document.createElement('a');
+          enlace.href = url;
+          enlace.download = 'horas-por-tarea.xlsx';
+          enlace.click();
+          URL.revokeObjectURL(url);
+          this.exportando.set(false);
+        },
+        error: () => {
+          this.exportando.set(false);
+          this.toast.mostrar({ tipo: 'error', mensaje: 'No se pudo generar el Excel.' });
+        },
+      });
   }
 
   protected limpiarFiltros(): void {

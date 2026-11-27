@@ -197,3 +197,68 @@ def test_quien_no_es_admin_solo_ve_lo_suyo_aunque_haya_mas_tareas(roles):
     assert datos["alcance"] == "personal"
     assert datos["resumen"]["total"] == 1
     assert datos["responsables"] == []
+
+
+def _abrir_excel(respuesta):
+    import io
+
+    from openpyxl import load_workbook
+
+    return load_workbook(io.BytesIO(respuesta.content))
+
+
+def test_exportar_excel_trae_tareas_con_horas_y_resumen_por_responsable(roles):
+    admin = crear_usuario_con_rol("ADMIN")
+    proyecto = ProyectoFactory()
+    ana = RecursoFactory(nombre="Ana")
+    TareaFactory(
+        proyecto=proyecto, responsable=ana, horas_estimadas=10, horas_jira=6, clave_jira="PDT-1"
+    )
+    TareaFactory(
+        proyecto=proyecto,
+        responsable=ana,
+        horas_estimadas=4,
+        horas_jira=2,
+        estado=EstadoTarea.COMPLETADA,
+    )
+    TareaFactory(proyecto=proyecto, responsable=None, horas_estimadas=3, horas_jira=1)
+    cliente = APIClient()
+    cliente.force_authenticate(admin)
+
+    respuesta = cliente.get("/api/v1/tablero/mi-trabajo/exportar/")
+
+    assert respuesta.status_code == 200
+    assert respuesta["Content-Type"].startswith("application/vnd.openxmlformats")
+    libro = _abrir_excel(respuesta)
+    tareas = libro["Tareas"]
+    assert tareas.max_row >= 4  # encabezado + 3 tareas (+ total)
+    filas = list(tareas.iter_rows(min_row=2, max_row=4, values_only=True))
+    assert sum(fila[11] for fila in filas) == 9  # horas en Jira
+    resumen = {fila[0]: fila for fila in libro["Resumen"].iter_rows(values_only=True)}
+    assert resumen["Ana"][1:4] == (2, 14.0, 8.0)
+    assert resumen["Sin asignar"][1:4] == (1, 3.0, 1.0)
+
+
+def test_exportar_excel_respeta_filtros_y_alcance(roles):
+    proyecto = ProyectoFactory()
+    yo = RecursoFactory()
+    otra = RecursoFactory()
+    usuario = crear_usuario_con_rol("RECURSO")
+    yo.usuario = usuario
+    yo.save()
+    TareaFactory(proyecto=proyecto, responsable=yo, estado=EstadoTarea.EN_PROGRESO)
+    TareaFactory(proyecto=proyecto, responsable=yo, estado=EstadoTarea.PENDIENTE)
+    TareaFactory(proyecto=proyecto, responsable=otra)
+    cliente = APIClient()
+    cliente.force_authenticate(usuario)
+
+    todas = _abrir_excel(cliente.get("/api/v1/tablero/mi-trabajo/exportar/"))["Tareas"]
+    filtradas = _abrir_excel(
+        cliente.get("/api/v1/tablero/mi-trabajo/exportar/", {"estado": "EN_PROGRESO"})
+    )["Tareas"]
+
+    def con_tarea(hoja):
+        return [f for f in hoja.iter_rows(min_row=2, max_row=4, values_only=True) if f[3]]
+
+    assert len(con_tarea(todas)) == 2  # solo las suyas
+    assert len(con_tarea(filtradas)) == 1

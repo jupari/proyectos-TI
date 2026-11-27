@@ -8,7 +8,8 @@ import csv
 import datetime
 import io
 
-from django.http import StreamingHttpResponse
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import HttpResponse, StreamingHttpResponse
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -16,6 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .cache import desde_cache_o_calcular
+from .excel import excel_de_tareas
 from .filters import proyectos_del_tablero
 from .services import (
     ejecucion_mensual,
@@ -26,7 +28,13 @@ from .services import (
     tabla_proyectos,
     tabla_proyectos_por_periodo,
 )
-from .sprints import burndown_sprint, mi_trabajo, sprint_de, sprints_del_proyecto
+from .sprints import (
+    burndown_sprint,
+    mi_trabajo,
+    sprint_de,
+    sprints_del_proyecto,
+    tareas_para_excel,
+)
 
 PARAMETROS_FILTRO_PROYECTO = [
     OpenApiParameter("estado", str, required=False),
@@ -546,3 +554,38 @@ class MiTrabajoView(APIView):
     )
     def get(self, request):
         return Response(mi_trabajo(request.user))
+
+
+class MiTrabajoExportarView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Exporta a Excel las tareas de «Mi trabajo» con sus horas",
+        description="Un `.xlsx` con las tareas del alcance de quien consulta (un administrador "
+        "ve las de todo el equipo), incluidas las terminadas, y una hoja de resumen con las "
+        "horas por responsable, proyecto, estado y sprint. Acepta los mismos filtros de la "
+        "pantalla.",
+        parameters=[
+            OpenApiParameter("proyecto", str, required=False),
+            OpenApiParameter("responsable", str, required=False),
+            OpenApiParameter("estado", str, required=False),
+        ],
+        responses={(200, "application/octet-stream"): bytes},
+    )
+    def get(self, request):
+        parametros = request.query_params
+        try:
+            tareas = tareas_para_excel(
+                request.user,
+                proyecto=parametros.get("proyecto") or None,
+                responsable=parametros.get("responsable") or None,
+                estado=parametros.get("estado") or None,
+            )
+        except (DjangoValidationError, ValueError) as exc:
+            raise ValidationError({"filtros": ["Los filtros no son válidos."]}) from exc
+        respuesta = HttpResponse(
+            excel_de_tareas(tareas),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        respuesta["Content-Disposition"] = 'attachment; filename="horas-por-tarea.xlsx"'
+        return respuesta
