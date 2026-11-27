@@ -91,7 +91,7 @@ export class MiTrabajoPagina {
       vencidas: filas.filter((t) => t.vencida).length,
       bloqueadas: filas.filter((t) => t.estado === 'BLOQUEADA').length,
       horasPendientes: filas.reduce(
-        (suma, t) => suma + Math.max(t.horas_estimadas - t.horas_ejecutadas, 0),
+        (suma, t) => suma + Math.max(t.horas_estimadas - t.horas_jira, 0),
         0,
       ),
     };

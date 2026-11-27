@@ -203,6 +203,8 @@ export interface TareaMiTrabajo {
   avance: number;
   horas_estimadas: number;
   horas_ejecutadas: number;
+  /** Horas registradas en Jira sobre la incidencia (solo consulta). */
+  horas_jira: number;
   fecha_fin_plan: string;
   vencida: boolean;
   proyecto_id: string;

@@ -96,7 +96,7 @@
                 <th class="hidden px-4 py-2.5 font-semibold lg:table-cell">Sprint</th>
                 <th class="px-4 py-2.5 font-semibold">Estado</th>
                 <th class="hidden px-4 py-2.5 font-semibold sm:table-cell">Avance</th>
-                <th class="hidden px-4 py-2.5 text-right font-semibold sm:table-cell">Horas</th>
+                <th class="hidden px-4 py-2.5 text-right font-semibold sm:table-cell">Horas Jira / estimadas</th>
                 <th class="px-4 py-2.5 font-semibold">Fin plan</th>
               </tr>
             </thead>
@@ -143,7 +143,7 @@
                   <td class="whitespace-nowrap px-4 py-3">{{ etiquetaEstado(t.estado) }}</td>
                   <td class="hidden px-4 py-3 sm:table-cell"><app-progreso [valor]="t.avance" class="block w-24" /></td>
                   <td class="hidden whitespace-nowrap px-4 py-3 text-right tabular-nums sm:table-cell">
-                    {{ t.horas_ejecutadas | horas }} / {{ t.horas_estimadas | horas }}
+                    {{ t.horas_jira | horas }} / {{ t.horas_estimadas | horas }}
                   </td>
                   <td class="px-4 py-3" [class.text-peligro]="t.vencida" [class.font-semibold]="t.vencida">
                     {{ t.fecha_fin_plan | fechaCorta }}

@@ -193,6 +193,7 @@ def _guardar_tarea(proyecto, tarea_jira, sprint, responsables):
     tarea.prioridad = prioridad_app_para(tarea_jira["prioridad"])
     tarea.responsable = responsables.get(tarea_jira["responsable_id"])
     tarea.horas_estimadas = Decimal(str(tarea_jira["horas_estimadas"] or 0))
+    tarea.horas_jira = Decimal(str(tarea_jira["horas_registradas"] or 0))
     tarea.avance = avance_de(tarea_jira)
     tarea.sprint = sprint
     tarea.epica_clave = tarea_jira["epica_clave"]

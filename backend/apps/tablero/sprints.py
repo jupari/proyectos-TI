@@ -167,6 +167,7 @@ def _fila_tarea(tarea, hoy):
         "avance": float(tarea.avance),
         "horas_estimadas": float(tarea.horas_estimadas),
         "horas_ejecutadas": float(tarea.horas_ejecutadas),
+        "horas_jira": float(tarea.horas_jira),
         "fecha_fin_plan": tarea.fecha_fin_plan.isoformat(),
         "vencida": tarea.fecha_fin_plan < hoy,
         "proyecto_id": str(tarea.proyecto_id),
@@ -182,7 +183,7 @@ def _fila_tarea(tarea, hoy):
 def _resumen_filas(filas):
     pendientes = sum(
         (
-            max(Decimal(str(f["horas_estimadas"])) - Decimal(str(f["horas_ejecutadas"])), CERO)
+            max(Decimal(str(f["horas_estimadas"])) - Decimal(str(f["horas_jira"])), CERO)
             for f in filas
         ),
         CERO,

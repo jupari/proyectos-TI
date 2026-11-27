@@ -205,3 +205,13 @@ def test_no_asocia_si_el_nombre_coincide_con_dos_recursos():
 
     assert Tarea.objects.get(clave_jira="PDT-2").responsable_id is None
     assert resumen["sin_responsable_asociado"] == ["Ana Pérez"]
+
+
+def test_guarda_las_horas_registradas_en_jira_sin_tocar_las_aprobadas():
+    ProyectoFactory(clave_jira="PDT")
+
+    importar_tareas_jira("PDT", cliente=_cliente(_lote()))
+
+    subtarea = Tarea.objects.get(clave_jira="PDT-3")
+    assert subtarea.horas_jira == 8  # timespent de 28800 s
+    assert subtarea.horas_ejecutadas == 0

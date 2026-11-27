@@ -75,6 +75,9 @@ class Tarea(ModeloBase):
     sprint = models.ForeignKey(
         Sprint, null=True, blank=True, on_delete=models.SET_NULL, related_name="tareas"
     )
+    # Horas que el equipo registró en Jira sobre esta incidencia (`timespent`). Es solo
+    # de consulta: `horas_ejecutadas` sigue siendo lo aprobado en la aplicación.
+    horas_jira = models.DecimalField(max_digits=10, decimal_places=2, default=0, editable=False)
     epica_clave = models.CharField(max_length=30, blank=True, default="")
     epica_nombre = models.CharField(max_length=250, blank=True, default="")
 
